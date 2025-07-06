@@ -128,23 +128,36 @@ describe('RoomList', () => {
 
   it('creates room when form is submitted', async () => {
     mockInitializeSocketClient.mockImplementation((url, listeners) => {
-      listeners?.onConnectionStateChange?.('connected');
+      setTimeout(() => {
+        listeners?.onConnectionStateChange?.('connected');
+      }, 0);
       return Promise.resolve();
     });
 
     render(<RoomList onRoomJoined={mockOnRoomJoined} />);
 
+    // Wait for the component to be connected
     await waitFor(() => {
       expect(screen.getByText('Create Room')).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByText('Create Room'));
 
+    // Wait for the modal to open
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText('Enter room name...')).toBeInTheDocument();
+    });
+
     const nameInput = screen.getByPlaceholderText('Enter room name...');
     fireEvent.change(nameInput, { target: { value: 'New Test Room' } });
 
-    const createButton = screen.getByText('Create Room');
-    fireEvent.click(createButton);
+    // Find the create button in the modal (there might be multiple "Create Room" buttons)
+    const createButtons = screen.getAllByText('Create Room');
+    const modalCreateButton = createButtons.find(button => 
+      button.closest('[role="dialog"]') || button.closest('.modal')
+    ) || createButtons[createButtons.length - 1]; // Use last one as fallback
+
+    fireEvent.click(modalCreateButton);
 
     expect(mockCreateRoom).toHaveBeenCalledWith('New Test Room', true, 8);
   });
@@ -163,21 +176,32 @@ describe('RoomList', () => {
     ];
 
     mockInitializeSocketClient.mockImplementation((url, listeners) => {
-      listeners?.onConnectionStateChange?.('connected');
-      listeners?.onRoomList?.({ rooms: mockRooms });
+      setTimeout(() => {
+        listeners?.onConnectionStateChange?.('connected');
+        listeners?.onRoomList?.({ rooms: mockRooms });
+      }, 0);
       return Promise.resolve();
     });
 
     render(<RoomList onRoomJoined={mockOnRoomJoined} />);
 
+    // Wait for the component to be connected and rooms to load
+    await waitFor(() => {
+      expect(screen.getByText('Test Room 1')).toBeInTheDocument();
+    });
+
+    // Wait for the join button to be available
     await waitFor(() => {
       expect(screen.getByText('Join Room')).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByText('Join Room'));
 
-    expect(screen.getByText('Join Room')).toBeInTheDocument();
-    expect(screen.getByPlaceholderText('Enter your name...')).toBeInTheDocument();
+    // Wait for the modal to open
+    await waitFor(() => {
+      expect(screen.getByText('Join Test Room 1')).toBeInTheDocument();
+      expect(screen.getByPlaceholderText('Enter your name...')).toBeInTheDocument();
+    });
   });
 
   it('joins room when join form is submitted', async () => {
@@ -194,24 +218,42 @@ describe('RoomList', () => {
     ];
 
     mockInitializeSocketClient.mockImplementation((url, listeners) => {
-      listeners?.onConnectionStateChange?.('connected');
-      listeners?.onRoomList?.({ rooms: mockRooms });
+      setTimeout(() => {
+        listeners?.onConnectionStateChange?.('connected');
+        listeners?.onRoomList?.({ rooms: mockRooms });
+      }, 0);
       return Promise.resolve();
     });
 
     render(<RoomList onRoomJoined={mockOnRoomJoined} />);
 
+    // Wait for the component to be connected and rooms to load
+    await waitFor(() => {
+      expect(screen.getByText('Test Room 1')).toBeInTheDocument();
+    });
+
+    // Wait for the join button to be available
     await waitFor(() => {
       expect(screen.getByText('Join Room')).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByText('Join Room'));
 
+    // Wait for the modal to open and find the name input
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText('Enter your name...')).toBeInTheDocument();
+    });
+
     const nameInput = screen.getByPlaceholderText('Enter your name...');
     fireEvent.change(nameInput, { target: { value: 'NewUser' } });
 
-    const joinButton = screen.getByText('Join Room');
-    fireEvent.click(joinButton);
+    // Find the join button in the modal (there might be multiple "Join Room" buttons)
+    const joinButtons = screen.getAllByText('Join Room');
+    const modalJoinButton = joinButtons.find(button => 
+      button.closest('[role="dialog"]') || button.closest('.modal')
+    ) || joinButtons[joinButtons.length - 1]; // Use last one as fallback
+
+    fireEvent.click(modalJoinButton);
 
     expect(mockSetUserName).toHaveBeenCalledWith('NewUser');
     expect(mockJoinRoom).toHaveBeenCalledWith('room-1', 'NewUser');
@@ -235,13 +277,21 @@ describe('RoomList', () => {
     ];
 
     mockInitializeSocketClient.mockImplementation((url, listeners) => {
-      listeners?.onConnectionStateChange?.('connected');
-      listeners?.onRoomList?.({ rooms: mockRooms });
+      setTimeout(() => {
+        listeners?.onConnectionStateChange?.('connected');
+        listeners?.onRoomList?.({ rooms: mockRooms });
+      }, 0);
       return Promise.resolve();
     });
 
     render(<RoomList onRoomJoined={mockOnRoomJoined} />);
 
+    // Wait for the component to be connected and rooms to load
+    await waitFor(() => {
+      expect(screen.getByText('Full Room')).toBeInTheDocument();
+    });
+
+    // Wait for the full button to be displayed
     await waitFor(() => {
       expect(screen.getByText('Full')).toBeInTheDocument();
       expect(screen.getByText('Full')).toBeDisabled();
@@ -277,13 +327,16 @@ describe('RoomList', () => {
     };
 
     mockInitializeSocketClient.mockImplementation((url, listeners) => {
-      listeners?.onConnectionStateChange?.('connected');
-      listeners?.onRoomCreated?.({ room: mockRoom });
+      setTimeout(() => {
+        listeners?.onConnectionStateChange?.('connected');
+        listeners?.onRoomCreated?.({ room: mockRoom });
+      }, 0);
       return Promise.resolve();
     });
 
     render(<RoomList onRoomJoined={mockOnRoomJoined} />);
 
+    // Wait for the component to be connected and room to be created
     await waitFor(() => {
       expect(screen.getByText('New Room')).toBeInTheDocument();
     });

@@ -14,6 +14,7 @@ export type StorageType = 'cookie' | 'localStorage' | 'sessionStorage';
  * User data structure
  */
 export interface UserData {
+  id: string;
   name: string;
   lastUsed: number;
 }
@@ -167,20 +168,74 @@ export function getUserName(): string | null {
 }
 
 /**
+ * Generate a unique user ID
+ * @returns A unique user ID string
+ */
+function generateUserId(): string {
+  return 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+}
+
+/**
+ * Get user ID with automatic generation if needed
+ * @returns User ID string
+ */
+export function getUserId(): string {
+  let userData = getUserData();
+  
+  // If no user data exists, generate new user with ID
+  if (!userData) {
+    const newId = generateUserId();
+    userData = {
+      id: newId,
+      name: '',
+      lastUsed: Date.now(),
+    };
+    
+    // Store in all available storage types
+    setUserInLocalStorage(userData);
+    setUserInSessionStorage(userData);
+    setUserInCookie(userData);
+  }
+  
+  return userData.id;
+}
+
+/**
+ * Set user data with ID and name
+ * @param name - User name to store
+ */
+export function setUserWithId(name: string): void {
+  let userData = getUserData();
+  
+  // If no user data exists, generate new ID
+  if (!userData) {
+    userData = {
+      id: generateUserId(),
+      name,
+      lastUsed: Date.now(),
+    };
+  } else {
+    // Update existing user data
+    userData = {
+      ...userData,
+      name,
+      lastUsed: Date.now(),
+    };
+  }
+  
+  // Store in all available storage types
+  setUserInLocalStorage(userData);
+  setUserInSessionStorage(userData);
+  setUserInCookie(userData);
+}
+
+/**
  * Set user data with fallback mechanism
  * Stores in all available storage types for redundancy
  * @param name - User name to store
  */
 export function setUserName(name: string): void {
-  const userData: UserData = {
-    name,
-    lastUsed: Date.now(),
-  };
-  
-  // Try to store in all available storage types
-  setUserInLocalStorage(userData);
-  setUserInSessionStorage(userData);
-  setUserInCookie(userData);
+  setUserWithId(name);
 }
 
 /**

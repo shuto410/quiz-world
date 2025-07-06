@@ -9,6 +9,8 @@ import {
   migrateUserData,
   getStorageAvailability,
   type UserData,
+  getUserId,
+  setUserWithId,
 } from './userStorage';
 
 describe('User Storage', () => {
@@ -63,7 +65,7 @@ describe('User Storage', () => {
     });
 
     test('should return user data from localStorage', () => {
-      const userData: UserData = { name: 'Alice', lastUsed: Date.now() };
+      const userData: UserData = { id: 'test-id', name: 'Alice', lastUsed: Date.now() };
       mockLocalStorage.getItem.mockReturnValue(JSON.stringify(userData));
       mockSessionStorage.getItem.mockReturnValue(null);
       mockDocument.cookie = '';
@@ -73,7 +75,7 @@ describe('User Storage', () => {
     });
 
     test('should return user data from sessionStorage when localStorage is empty', () => {
-      const userData: UserData = { name: 'Bob', lastUsed: Date.now() };
+      const userData: UserData = { id: 'test-id', name: 'Bob', lastUsed: Date.now() };
       mockLocalStorage.getItem.mockReturnValue(null);
       mockSessionStorage.getItem.mockReturnValue(JSON.stringify(userData));
       mockDocument.cookie = '';
@@ -83,7 +85,7 @@ describe('User Storage', () => {
     });
 
     test('should return user data from cookie when other storages are empty', () => {
-      const userData: UserData = { name: 'Charlie', lastUsed: Date.now() };
+      const userData: UserData = { id: 'test-id', name: 'Charlie', lastUsed: Date.now() };
       mockLocalStorage.getItem.mockReturnValue(null);
       mockSessionStorage.getItem.mockReturnValue(null);
       mockDocument.cookie = `quiz_world_user=${encodeURIComponent(JSON.stringify(userData))}`;
@@ -93,9 +95,9 @@ describe('User Storage', () => {
     });
 
     test('should prioritize localStorage over other storages', () => {
-      const localStorageData: UserData = { name: 'Alice', lastUsed: Date.now() };
-      const sessionStorageData: UserData = { name: 'Bob', lastUsed: Date.now() };
-      const cookieData: UserData = { name: 'Charlie', lastUsed: Date.now() };
+      const localStorageData: UserData = { id: 'test-id-1', name: 'Alice', lastUsed: Date.now() };
+      const sessionStorageData: UserData = { id: 'test-id-2', name: 'Bob', lastUsed: Date.now() };
+      const cookieData: UserData = { id: 'test-id-3', name: 'Charlie', lastUsed: Date.now() };
 
       mockLocalStorage.getItem.mockReturnValue(JSON.stringify(localStorageData));
       mockSessionStorage.getItem.mockReturnValue(JSON.stringify(sessionStorageData));
@@ -108,7 +110,7 @@ describe('User Storage', () => {
 
   describe('getUserName', () => {
     test('should return user name from storage', () => {
-      const userData: UserData = { name: 'Alice', lastUsed: Date.now() };
+      const userData: UserData = { id: 'test-id', name: 'Alice', lastUsed: Date.now() };
       mockLocalStorage.getItem.mockReturnValue(JSON.stringify(userData));
 
       expect(getUserName()).toBe('Alice');
@@ -120,6 +122,82 @@ describe('User Storage', () => {
       mockDocument.cookie = '';
 
       expect(getUserName()).toBeNull();
+    });
+
+    test('should store and retrieve user name from localStorage', () => {
+      const mockUserData = {
+        id: 'test-id',
+        name: 'Alice',
+        lastUsed: Date.now(),
+      };
+
+      setUserName('Alice');
+      
+      // Check that localStorage.setItem was called with the correct structure
+      expect(mockLocalStorage.setItem).toHaveBeenCalledWith(
+        'quiz_world_user',
+        expect.stringMatching(/^{"id":"[^"]+","name":"Alice","lastUsed":\d+}$/)
+      );
+
+      mockLocalStorage.getItem.mockReturnValue(JSON.stringify(mockUserData));
+      
+      const retrievedName = getUserName();
+      expect(retrievedName).toBe('Alice');
+    });
+
+    test('should store and retrieve user name from sessionStorage when localStorage fails', () => {
+      const mockUserData = {
+        id: 'test-id',
+        name: 'Bob',
+        lastUsed: Date.now(),
+      };
+
+      mockLocalStorage.setItem.mockImplementation(() => {
+        throw new Error('localStorage not available');
+      });
+
+      setUserName('Bob');
+      
+      // Check that sessionStorage.setItem was called with the correct structure
+      expect(mockSessionStorage.setItem).toHaveBeenCalledWith(
+        'quiz_world_user',
+        expect.stringMatching(/^{"id":"[^"]+","name":"Bob","lastUsed":\d+}$/)
+      );
+
+      mockLocalStorage.getItem.mockReturnValue(null);
+      mockSessionStorage.getItem.mockReturnValue(JSON.stringify(mockUserData));
+      
+      const retrievedName = getUserName();
+      expect(retrievedName).toBe('Bob');
+    });
+
+    test('should store and retrieve user name from cookie when other storage fails', () => {
+      const mockUserData = {
+        id: 'test-id',
+        name: 'Charlie',
+        lastUsed: Date.now(),
+      };
+
+      mockLocalStorage.setItem.mockImplementation(() => {
+        throw new Error('localStorage not available');
+      });
+      mockSessionStorage.setItem.mockImplementation(() => {
+        throw new Error('sessionStorage not available');
+      });
+
+      setUserName('Charlie');
+      
+      expect(document.cookie).toContain('quiz_world_user=');
+
+      mockLocalStorage.getItem.mockReturnValue(null);
+      mockSessionStorage.getItem.mockReturnValue(null);
+      Object.defineProperty(document, 'cookie', {
+        value: `quiz_world_user=${encodeURIComponent(JSON.stringify(mockUserData))}`,
+        writable: true,
+      });
+      
+      const retrievedName = getUserName();
+      expect(retrievedName).toBe('Charlie');
     });
   });
 
@@ -164,7 +242,7 @@ describe('User Storage', () => {
 
   describe('hasUserData', () => {
     test('should return true when user data exists', () => {
-      const userData: UserData = { name: 'Alice', lastUsed: Date.now() };
+      const userData: UserData = { id: 'test-id', name: 'Alice', lastUsed: Date.now() };
       mockLocalStorage.getItem.mockReturnValue(JSON.stringify(userData));
 
       expect(hasUserData()).toBe(true);
@@ -181,7 +259,7 @@ describe('User Storage', () => {
 
   describe('getStorageType', () => {
     test('should return localStorage when data exists there', () => {
-      const userData: UserData = { name: 'Alice', lastUsed: Date.now() };
+      const userData: UserData = { id: 'test-id', name: 'Alice', lastUsed: Date.now() };
       mockLocalStorage.getItem.mockReturnValue(JSON.stringify(userData));
       mockSessionStorage.getItem.mockReturnValue(null);
       mockDocument.cookie = '';
@@ -190,7 +268,7 @@ describe('User Storage', () => {
     });
 
     test('should return sessionStorage when data exists there', () => {
-      const userData: UserData = { name: 'Bob', lastUsed: Date.now() };
+      const userData: UserData = { id: 'test-id', name: 'Bob', lastUsed: Date.now() };
       mockLocalStorage.getItem.mockReturnValue(null);
       mockSessionStorage.getItem.mockReturnValue(JSON.stringify(userData));
       mockDocument.cookie = '';
@@ -199,7 +277,7 @@ describe('User Storage', () => {
     });
 
     test('should return cookie when data exists there', () => {
-      const userData: UserData = { name: 'Charlie', lastUsed: Date.now() };
+      const userData: UserData = { id: 'test-id', name: 'Charlie', lastUsed: Date.now() };
       mockLocalStorage.getItem.mockReturnValue(null);
       mockSessionStorage.getItem.mockReturnValue(null);
       mockDocument.cookie = `quiz_world_user=${encodeURIComponent(JSON.stringify(userData))}`;
@@ -218,7 +296,7 @@ describe('User Storage', () => {
 
   describe('migrateUserData', () => {
     test('should migrate data to localStorage', () => {
-      const userData: UserData = { name: 'Alice', lastUsed: Date.now() };
+      const userData: UserData = { id: 'test-id', name: 'Alice', lastUsed: Date.now() };
       mockSessionStorage.getItem.mockReturnValue(JSON.stringify(userData));
 
       migrateUserData('localStorage');
@@ -230,7 +308,7 @@ describe('User Storage', () => {
     });
 
     test('should migrate data to sessionStorage', () => {
-      const userData: UserData = { name: 'Bob', lastUsed: Date.now() };
+      const userData: UserData = { id: 'test-id', name: 'Bob', lastUsed: Date.now() };
       mockLocalStorage.getItem.mockReturnValue(JSON.stringify(userData));
 
       migrateUserData('sessionStorage');
@@ -242,7 +320,7 @@ describe('User Storage', () => {
     });
 
     test('should migrate data to cookie', () => {
-      const userData: UserData = { name: 'Charlie', lastUsed: Date.now() };
+      const userData: UserData = { id: 'test-id', name: 'Charlie', lastUsed: Date.now() };
       mockLocalStorage.getItem.mockReturnValue(JSON.stringify(userData));
 
       migrateUserData('cookie');
@@ -348,6 +426,60 @@ describe('User Storage', () => {
       });
 
       expect(() => setUserName('Alice')).not.toThrow();
+    });
+  });
+
+  describe('User ID Generation', () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+      // Clear all storage
+      clearUserData();
+    });
+
+    test('should generate user ID automatically when none exists', () => {
+      const userId = getUserId();
+      
+      expect(userId).toBeDefined();
+      expect(typeof userId).toBe('string');
+      expect(userId.length).toBeGreaterThan(0);
+    });
+
+    test('should return same user ID on subsequent calls', () => {
+      const userId1 = getUserId();
+      const userId2 = getUserId();
+      
+      expect(userId1).toBe(userId2);
+    });
+
+    test('should generate different IDs for different sessions', () => {
+      const userId1 = getUserId();
+      clearUserData();
+      const userId2 = getUserId();
+      
+      expect(userId1).not.toBe(userId2);
+    });
+
+    test('should persist user ID across storage types', () => {
+      const userId = getUserId();
+      
+      // Clear localStorage but keep sessionStorage
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.removeItem('quiz_world_user');
+      }
+      
+      const retrievedUserId = getUserId();
+      expect(retrievedUserId).toBe(userId);
+    });
+
+    test('should set user ID with name', () => {
+      const name = 'Test User';
+      setUserWithId(name);
+      
+      const userId = getUserId();
+      const userName = getUserName();
+      
+      expect(userId).toBeDefined();
+      expect(userName).toBe(name);
     });
   });
 }); 
