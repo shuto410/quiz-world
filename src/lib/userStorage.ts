@@ -1,0 +1,260 @@
+/**
+ * User storage utilities for Quiz World application
+ * - Manages user name storage in cookies and localStorage
+ * - Provides fallback mechanisms for different storage types
+ * - Handles storage expiration and cleanup
+ */
+
+/**
+ * Storage types supported by the application
+ */
+export type StorageType = 'cookie' | 'localStorage' | 'sessionStorage';
+
+/**
+ * User data structure
+ */
+export interface UserData {
+  name: string;
+  lastUsed: number;
+}
+
+/**
+ * Storage configuration
+ */
+const STORAGE_CONFIG = {
+  COOKIE_NAME: 'quiz_world_user',
+  LOCAL_STORAGE_KEY: 'quiz_world_user',
+  SESSION_STORAGE_KEY: 'quiz_world_user',
+  COOKIE_EXPIRES_DAYS: 30,
+} as const;
+
+/**
+ * Get user data from cookies
+ * @returns User data or null if not found
+ */
+function getUserFromCookie(): UserData | null {
+  try {
+    if (typeof document === 'undefined') return null;
+    
+    const cookies = document.cookie.split(';');
+    const userCookie = cookies.find(cookie => 
+      cookie.trim().startsWith(`${STORAGE_CONFIG.COOKIE_NAME}=`)
+    );
+    
+    if (!userCookie) return null;
+    
+    const value = userCookie.split('=')[1];
+    const decoded = decodeURIComponent(value);
+    return JSON.parse(decoded);
+  } catch (error) {
+    console.warn('Failed to read user from cookie:', error);
+    return null;
+  }
+}
+
+/**
+ * Set user data in cookies
+ * @param userData - User data to store
+ */
+function setUserInCookie(userData: UserData): void {
+  try {
+    if (typeof document === 'undefined') return;
+    
+    const expires = new Date();
+    expires.setDate(expires.getDate() + STORAGE_CONFIG.COOKIE_EXPIRES_DAYS);
+    
+    const value = JSON.stringify(userData);
+    const encoded = encodeURIComponent(value);
+    
+    document.cookie = `${STORAGE_CONFIG.COOKIE_NAME}=${encoded}; expires=${expires.toUTCString()}; path=/; SameSite=Lax`;
+  } catch (error) {
+    console.warn('Failed to set user in cookie:', error);
+  }
+}
+
+/**
+ * Get user data from localStorage
+ * @returns User data or null if not found
+ */
+function getUserFromLocalStorage(): UserData | null {
+  try {
+    if (typeof window === 'undefined' || !window.localStorage) return null;
+    
+    const stored = window.localStorage.getItem(STORAGE_CONFIG.LOCAL_STORAGE_KEY);
+    if (!stored) return null;
+    
+    return JSON.parse(stored);
+  } catch (error) {
+    console.warn('Failed to read user from localStorage:', error);
+    return null;
+  }
+}
+
+/**
+ * Set user data in localStorage
+ * @param userData - User data to store
+ */
+function setUserInLocalStorage(userData: UserData): void {
+  try {
+    if (typeof window === 'undefined' || !window.localStorage) return;
+    
+    window.localStorage.setItem(STORAGE_CONFIG.LOCAL_STORAGE_KEY, JSON.stringify(userData));
+  } catch (error) {
+    console.warn('Failed to set user in localStorage:', error);
+  }
+}
+
+/**
+ * Get user data from sessionStorage
+ * @returns User data or null if not found
+ */
+function getUserFromSessionStorage(): UserData | null {
+  try {
+    if (typeof window === 'undefined' || !window.sessionStorage) return null;
+    
+    const stored = window.sessionStorage.getItem(STORAGE_CONFIG.SESSION_STORAGE_KEY);
+    if (!stored) return null;
+    
+    return JSON.parse(stored);
+  } catch (error) {
+    console.warn('Failed to read user from sessionStorage:', error);
+    return null;
+  }
+}
+
+/**
+ * Set user data in sessionStorage
+ * @param userData - User data to store
+ */
+function setUserInSessionStorage(userData: UserData): void {
+  try {
+    if (typeof window === 'undefined' || !window.sessionStorage) return;
+    
+    window.sessionStorage.setItem(STORAGE_CONFIG.SESSION_STORAGE_KEY, JSON.stringify(userData));
+  } catch (error) {
+    console.warn('Failed to set user in sessionStorage:', error);
+  }
+}
+
+/**
+ * Get user data with fallback mechanism
+ * Priority: localStorage > sessionStorage > cookie
+ * @returns User data or null if not found in any storage
+ */
+export function getUserData(): UserData | null {
+  // Try localStorage first
+  let userData = getUserFromLocalStorage();
+  if (userData) return userData;
+  
+  // Try sessionStorage second
+  userData = getUserFromSessionStorage();
+  if (userData) return userData;
+  
+  // Try cookie last
+  userData = getUserFromCookie();
+  if (userData) return userData;
+  
+  return null;
+}
+
+/**
+ * Get user name with fallback mechanism
+ * @returns User name or null if not found
+ */
+export function getUserName(): string | null {
+  const userData = getUserData();
+  return userData?.name || null;
+}
+
+/**
+ * Set user data with fallback mechanism
+ * Stores in all available storage types for redundancy
+ * @param name - User name to store
+ */
+export function setUserName(name: string): void {
+  const userData: UserData = {
+    name,
+    lastUsed: Date.now(),
+  };
+  
+  // Try to store in all available storage types
+  setUserInLocalStorage(userData);
+  setUserInSessionStorage(userData);
+  setUserInCookie(userData);
+}
+
+/**
+ * Clear user data from all storage types
+ */
+export function clearUserData(): void {
+  try {
+    // Clear localStorage
+    if (typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.removeItem(STORAGE_CONFIG.LOCAL_STORAGE_KEY);
+    }
+    
+    // Clear sessionStorage
+    if (typeof window !== 'undefined' && window.sessionStorage) {
+      window.sessionStorage.removeItem(STORAGE_CONFIG.SESSION_STORAGE_KEY);
+    }
+    
+    // Clear cookie
+    if (typeof document !== 'undefined') {
+      document.cookie = `${STORAGE_CONFIG.COOKIE_NAME}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+    }
+  } catch (error) {
+    console.warn('Failed to clear user data:', error);
+  }
+}
+
+/**
+ * Check if user data exists in any storage
+ * @returns True if user data exists, false otherwise
+ */
+export function hasUserData(): boolean {
+  return getUserData() !== null;
+}
+
+/**
+ * Get the storage type where user data is currently stored
+ * @returns Storage type or null if not found
+ */
+export function getStorageType(): StorageType | null {
+  if (getUserFromLocalStorage()) return 'localStorage';
+  if (getUserFromSessionStorage()) return 'sessionStorage';
+  if (getUserFromCookie()) return 'cookie';
+  return null;
+}
+
+/**
+ * Migrate user data to a specific storage type
+ * @param targetStorage - Target storage type
+ */
+export function migrateUserData(targetStorage: StorageType): void {
+  const userData = getUserData();
+  if (!userData) return;
+  
+  switch (targetStorage) {
+    case 'localStorage':
+      setUserInLocalStorage(userData);
+      break;
+    case 'sessionStorage':
+      setUserInSessionStorage(userData);
+      break;
+    case 'cookie':
+      setUserInCookie(userData);
+      break;
+  }
+}
+
+/**
+ * Get storage availability status
+ * @returns Object with availability status for each storage type
+ */
+export function getStorageAvailability(): Record<StorageType, boolean> {
+  return {
+    localStorage: typeof window !== 'undefined' && !!window.localStorage,
+    sessionStorage: typeof window !== 'undefined' && !!window.sessionStorage,
+    cookie: typeof document !== 'undefined' && !!document.cookie,
+  };
+} 
