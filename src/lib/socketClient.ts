@@ -58,7 +58,7 @@ export function initializeSocketClient(
     try {
       // Create socket connection
       socket = io(serverUrl, {
-        autoConnect: true,
+        autoConnect: false,
         reconnection: true,
         reconnectionAttempts: 5,
         reconnectionDelay: 1000,
@@ -107,12 +107,12 @@ function setupEventListeners(
 ) {
   // Room management events
   socket.on('room:created', (data) => {
-    console.log('Room created:', data.room.id);
+    console.log('Room created:', data.room.id, 'Host:', data.room.users[0]?.name, 'isHost:', data.room.users[0]?.isHost);
     listeners.onRoomCreated?.(data);
   });
 
   socket.on('room:joined', (data) => {
-    console.log('Joined room:', data.room.id);
+    console.log('Joined room:', data.room.id, 'User:', data.user?.name, 'isHost:', data.user?.isHost);
     listeners.onRoomJoined?.(data);
   });
 
@@ -216,24 +216,37 @@ export function disconnect(): void {
  * @param name - Room name
  * @param isPublic - Whether the room is public
  * @param maxPlayers - Maximum number of players
+ * @param userName - User name (host)
+ * @param userId - User ID (host)
  */
-export function createRoom(name: string, isPublic: boolean, maxPlayers: number = 8): void {
+export function createRoom(name: string, isPublic: boolean, maxPlayers: number = 8, userName?: string, userId?: string): void {
   if (!socket?.connected) {
     throw new Error('Socket not connected');
   }
-  socket.emit('room:create', { name, isPublic, maxPlayers });
+  console.log('Creating room with:', { name, isPublic, maxPlayers, userName, userId });
+  socket.emit('room:create', { name, isPublic, maxPlayers, userName, userId });
 }
 
 /**
  * Join an existing room
  * @param roomId - Room ID to join
+ * @param userId - User ID
  * @param userName - User name
+ * @param socketArg - Optional socket instance for testing
  */
-export function joinRoom(roomId: string, userName: string): void {
+export function joinRoom(
+  roomId: string,
+  userId: string,
+  userName: string,
+  socketArg?: import('socket.io-client').Socket<ServerToClientEvents, ClientToServerEvents> | null
+): void {
+  const socket = socketArg ?? getSocket();
   if (!socket?.connected) {
     throw new Error('Socket not connected');
   }
-  socket.emit('room:join', { roomId, userName });
+  
+  console.log('Socket client joining room:', { roomId, userId, userName });
+  socket.emit('room:join', { roomId, userId, userName });
 }
 
 /**

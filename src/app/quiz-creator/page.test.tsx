@@ -26,12 +26,12 @@ describe('QuizCreatorPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     
-    (useRouter as any).mockReturnValue({
+    (useRouter as ReturnType<typeof vi.fn>).mockReturnValue({
       push: mockPush,
-    });
+    } as unknown as { push: typeof mockPush });
 
-    (socketClient.addQuiz as any).mockImplementation(mockAddQuiz);
-    (userStorage.getUserName as any).mockImplementation(mockGetUserName);
+    (socketClient.addQuiz as ReturnType<typeof vi.fn>).mockImplementation(mockAddQuiz);
+    (userStorage.getUserName as ReturnType<typeof vi.fn>).mockImplementation(mockGetUserName);
     
     mockGetUserName.mockReturnValue('TestUser');
     mockAddQuiz.mockResolvedValue(undefined);

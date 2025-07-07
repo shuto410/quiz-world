@@ -3,7 +3,7 @@
  * Tests the integration of QuizGame component into a dedicated page
  */
 
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useRouter, useSearchParams } from 'next/navigation';
 import QuizGamePage from './page';
@@ -34,11 +34,7 @@ describe('QuizGamePage', () => {
     answer: 'Tokyo',
   };
 
-  const mockCurrentUser: User = {
-    id: 'user-1',
-    name: 'Alice',
-    isHost: false,
-  };
+
 
   const mockUsers: User[] = [
     { id: 'user-1', name: 'Alice', isHost: false },
@@ -53,17 +49,17 @@ describe('QuizGamePage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     
-    (useRouter as any).mockReturnValue({
+    (useRouter as ReturnType<typeof vi.fn>).mockReturnValue({
       push: mockPush,
-    });
+    } as unknown as { push: typeof mockPush });
 
-    (useSearchParams as any).mockReturnValue({
+    (useSearchParams as ReturnType<typeof vi.fn>).mockReturnValue({
       get: mockGet,
-    });
+    } as unknown as { get: typeof mockGet });
 
-    (socketClient.submitAnswer as any).mockImplementation(mockSubmitAnswer);
-    (userStorage.getUserName as any).mockImplementation(mockGetUserName);
-    (userStorage.getUserId as any).mockImplementation(mockGetUserId);
+    (socketClient.submitAnswer as ReturnType<typeof vi.fn>).mockImplementation(mockSubmitAnswer);
+    (userStorage.getUserName as ReturnType<typeof vi.fn>).mockImplementation(mockGetUserName);
+    (userStorage.getUserId as ReturnType<typeof vi.fn>).mockImplementation(mockGetUserId);
     
     mockGetUserName.mockReturnValue('Alice');
     mockGetUserId.mockReturnValue('user-1');
@@ -222,11 +218,6 @@ describe('QuizGamePage', () => {
   });
 
   it('shows host controls when user is host', () => {
-    const hostUser: User = {
-      id: 'user-2',
-      name: 'Bob',
-      isHost: true,
-    };
 
     mockGetUserId.mockReturnValue('user-2');
     mockGetUserName.mockReturnValue('Bob');

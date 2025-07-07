@@ -48,7 +48,7 @@ describe('Socket.io Event Types', () => {
     events['room:create']({ name: 'Test Room', isPublic: true });
     
     // Test room:join event
-    events['room:join']({ roomId: 'room1', userName: 'Alice' });
+    events['room:join']({ roomId: 'room1', userId: 'user1', userName: 'Alice' });
     
     // Test host:transfer event
     events['host:transfer']({ newHostId: 'user2' });
@@ -128,6 +128,11 @@ describe('Socket.io Event Types', () => {
         expect(data.results[0].userId).toBe('user1');
         expect(data.results[0].score).toBe(10);
       },
+      'room:alreadyJoined': (data) => {
+        expect(data.room.id).toBe('room1');
+        expect(data.user.id).toBe('user1');
+      },
+      'room:notFound': () => {},
       'error': (data) => {
         expect(data.message).toBe('Error message');
       },
@@ -192,6 +197,12 @@ describe('Socket.io Event Types', () => {
     
     // Test quiz:ended event
     events['quiz:ended']({ results: [{ userId: 'user1', score: 10 }] });
+    
+    // Test room:alreadyJoined event
+    events['room:alreadyJoined']({ room, user });
+    
+    // Test room:notFound event
+    events['room:notFound']();
     
     // Test error event
     events['error']({ message: 'Error message' });

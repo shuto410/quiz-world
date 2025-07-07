@@ -16,8 +16,7 @@ describe('Socket.io Server', () => {
   let mockServer: any;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let mockSocket: any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let mockIO: any;
+
 
   beforeEach(() => {
     // Reset mocks
@@ -37,11 +36,7 @@ describe('Socket.io Server', () => {
       on: vi.fn(),
     };
     
-    // Create mock IO
-    mockIO = {
-      to: vi.fn().mockReturnThis(),
-      emit: vi.fn(),
-    };
+
   });
 
   describe('initializeSocket', () => {

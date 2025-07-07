@@ -1,7 +1,7 @@
 /**
  * Unit tests for domain models in src/types/index.ts
  */
-import { describe, test, expect } from 'vitest';
+import { test, expect } from 'vitest';
 import type { User, ImageResource, Quiz, Score, Room } from './index';
 
 test('User type usage', () => {

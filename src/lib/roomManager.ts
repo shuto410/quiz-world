@@ -51,12 +51,51 @@ export function createRoom(
 }
 
 /**
+ * Creates a new room with a specific host user ID
+ * @param name - Room name
+ * @param isPublic - Whether the room is public
+ * @param maxPlayers - Maximum number of players (default: 8)
+ * @param hostName - Name of the host user
+ * @param hostId - Specific host user ID to use
+ * @returns The created room
+ */
+export function createRoomWithHost(
+  name: string,
+  isPublic: boolean,
+  maxPlayers: number = 8,
+  hostName: string,
+  hostId: string
+): Room {
+  const roomId = uuidv4();
+  
+  const host: User = {
+    id: hostId,
+    name: hostName,
+    isHost: true,
+  };
+
+  const room: Room = {
+    id: roomId,
+    name,
+    isPublic,
+    users: [host],
+    quizzes: [],
+    hostId,
+    maxPlayers,
+  };
+
+  rooms.set(roomId, room);
+  return room;
+}
+
+/**
  * Joins a user to an existing room
  * @param roomId - Room ID to join
  * @param userName - Name of the user joining
+ * @param userId - Optional existing user ID to reuse
  * @returns The room and user if successful, null if room is full or doesn't exist
  */
-export function joinRoom(roomId: string, userName: string): { room: Room; user: User } | null {
+export function joinRoom(roomId: string, userName: string, userId?: string): { room: Room; user: User } | null {
   const room = rooms.get(roomId);
   if (!room) {
     return null;
@@ -66,13 +105,27 @@ export function joinRoom(roomId: string, userName: string): { room: Room; user: 
     return null;
   }
 
+  // If userId is provided, check if user already exists in the room
+  if (userId) {
+    const existingUser = room.users.find(user => user.id === userId);
+    if (existingUser) {
+      // Update user name if it has changed
+      if (existingUser.name !== userName) {
+        existingUser.name = userName;
+      }
+      console.log(`User ${userName} (${userId}) already exists in room, returning existing user`);
+      return { room, user: existingUser };
+    }
+  }
+
   const user: User = {
-    id: uuidv4(),
+    id: userId || uuidv4(),
     name: userName,
     isHost: false,
   };
 
   room.users.push(user);
+  console.log(`New user ${userName} (${user.id}) added to room`);
   return { room, user };
 }
 

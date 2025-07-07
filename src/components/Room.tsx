@@ -10,9 +10,10 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardContent } from './ui/Card';
 import { Button } from './ui/Button';
 import { Modal } from './ui/Modal';
+import { QuizCreator } from './QuizCreator';
 import type { Room, User, Quiz } from '../types';
 import { leaveRoom, transferHost } from '../lib/socketClient';
-import { getUserName } from '../lib/userStorage';
+import { getUserName, getUserId } from '../lib/userStorage';
 
 /**
  * Room props interface
@@ -45,10 +46,13 @@ export function Room({ room, currentUser, onLeave, onQuizStart, className }: Roo
   const [newMessage, setNewMessage] = useState('');
   const [showQuizModal, setShowQuizModal] = useState(false);
   const [showHostModal, setShowHostModal] = useState(false);
+  const [showQuizCreator, setShowQuizCreator] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [roomQuizzes, setRoomQuizzes] = useState(room.quizzes);
 
   const isHost = currentUser.isHost;
   const currentUserName = getUserName() || currentUser.name;
+  const currentUserId = getUserId();
 
   // Add welcome message
   useEffect(() => {
@@ -80,7 +84,7 @@ export function Room({ room, currentUser, onLeave, onQuizStart, className }: Roo
 
     const message: ChatMessage = {
       id: Date.now().toString(),
-      userId: currentUser.id,
+      userId: currentUserId,
       userName: currentUserName,
       message: newMessage.trim(),
       timestamp: Date.now(),
@@ -108,6 +112,23 @@ export function Room({ room, currentUser, onLeave, onQuizStart, className }: Roo
   const handleStartQuiz = (quiz: Quiz) => {
     onQuizStart?.(quiz);
     setShowQuizModal(false);
+  };
+
+  /**
+   * Open quiz creator
+   */
+  const handleOpenQuizCreator = () => {
+    setShowQuizModal(false);
+    setShowQuizCreator(true);
+  };
+
+  /**
+   * Handle quiz created
+   */
+  const handleQuizCreated = (quiz: Quiz) => {
+    console.log('Quiz created:', quiz);
+    setRoomQuizzes(prev => [...prev, quiz]);
+    setShowQuizCreator(false);
   };
 
   return (
@@ -251,7 +272,7 @@ export function Room({ room, currentUser, onLeave, onQuizStart, className }: Roo
                     : 'The host will start a quiz soon.'
                   }
                 </p>
-                {isHost && room.quizzes.length > 0 && (
+                {isHost && roomQuizzes.length > 0 && (
                   <Button onClick={() => setShowQuizModal(true)}>
                     Start Quiz
                   </Button>
@@ -270,7 +291,7 @@ export function Room({ room, currentUser, onLeave, onQuizStart, className }: Roo
         size="lg"
       >
         <div className="space-y-4">
-          {room.quizzes.length === 0 ? (
+          {roomQuizzes.length === 0 ? (
             <div className="text-center py-8">
               <div className="text-4xl mb-4">📝</div>
               <h3 className="text-lg font-semibold text-gray-800 mb-2">
@@ -279,13 +300,13 @@ export function Room({ room, currentUser, onLeave, onQuizStart, className }: Roo
               <p className="text-gray-600 mb-4">
                 Create some quizzes to start the game!
               </p>
-              <Button onClick={() => setShowQuizModal(false)}>
+              <Button onClick={handleOpenQuizCreator}>
                 Create Quiz
               </Button>
             </div>
           ) : (
             <div className="space-y-3">
-              {room.quizzes.map((quiz) => (
+              {roomQuizzes.map((quiz) => (
                 <div
                   key={quiz.id}
                   className="flex items-center justify-between p-3 border border-gray-200 rounded-lg"
@@ -305,6 +326,9 @@ export function Room({ room, currentUser, onLeave, onQuizStart, className }: Roo
                   </Button>
                 </div>
               ))}
+              <Button onClick={handleOpenQuizCreator}>
+                Create Quiz
+              </Button>
             </div>
           )}
         </div>
@@ -331,6 +355,13 @@ export function Room({ room, currentUser, onLeave, onQuizStart, className }: Roo
           </div>
         </div>
       </Modal>
+
+      {/* Quiz Creator */}
+      <QuizCreator
+        isOpen={showQuizCreator}
+        onClose={() => setShowQuizCreator(false)}
+        onQuizCreated={handleQuizCreated}
+      />
     </div>
   );
 } 

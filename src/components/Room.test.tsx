@@ -17,6 +17,7 @@ vi.mock('../lib/userStorage');
 const mockLeaveRoom = vi.mocked(socketClient.leaveRoom);
 const mockTransferHost = vi.mocked(socketClient.transferHost);
 const mockGetUserName = vi.mocked(userStorage.getUserName);
+const mockGetUserId = vi.mocked(userStorage.getUserId);
 
 describe('Room', () => {
   const mockRoom: RoomType = {
@@ -51,6 +52,7 @@ describe('Room', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockGetUserName.mockReturnValue('Alice');
+    mockGetUserId.mockReturnValue('user-1');
   });
 
   it('renders room information correctly', () => {
@@ -292,6 +294,205 @@ describe('Room', () => {
     expect(screen.getByText('Create some quizzes to start the game!')).toBeInTheDocument();
   });
 
+  it('opens quiz creator when Create Quiz button is clicked in quiz management', () => {
+    const roomWithoutQuizzes = { ...mockRoom, quizzes: [] };
+    
+    render(
+      <Room
+        room={roomWithoutQuizzes}
+        currentUser={mockCurrentUser}
+        onLeave={mockOnLeave}
+        onQuizStart={mockOnQuizStart}
+      />
+    );
+
+    const manageButton = screen.getByText('Manage Quizzes');
+    fireEvent.click(manageButton);
+
+    const createQuizButton = screen.getByText('Create Quiz');
+    fireEvent.click(createQuizButton);
+
+    expect(screen.getByText('Create New Quiz')).toBeInTheDocument();
+    expect(screen.getByText('Quiz Type')).toBeInTheDocument();
+  });
+
+  it('creates quiz and closes quiz creator when quiz is submitted', async () => {
+    const roomWithoutQuizzes = { ...mockRoom, quizzes: [] };
+    
+    render(
+      <Room
+        room={roomWithoutQuizzes}
+        currentUser={mockCurrentUser}
+        onLeave={mockOnLeave}
+        onQuizStart={mockOnQuizStart}
+      />
+    );
+
+    // Open quiz creator
+    const manageButton = screen.getByText('Manage Quizzes');
+    fireEvent.click(manageButton);
+    const createQuizButton = screen.getByText('Create Quiz');
+    fireEvent.click(createQuizButton);
+
+    // Fill quiz form
+    const questionInput = screen.getByPlaceholderText('Enter your question...');
+    const answerInput = screen.getByPlaceholderText('Enter the correct answer...');
+    
+    fireEvent.change(questionInput, { target: { value: 'What is 2+2?' } });
+    fireEvent.change(answerInput, { target: { value: '4' } });
+
+    // Submit quiz
+    const submitButton = screen.getByText('Create Quiz');
+    fireEvent.click(submitButton);
+
+    // Quiz creator should close
+    await waitFor(() => {
+      expect(screen.queryByText('Create New Quiz')).not.toBeInTheDocument();
+    });
+  });
+
+  it('adds created quiz to room quiz list', async () => {
+    const roomWithoutQuizzes = { ...mockRoom, quizzes: [] };
+    
+    render(
+      <Room
+        room={roomWithoutQuizzes}
+        currentUser={mockCurrentUser}
+        onLeave={mockOnLeave}
+        onQuizStart={mockOnQuizStart}
+      />
+    );
+
+    // Open quiz creator
+    const manageButton = screen.getByText('Manage Quizzes');
+    fireEvent.click(manageButton);
+    const createQuizButton = screen.getByText('Create Quiz');
+    fireEvent.click(createQuizButton);
+
+    // Fill quiz form
+    const questionInput = screen.getByPlaceholderText('Enter your question...');
+    const answerInput = screen.getByPlaceholderText('Enter the correct answer...');
+    
+    fireEvent.change(questionInput, { target: { value: 'What is 2+2?' } });
+    fireEvent.change(answerInput, { target: { value: '4' } });
+
+    // Submit quiz
+    const submitButton = screen.getByText('Create Quiz');
+    fireEvent.click(submitButton);
+
+    // Wait for quiz creator to close
+    await waitFor(() => {
+      expect(screen.queryByText('Create New Quiz')).not.toBeInTheDocument();
+    });
+
+    // Open quiz management again to see the new quiz
+    fireEvent.click(manageButton);
+
+    // Check that the new quiz appears in the list
+    expect(screen.getByText('What is 2+2?')).toBeInTheDocument();
+    expect(screen.getByText('Type: text • Answer: 4')).toBeInTheDocument();
+  });
+
+  it('can create multiple quizzes', async () => {
+    const roomWithoutQuizzes = { ...mockRoom, quizzes: [] };
+    
+    render(
+      <Room
+        room={roomWithoutQuizzes}
+        currentUser={mockCurrentUser}
+        onLeave={mockOnLeave}
+        onQuizStart={mockOnQuizStart}
+      />
+    );
+
+    // Create first quiz
+    let manageButton = screen.getByText('Manage Quizzes');
+    fireEvent.click(manageButton);
+    let createQuizButton = screen.getByText('Create Quiz');
+    fireEvent.click(createQuizButton);
+
+    let questionInput = screen.getByPlaceholderText('Enter your question...');
+    let answerInput = screen.getByPlaceholderText('Enter the correct answer...');
+    
+    fireEvent.change(questionInput, { target: { value: 'What is 2+2?' } });
+    fireEvent.change(answerInput, { target: { value: '4' } });
+    fireEvent.click(screen.getByText('Create Quiz'));
+
+    await waitFor(() => {
+      expect(screen.queryByText('Create New Quiz')).not.toBeInTheDocument();
+    });
+
+    // Create second quiz
+    manageButton = screen.getByText('Manage Quizzes');
+    fireEvent.click(manageButton);
+    createQuizButton = screen.getByText('Create Quiz');
+    fireEvent.click(createQuizButton);
+
+    questionInput = screen.getByPlaceholderText('Enter your question...');
+    answerInput = screen.getByPlaceholderText('Enter the correct answer...');
+    fireEvent.change(questionInput, { target: { value: 'What is 3+3?' } });
+    fireEvent.change(answerInput, { target: { value: '6' } });
+    fireEvent.click(screen.getByText('Create Quiz'));
+
+    await waitFor(() => {
+      expect(screen.queryByText('Create New Quiz')).not.toBeInTheDocument();
+    });
+
+    // Check both quizzes appear
+    manageButton = screen.getByText('Manage Quizzes');
+    fireEvent.click(manageButton);
+    expect(screen.getByText('What is 2+2?')).toBeInTheDocument();
+    expect(screen.getByText('What is 3+3?')).toBeInTheDocument();
+  });
+
+  it('can create image quiz', async () => {
+    const roomWithoutQuizzes = { ...mockRoom, quizzes: [] };
+    
+    render(
+      <Room
+        room={roomWithoutQuizzes}
+        currentUser={mockCurrentUser}
+        onLeave={mockOnLeave}
+        onQuizStart={mockOnQuizStart}
+      />
+    );
+
+    // Open quiz creator
+    const manageButton = screen.getByText('Manage Quizzes');
+    fireEvent.click(manageButton);
+    const createQuizButton = screen.getByText('Create Quiz');
+    fireEvent.click(createQuizButton);
+
+    // Switch to image quiz
+    const imageQuizButton = screen.getByText('Image Quiz').closest('button');
+    fireEvent.click(imageQuizButton!);
+
+    // Fill image quiz form
+    const questionInput = screen.getByPlaceholderText('Enter your question...');
+    const answerInput = screen.getByPlaceholderText('Enter the correct answer...');
+    const imageUrlInput = screen.getByPlaceholderText('https://example.com/image.jpg');
+    
+    fireEvent.change(questionInput, { target: { value: 'What anime is this?' } });
+    fireEvent.change(answerInput, { target: { value: 'Naruto' } });
+    fireEvent.change(imageUrlInput, { target: { value: 'https://example.com/naruto.jpg' } });
+
+    // Submit quiz
+    const submitButton = screen.getByText('Create Quiz');
+    fireEvent.click(submitButton);
+
+    // Wait for quiz creator to close
+    await waitFor(() => {
+      expect(screen.queryByText('Create New Quiz')).not.toBeInTheDocument();
+    });
+
+    // Open quiz management again to see the new quiz
+    fireEvent.click(manageButton);
+
+    // Check that the new quiz appears in the list
+    expect(screen.getByText('What anime is this?')).toBeInTheDocument();
+    expect(screen.getByText('Type: image • Answer: Naruto')).toBeInTheDocument();
+  });
+
   it('shows waiting message for non-host users', () => {
     const nonHostUser: User = { ...mockCurrentUser, isHost: false };
     
@@ -375,5 +576,99 @@ describe('Room', () => {
     fireEvent.click(sendButton);
 
     expect(screen.getByText('Alice:')).toBeInTheDocument();
+  });
+});
+
+describe('User ID Persistence', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // Mock userStorage functions
+    vi.mocked(mockGetUserName).mockReturnValue('Test User');
+    vi.mocked(mockGetUserId).mockReturnValue('test_user_123');
+  });
+
+  it('should use consistent user ID for chat messages', () => {
+    const room: RoomType = {
+      id: 'room1',
+      name: 'Test Room',
+      users: [
+        { id: 'test_user_123', name: 'Test User', isHost: true }
+      ],
+      maxPlayers: 4,
+      isPublic: true,
+      quizzes: [],
+      hostId: 'test_user_123',
+    };
+
+    const currentUser: User = {
+      id: 'test_user_123',
+      name: 'Test User',
+      isHost: true,
+    };
+
+    render(
+      <Room
+        room={room}
+        currentUser={currentUser}
+        onLeave={vi.fn()}
+        onQuizStart={vi.fn()}
+      />
+    );
+
+    // Find chat input and send a message
+    const chatInput = screen.getByPlaceholderText('Type a message...');
+    fireEvent.change(chatInput, { target: { value: 'Hello world' } });
+    
+    const sendButton = screen.getByRole('button', { name: /send/i });
+    fireEvent.click(sendButton);
+
+    // Verify that getUserId was called to get the user ID for the message
+    expect(mockGetUserId).toHaveBeenCalled();
+  });
+
+  it('should maintain user ID consistency across re-renders', () => {
+    const room: RoomType = {
+      id: 'room1',
+      name: 'Test Room',
+      users: [
+        { id: 'test_user_123', name: 'Test User', isHost: true }
+      ],
+      maxPlayers: 4,
+      isPublic: true,
+      quizzes: [],
+      hostId: 'test_user_123',
+    };
+
+    const currentUser: User = {
+      id: 'test_user_123',
+      name: 'Test User',
+      isHost: true,
+    };
+
+    const { rerender } = render(
+      <Room
+        room={room}
+        currentUser={currentUser}
+        onLeave={vi.fn()}
+        onQuizStart={vi.fn()}
+      />
+    );
+
+    // First render - getUserId may be called multiple times during initial render
+    const firstRenderCallCount = mockGetUserId.mock.calls.length;
+    expect(firstRenderCallCount).toBeGreaterThan(0);
+
+    // Re-render with same props
+    rerender(
+      <Room
+        room={room}
+        currentUser={currentUser}
+        onLeave={vi.fn()}
+        onQuizStart={vi.fn()}
+      />
+    );
+
+    // Should call getUserId again for the re-render (this is expected behavior)
+    expect(mockGetUserId).toHaveBeenCalledTimes(firstRenderCallCount + 1);
   });
 }); 

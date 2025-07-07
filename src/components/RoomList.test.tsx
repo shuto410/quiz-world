@@ -4,46 +4,75 @@
  */
 
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { vi, beforeEach, afterEach, describe, it, expect } from 'vitest';
 import { RoomList } from './RoomList';
 import type { Room } from '../types';
 import * as socketClient from '../lib/socketClient';
 import * as userStorage from '../lib/userStorage';
+import { useRouter } from 'next/navigation';
 
 // Mock Next.js router
-const mockPush = vi.fn();
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({
-    push: mockPush,
-  }),
+  useRouter: vi.fn(),
 }));
 
-// Mock dependencies
-vi.mock('../lib/socketClient');
-vi.mock('../lib/userStorage');
+// Mock socket client
+vi.mock('../lib/socketClient', () => ({
+  initializeSocketClient: vi.fn(),
+  requestRoomList: vi.fn(),
+  joinRoom: vi.fn(),
+  createRoom: vi.fn(),
+}));
 
-const mockInitializeSocketClient = vi.mocked(socketClient.initializeSocketClient);
-const mockRequestRoomList = vi.mocked(socketClient.requestRoomList);
-const mockJoinRoom = vi.mocked(socketClient.joinRoom);
-const mockCreateRoom = vi.mocked(socketClient.createRoom);
-const mockGetUserName = vi.mocked(userStorage.getUserName);
-const mockSetUserName = vi.mocked(userStorage.setUserName);
+// Mock user storage
+vi.mock('../lib/userStorage', () => ({
+  getUserName: vi.fn(),
+  setUserName: vi.fn(),
+  getUserId: vi.fn(),
+  resetCache: vi.fn(),
+  getUserData: vi.fn(),
+}));
 
 describe('RoomList', () => {
+  const mockPush = vi.fn();
   const mockOnRoomJoined = vi.fn();
+  const mockInitializeSocketClient = vi.mocked(socketClient.initializeSocketClient);
+  const mockRequestRoomList = vi.mocked(socketClient.requestRoomList);
+  const mockJoinRoom = vi.mocked(socketClient.joinRoom);
+  const mockCreateRoom = vi.mocked(socketClient.createRoom);
+  const mockGetUserName = vi.mocked(userStorage.getUserName);
+  const mockSetUserName = vi.mocked(userStorage.setUserName);
+  const mockGetUserId = vi.mocked(userStorage.getUserId);
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.clearAllTimers();
     mockInitializeSocketClient.mockResolvedValue();
     mockGetUserName.mockReturnValue('TestUser');
+    mockGetUserId.mockReturnValue('test-user-id');
+    (useRouter as ReturnType<typeof vi.fn>).mockReturnValue({ push: mockPush } as unknown as { push: typeof mockPush });
+  });
+
+  afterEach(() => {
+    vi.clearAllTimers();
+    vi.clearAllMocks();
   });
 
   it('renders room list with title and create button', async () => {
+    mockInitializeSocketClient.mockImplementation((url, listeners) => {
+      setTimeout(() => {
+        listeners?.onConnectionStateChange?.('connected');
+      }, 0);
+      return Promise.resolve();
+    });
+
     render(<RoomList onRoomJoined={mockOnRoomJoined} />);
 
-    expect(screen.getByText('Quiz World')).toBeInTheDocument();
-    expect(screen.getByText('Create Room')).toBeInTheDocument();
-    expect(screen.getByText('Public Rooms')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText('Quiz World')).toBeInTheDocument();
+      expect(screen.getByText('Create Room')).toBeInTheDocument();
+      expect(screen.getByText('Public Rooms')).toBeInTheDocument();
+    });
   });
 
   it('shows loading state while connecting', async () => {
@@ -58,13 +87,16 @@ describe('RoomList', () => {
     render(<RoomList onRoomJoined={mockOnRoomJoined} />);
 
     await waitFor(() => {
-      expect(screen.getByText(/Connection error/)).toBeInTheDocument();
+      expect(screen.getByText(/Connecting to server/i)).toBeInTheDocument();
     });
   });
 
   it('shows no rooms available when empty', async () => {
     mockInitializeSocketClient.mockImplementation((url, listeners) => {
-      listeners?.onConnectionStateChange?.('connected');
+      setTimeout(() => {
+        listeners?.onConnectionStateChange?.('connected');
+        listeners?.onRoomList?.({ rooms: [] });
+      }, 0);
       return Promise.resolve();
     });
 
@@ -93,8 +125,10 @@ describe('RoomList', () => {
     ];
 
     mockInitializeSocketClient.mockImplementation((url, listeners) => {
-      listeners?.onConnectionStateChange?.('connected');
-      listeners?.onRoomList?.({ rooms: mockRooms });
+      setTimeout(() => {
+        listeners?.onConnectionStateChange?.('connected');
+        listeners?.onRoomList?.({ rooms: mockRooms });
+      }, 0);
       return Promise.resolve();
     });
 
@@ -110,7 +144,9 @@ describe('RoomList', () => {
 
   it('opens create room modal when create button is clicked', async () => {
     mockInitializeSocketClient.mockImplementation((url, listeners) => {
-      listeners?.onConnectionStateChange?.('connected');
+      setTimeout(() => {
+        listeners?.onConnectionStateChange?.('connected');
+      }, 0);
       return Promise.resolve();
     });
 
@@ -126,7 +162,9 @@ describe('RoomList', () => {
     expect(screen.getByPlaceholderText('Enter room name...')).toBeInTheDocument();
   });
 
-  it('creates room when form is submitted', async () => {
+  it('creates room with specified user name and saves userId', async () => {
+    const testUserName = 'TDD Test User';
+    
     mockInitializeSocketClient.mockImplementation((url, listeners) => {
       setTimeout(() => {
         listeners?.onConnectionStateChange?.('connected');
@@ -136,30 +174,34 @@ describe('RoomList', () => {
 
     render(<RoomList onRoomJoined={mockOnRoomJoined} />);
 
-    // Wait for the component to be connected
+    // 接続完了を待つ
     await waitFor(() => {
       expect(screen.getByText('Create Room')).toBeInTheDocument();
     });
 
+    // ルーム作成モーダルを開く
     fireEvent.click(screen.getByText('Create Room'));
 
-    // Wait for the modal to open
-    await waitFor(() => {
-      expect(screen.getByPlaceholderText('Enter room name...')).toBeInTheDocument();
-    });
-
+    // フォームに入力
     const nameInput = screen.getByPlaceholderText('Enter room name...');
-    fireEvent.change(nameInput, { target: { value: 'New Test Room' } });
+    fireEvent.change(nameInput, { target: { value: 'TDD Test Room' } });
+    const userNameInput = screen.getByPlaceholderText('Enter your name...');
+    fireEvent.change(userNameInput, { target: { value: testUserName } });
 
-    // Find the create button in the modal (there might be multiple "Create Room" buttons)
+    // ルーム作成ボタンをクリック
     const createButtons = screen.getAllByText('Create Room');
     const modalCreateButton = createButtons.find(button => 
-      button.closest('[role="dialog"]') || button.closest('.modal')
-    ) || createButtons[createButtons.length - 1]; // Use last one as fallback
-
+      button.closest('[class*="fixed inset-0"]') || // Modal container
+      button.closest('[class*="max-w-md"]') // Modal content
+    ) || createButtons[createButtons.length - 1]; // Fallback to last one
     fireEvent.click(modalCreateButton);
 
-    expect(mockCreateRoom).toHaveBeenCalledWith('New Test Room', true, 8);
+    // ユーザー名が保存されること
+    expect(mockSetUserName).toHaveBeenCalledWith(testUserName);
+    // ルーム作成が呼ばれること（ユーザー名とユーザーIDも含む）
+    expect(mockCreateRoom).toHaveBeenCalledWith('TDD Test Room', true, 8, testUserName, 'test-user-id');
+    // ユーザーIDが保存されていること
+    expect(mockGetUserId).toHaveBeenCalled();
   });
 
   it('opens join modal when join button is clicked', async () => {
@@ -175,32 +217,40 @@ describe('RoomList', () => {
       },
     ];
 
+    let savedListeners: Parameters<typeof mockInitializeSocketClient>[1] | null = null;
     mockInitializeSocketClient.mockImplementation((url, listeners) => {
-      setTimeout(() => {
-        listeners?.onConnectionStateChange?.('connected');
-        listeners?.onRoomList?.({ rooms: mockRooms });
-      }, 0);
+      savedListeners = listeners;
+      // Immediately trigger connection state change
+      listeners?.onConnectionStateChange?.('connected');
       return Promise.resolve();
+    });
+
+    // Mock requestRoomList to trigger room list update
+    mockRequestRoomList.mockImplementation(() => {
+      if (savedListeners) {
+        // Immediately trigger room list update
+        savedListeners.onRoomList?.({ rooms: mockRooms });
+      }
     });
 
     render(<RoomList onRoomJoined={mockOnRoomJoined} />);
 
     // Wait for the component to be connected and rooms to load
     await waitFor(() => {
-      expect(screen.getByText('Test Room 1')).toBeInTheDocument();
+      expect(screen.getByText(/Test Room 1/i)).toBeInTheDocument();
     });
 
     // Wait for the join button to be available
     await waitFor(() => {
-      expect(screen.getByText('Join Room')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Join Room/i })).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByText('Join Room'));
+    fireEvent.click(screen.getByRole('button', { name: /Join Room/i }));
 
     // Wait for the modal to open
     await waitFor(() => {
-      expect(screen.getByText('Join Test Room 1')).toBeInTheDocument();
-      expect(screen.getByPlaceholderText('Enter your name...')).toBeInTheDocument();
+      expect(screen.getByText(/Join Test Room 1/i)).toBeInTheDocument();
+      expect(screen.getByPlaceholderText(/Enter your name/i)).toBeInTheDocument();
     });
   });
 
@@ -217,46 +267,55 @@ describe('RoomList', () => {
       },
     ];
 
+    let savedListeners: Parameters<typeof mockInitializeSocketClient>[1] | null = null;
     mockInitializeSocketClient.mockImplementation((url, listeners) => {
-      setTimeout(() => {
-        listeners?.onConnectionStateChange?.('connected');
-        listeners?.onRoomList?.({ rooms: mockRooms });
-      }, 0);
+      savedListeners = listeners;
+      // Immediately trigger connection state change
+      listeners?.onConnectionStateChange?.('connected');
       return Promise.resolve();
+    });
+
+    // Mock requestRoomList to trigger room list update
+    mockRequestRoomList.mockImplementation(() => {
+      if (savedListeners) {
+        // Immediately trigger room list update
+        savedListeners.onRoomList?.({ rooms: mockRooms });
+      }
     });
 
     render(<RoomList onRoomJoined={mockOnRoomJoined} />);
 
     // Wait for the component to be connected and rooms to load
     await waitFor(() => {
-      expect(screen.getByText('Test Room 1')).toBeInTheDocument();
+      expect(screen.getByText(/Test Room 1/i)).toBeInTheDocument();
     });
 
     // Wait for the join button to be available
     await waitFor(() => {
-      expect(screen.getByText('Join Room')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Join Room/i })).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByText('Join Room'));
+    fireEvent.click(screen.getByRole('button', { name: /Join Room/i }));
 
     // Wait for the modal to open and find the name input
     await waitFor(() => {
-      expect(screen.getByPlaceholderText('Enter your name...')).toBeInTheDocument();
+      expect(screen.getByPlaceholderText(/Enter your name/i)).toBeInTheDocument();
     });
 
-    const nameInput = screen.getByPlaceholderText('Enter your name...');
+    const nameInput = screen.getByPlaceholderText(/Enter your name/i);
     fireEvent.change(nameInput, { target: { value: 'NewUser' } });
 
-    // Find the join button in the modal (there might be multiple "Join Room" buttons)
-    const joinButtons = screen.getAllByText('Join Room');
-    const modalJoinButton = joinButtons.find(button => 
-      button.closest('[role="dialog"]') || button.closest('.modal')
-    ) || joinButtons[joinButtons.length - 1]; // Use last one as fallback
+    // Find the join button in the modal by looking for the button within the modal
+    const modalJoinButtons = screen.getAllByRole('button', { name: /Join Room/i });
+    const modalJoinButton = modalJoinButtons.find(button => 
+      button.closest('[class*="fixed inset-0"]') || // Modal container
+      button.closest('[class*="max-w-sm"]') // Modal content
+    ) || modalJoinButtons[modalJoinButtons.length - 1]; // Fallback to last one
 
     fireEvent.click(modalJoinButton);
 
     expect(mockSetUserName).toHaveBeenCalledWith('NewUser');
-    expect(mockJoinRoom).toHaveBeenCalledWith('room-1', 'NewUser');
+    expect(mockJoinRoom).toHaveBeenCalledWith('room-1', 'test-user-id', 'NewUser');
     expect(mockPush).toHaveBeenCalledWith('/room/room-1');
   });
 
@@ -276,31 +335,42 @@ describe('RoomList', () => {
       },
     ];
 
+    let savedListeners: Parameters<typeof mockInitializeSocketClient>[1] | null = null;
     mockInitializeSocketClient.mockImplementation((url, listeners) => {
-      setTimeout(() => {
-        listeners?.onConnectionStateChange?.('connected');
-        listeners?.onRoomList?.({ rooms: mockRooms });
-      }, 0);
+      savedListeners = listeners;
+      // Immediately trigger connection state change
+      listeners?.onConnectionStateChange?.('connected');
       return Promise.resolve();
+    });
+
+    // Mock requestRoomList to trigger room list update
+    mockRequestRoomList.mockImplementation(() => {
+      if (savedListeners) {
+        // Immediately trigger room list update
+        savedListeners.onRoomList?.({ rooms: mockRooms });
+      }
     });
 
     render(<RoomList onRoomJoined={mockOnRoomJoined} />);
 
     // Wait for the component to be connected and rooms to load
     await waitFor(() => {
-      expect(screen.getByText('Full Room')).toBeInTheDocument();
+      expect(screen.getByText(/Full Room/i)).toBeInTheDocument();
     });
 
     // Wait for the full button to be displayed
     await waitFor(() => {
-      expect(screen.getByText('Full')).toBeInTheDocument();
-      expect(screen.getByText('Full')).toBeDisabled();
+      const fullButton = screen.getByRole('button', { name: /Full/i });
+      expect(fullButton).toBeInTheDocument();
+      expect(fullButton).toBeDisabled();
     });
   });
 
   it('refreshes room list when refresh button is clicked', async () => {
     mockInitializeSocketClient.mockImplementation((url, listeners) => {
-      listeners?.onConnectionStateChange?.('connected');
+      setTimeout(() => {
+        listeners?.onConnectionStateChange?.('connected');
+      }, 0);
       return Promise.resolve();
     });
 

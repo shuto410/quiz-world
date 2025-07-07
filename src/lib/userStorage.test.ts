@@ -11,6 +11,7 @@ import {
   type UserData,
   getUserId,
   setUserWithId,
+  resetCache,
 } from './userStorage';
 
 describe('User Storage', () => {
@@ -480,6 +481,124 @@ describe('User Storage', () => {
       
       expect(userId).toBeDefined();
       expect(userName).toBe(name);
+    });
+  });
+
+  describe('User ID Persistence', () => {
+    beforeEach(() => {
+      // Reset cache and clear all storage before each test
+      resetCache();
+      if (typeof window !== 'undefined') {
+        if (window.localStorage) {
+          window.localStorage.removeItem('quiz_world_user');
+        }
+        if (window.sessionStorage) {
+          window.sessionStorage.removeItem('quiz_world_user');
+        }
+      }
+      if (typeof document !== 'undefined') {
+        document.cookie = 'quiz_world_user=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+      }
+    });
+
+    test('should return the same user ID on multiple calls', () => {
+      // First call should generate and store a new ID
+      const firstId = getUserId();
+      expect(firstId).toBeTruthy();
+      expect(typeof firstId).toBe('string');
+
+      // Second call should return the same ID
+      const secondId = getUserId();
+      expect(secondId).toBe(firstId);
+
+      // Third call should also return the same ID
+      const thirdId = getUserId();
+      expect(thirdId).toBe(firstId);
+    });
+
+    test('should persist user ID across page reloads (localStorage)', () => {
+      // Mock localStorage to simulate persistence
+      const mockStorage: Record<string, string> = {};
+      const mockLocalStorage = {
+        getItem: vi.fn((key: string) => mockStorage[key] || null),
+        setItem: vi.fn((key: string, value: string) => {
+          mockStorage[key] = value;
+        }),
+        removeItem: vi.fn((key: string) => {
+          delete mockStorage[key];
+        }),
+      };
+
+      // Mock window.localStorage
+      Object.defineProperty(window, 'localStorage', {
+        value: mockLocalStorage,
+        writable: true,
+      });
+
+      // First call - should generate new ID
+      const firstId = getUserId();
+      expect(firstId).toBeTruthy();
+
+      // Simulate page reload by clearing cache but keeping storage
+      resetCache();
+
+      // Second call - should return same ID from storage
+      const secondId = getUserId();
+      expect(secondId).toBe(firstId);
+    });
+
+    test('should maintain user ID when setting user name', () => {
+      // Get initial user ID
+      const initialId = getUserId();
+      expect(initialId).toBeTruthy();
+
+      // Set user name
+      setUserName('Test User');
+
+      // Get user ID again - should be the same
+      const newId = getUserId();
+      expect(newId).toBe(initialId);
+
+      // Verify user data is correct
+      const userData = getUserData();
+      expect(userData?.id).toBe(initialId);
+      expect(userData?.name).toBe('Test User');
+    });
+
+    test('should not generate new ID when user data already exists', () => {
+      // Mock localStorage to work properly
+      const mockStorage: Record<string, string> = {};
+      const mockLocalStorage = {
+        getItem: vi.fn((key: string) => mockStorage[key] || null),
+        setItem: vi.fn((key: string, value: string) => {
+          mockStorage[key] = value;
+        }),
+        removeItem: vi.fn((key: string) => {
+          delete mockStorage[key];
+        }),
+      };
+
+      // Mock window.localStorage
+      Object.defineProperty(window, 'localStorage', {
+        value: mockLocalStorage,
+        writable: true,
+      });
+
+      // Create initial user data
+      const initialUserData = {
+        id: 'existing_user_123',
+        name: 'Existing User',
+        lastUsed: Date.now(),
+      };
+      mockStorage['quiz_world_user'] = JSON.stringify(initialUserData);
+
+      // Get user ID - should return existing ID
+      const userId = getUserId();
+      expect(userId).toBe('existing_user_123');
+
+      // Get user ID again - should still return same ID
+      const userId2 = getUserId();
+      expect(userId2).toBe('existing_user_123');
     });
   });
 }); 

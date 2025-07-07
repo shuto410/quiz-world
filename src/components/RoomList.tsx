@@ -17,9 +17,9 @@ import {
   joinRoom, 
   createRoom, 
   initializeSocketClient,
-  type ConnectionState 
+  type ConnectionState
 } from '../lib/socketClient';
-import { getUserName, setUserName } from '../lib/userStorage';
+import { getUserName, setUserName, getUserId, getUserData, resetCache } from '../lib/userStorage';
 
 /**
  * Room list props interface
@@ -60,46 +60,75 @@ export function RoomList({ onRoomJoined, className }: RoomListProps) {
   useEffect(() => {
     const initializeApp = async () => {
       try {
-        // Initialize socket client
-        await initializeSocketClient('http://localhost:3001', {
+        // Reset cache to clear old format data
+        resetCache();
+        
+        // Load user name first
+        const savedUserName = getUserName();
+        if (savedUserName) {
+          setUserNameState(savedUserName);
+        }
+        
+        // Get server URL from environment or use default
+        const serverUrl = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3001';
+        
+        // Initialize socket client only when needed
+        await initializeSocketClient(serverUrl, {
           onRoomList: (data) => {
             setRooms(data.rooms);
             setLoading(false);
           },
           onRoomCreated: (data) => {
+            console.log('Room created event received:', { roomId: data.room.id, hostName: data.room.users[0]?.name, isHost: data.room.users[0]?.isHost });
             setRooms(prev => [...prev, data.room]);
             setShowCreateModal(false);
             setCreateForm({ name: '', isPublic: true, maxPlayers: 8 });
+            
+            // Store room data in sessionStorage for the room page to access
+            if (typeof window !== 'undefined') {
+              sessionStorage.setItem('createdRoom', JSON.stringify(data.room));
+            }
+            
+            // Navigate to room page with host flag
+            router.push(`/room/${data.room.id}?host=true`);
           },
           onRoomJoined: (data) => {
-            onRoomJoined?.(data.room);
-            // Navigate to room page
-            router.push(`/room/${data.room.id}`);
+            // Only handle room:joined for joining existing rooms, not for room creation
+            // Room creation uses onRoomCreated instead
+            console.log('Room joined event received:', { roomId: data.room.id, isHost: data.user?.isHost });
+            
+            // If this is a host user (from room creation), don't navigate here
+            // The navigation will be handled by onRoomCreated
+            if (!data.user?.isHost) {
+              onRoomJoined?.(data.room);
+              router.push(`/room/${data.room.id}`);
+            } else {
+              console.log('Ignoring room:joined for host user (room creation)');
+            }
           },
           onConnectionStateChange: (state) => {
             setConnectionState(state);
           },
         });
-
-        // Load user name
-        const savedUserName = getUserName();
-        if (savedUserName) {
-          setUserNameState(savedUserName);
-        }
       } catch (error) {
         console.error('Failed to initialize app:', error);
       }
     };
 
-    initializeApp();
-  }, [onRoomJoined]);
+    // Only initialize when component is actually mounted and visible
+    const timer = setTimeout(() => {
+      initializeApp();
+    }, 100); // Small delay to avoid immediate connection on page load
+
+    return () => clearTimeout(timer);
+  }, [onRoomJoined]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Load rooms when connected
   useEffect(() => {
     if (connectionState === 'connected') {
       loadRooms();
     }
-  }, [connectionState]);
+  }, [connectionState]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Show loading state while not connected
   if (connectionState !== 'connected') {
@@ -140,9 +169,13 @@ export function RoomList({ onRoomJoined, className }: RoomListProps) {
    * Handle room creation
    */
   const handleCreateRoom = () => {
-    if (!createForm.name.trim()) return;
-    
-    createRoom(createForm.name, createForm.isPublic, createForm.maxPlayers);
+    if (!createForm.name.trim() || !userName.trim()) return;
+    // ユーザー名を保存
+    setUserNameState(userName);
+    setUserName(userName);
+    // ユーザーIDを生成・保存
+    const userId = getUserId();
+    createRoom(createForm.name, createForm.isPublic, createForm.maxPlayers, userName, userId);
     setShowCreateModal(false);
     setCreateForm({ name: '', isPublic: true, maxPlayers: 8 });
   };
@@ -153,8 +186,30 @@ export function RoomList({ onRoomJoined, className }: RoomListProps) {
   const handleJoinRoom = () => {
     if (!selectedRoom || !userName.trim()) return;
     
+    console.log('=== Room Join Debug ===');
+    console.log('Selected room:', selectedRoom);
+    console.log('User name:', userName);
+    
+    // Check current user data before setting name
+    const currentUserData = getUserData();
+    console.log('Current user data before setUserName:', currentUserData);
+    
+    // Set user name first (this will preserve existing user ID or create new one)
+    setUserNameState(userName);
     setUserName(userName);
-    joinRoom(selectedRoom.id, userName);
+    
+    // Check user data after setting name
+    const updatedUserData = getUserData();
+    console.log('Updated user data after setUserName:', updatedUserData);
+    
+    // Get user ID after setting name
+    const userId = getUserId();
+    console.log('Final user ID from getUserId():', userId);
+    
+    console.log('Joining room with:', { roomId: selectedRoom.id, userId, userName });
+    console.log('=== End Debug ===');
+    
+    joinRoom(selectedRoom.id, userId, userName);
     setShowJoinModal(false);
     setSelectedRoom(null);
     onRoomJoined?.(selectedRoom);
@@ -331,11 +386,24 @@ export function RoomList({ onRoomJoined, className }: RoomListProps) {
             </label>
           </div>
           
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Your Name
+            </label>
+            <input
+              type="text"
+              value={userName}
+              onChange={(e) => setUserNameState(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+              placeholder="Enter your name..."
+            />
+          </div>
+          
           <div className="flex gap-3 pt-4">
             <Button variant="ghost" onClick={() => setShowCreateModal(false)}>
               Cancel
             </Button>
-            <Button onClick={handleCreateRoom} disabled={!createForm.name.trim()}>
+            <Button onClick={handleCreateRoom} disabled={!createForm.name.trim() || !userName.trim()}>
               Create Room
             </Button>
           </div>

@@ -18,7 +18,7 @@ import type { Quiz } from '@/types';
  * Quiz Creator page component
  */
 export default function QuizCreatorPage() {
-  const [isCreatorOpen, setIsCreatorOpen] = useState(true);
+  const [isCreatorOpen] = useState(true);
   const router = useRouter();
 
   const handleQuizCreated = (quiz: Quiz) => {
