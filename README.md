@@ -150,7 +150,7 @@ npm run dev:server
 
 4. Open your browser and navigate to:
    - Frontend: http://localhost:3000
-   - Server Health Check: http://localhost:3001/health
+   - Server Health Check: http://localhost:3002/health
 
 ### Available Scripts
 

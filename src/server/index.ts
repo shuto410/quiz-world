@@ -7,7 +7,7 @@
 import { createServer } from 'http';
 import { initializeSocket } from './socket';
 
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3002;
 
 // Create HTTP server
 const server = createServer((req, res) => {
@@ -29,7 +29,7 @@ initializeSocket(server);
 // Start server
 server.listen(PORT, () => {
   console.log(`🚀 Socket.io server running on port ${PORT}`);
-  console.log(`📡 CORS enabled for: ${process.env.NODE_ENV === 'production' ? 'production' : 'http://localhost:3000, http://localhost:3001'}`);
+  console.log(`📡 CORS enabled for: ${process.env.NODE_ENV === 'production' ? 'production' : 'http://localhost:3000, http://localhost:3002'}`);
 });
 
 // Handle graceful shutdown

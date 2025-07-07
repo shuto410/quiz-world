@@ -50,7 +50,7 @@ export function initializeSocket(server: HTTPServer) {
     cors: {
       origin: process.env.NODE_ENV === 'production' 
         ? ['https://your-domain.vercel.app'] 
-        : ['http://localhost:3000', 'http://localhost:3001'],
+        : ['http://localhost:3000', 'http://localhost:3002'],
       methods: ['GET', 'POST'],
     },
   });

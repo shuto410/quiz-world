@@ -70,7 +70,7 @@ export function RoomList({ onRoomJoined, className }: RoomListProps) {
         }
         
         // Get server URL from environment or use default
-        const serverUrl = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3001';
+        const serverUrl = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3002';
         
         // Initialize socket client only when needed
         await initializeSocketClient(serverUrl, {
