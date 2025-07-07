@@ -1,13 +1,30 @@
-const { defineConfig } = require('vitest/config');
-const react = require('@vitejs/plugin-react');
-const path = require('path');
+import { defineConfig } from 'vitest/config';
+import react from '@vitejs/plugin-react';
+import path from 'path';
 
-module.exports = defineConfig({
+export default defineConfig({
     plugins: [react()],
     test: {
-        environment: 'jsdom',
-        setupFiles: ['./src/test/setup.ts'],
         globals: true,
+        environment: 'jsdom',
+        setupFiles: './src/test/setup.ts',
+        coverage: {
+            provider: 'v8',
+            reporter: ['text', 'json', 'html'],
+            exclude: [
+                '**/*.config.ts',
+                '**/*.config.mjs',
+                '**/*.d.ts',
+                'src/app/layout.tsx',
+                'src/app/page.tsx',
+                'src/types/',
+                'src/server/',
+                'src/lib/utils.ts',
+                '.next/',
+                'public/',
+                'node_modules/',
+            ],
+        },
     },
     resolve: {
         alias: {

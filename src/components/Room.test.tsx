@@ -11,7 +11,12 @@ import * as socketClient from '../lib/socketClient';
 import * as userStorage from '../lib/userStorage';
 
 // Mock dependencies
-vi.mock('../lib/socketClient');
+vi.mock('../lib/socketClient', () => ({
+  leaveRoom: vi.fn(),
+  transferHost: vi.fn(),
+  startQuiz: vi.fn(),
+  addQuiz: vi.fn(),
+}));
 vi.mock('../lib/userStorage');
 
 const mockLeaveRoom = vi.mocked(socketClient.leaveRoom);
@@ -46,8 +51,13 @@ describe('Room', () => {
     isHost: true,
   };
 
+  const mockCurrentUserHost: User = {
+    id: 'user-1',
+    name: 'Alice',
+    isHost: true,
+  };
+
   const mockOnLeave = vi.fn();
-  const mockOnQuizStart = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -61,7 +71,6 @@ describe('Room', () => {
         room={mockRoom}
         currentUser={mockCurrentUser}
         onLeave={mockOnLeave}
-        onQuizStart={mockOnQuizStart}
       />
     );
 
@@ -76,7 +85,6 @@ describe('Room', () => {
         room={mockRoom}
         currentUser={mockCurrentUser}
         onLeave={mockOnLeave}
-        onQuizStart={mockOnQuizStart}
       />
     );
 
@@ -91,7 +99,6 @@ describe('Room', () => {
         room={mockRoom}
         currentUser={mockCurrentUser}
         onLeave={mockOnLeave}
-        onQuizStart={mockOnQuizStart}
       />
     );
 
@@ -104,7 +111,6 @@ describe('Room', () => {
         room={mockRoom}
         currentUser={mockCurrentUser}
         onLeave={mockOnLeave}
-        onQuizStart={mockOnQuizStart}
       />
     );
 
@@ -126,7 +132,6 @@ describe('Room', () => {
         room={mockRoom}
         currentUser={mockCurrentUser}
         onLeave={mockOnLeave}
-        onQuizStart={mockOnQuizStart}
       />
     );
 
@@ -147,7 +152,6 @@ describe('Room', () => {
         room={mockRoom}
         currentUser={mockCurrentUser}
         onLeave={mockOnLeave}
-        onQuizStart={mockOnQuizStart}
       />
     );
 
@@ -161,7 +165,6 @@ describe('Room', () => {
         room={mockRoom}
         currentUser={mockCurrentUser}
         onLeave={mockOnLeave}
-        onQuizStart={mockOnQuizStart}
       />
     );
 
@@ -178,7 +181,6 @@ describe('Room', () => {
         room={mockRoom}
         currentUser={mockCurrentUser}
         onLeave={mockOnLeave}
-        onQuizStart={mockOnQuizStart}
       />
     );
 
@@ -194,7 +196,6 @@ describe('Room', () => {
         room={mockRoom}
         currentUser={nonHostUser}
         onLeave={mockOnLeave}
-        onQuizStart={mockOnQuizStart}
       />
     );
 
@@ -208,7 +209,6 @@ describe('Room', () => {
         room={mockRoom}
         currentUser={mockCurrentUser}
         onLeave={mockOnLeave}
-        onQuizStart={mockOnQuizStart}
       />
     );
 
@@ -225,7 +225,6 @@ describe('Room', () => {
         room={mockRoom}
         currentUser={mockCurrentUser}
         onLeave={mockOnLeave}
-        onQuizStart={mockOnQuizStart}
       />
     );
 
@@ -243,7 +242,6 @@ describe('Room', () => {
         room={mockRoom}
         currentUser={mockCurrentUser}
         onLeave={mockOnLeave}
-        onQuizStart={mockOnQuizStart}
       />
     );
 
@@ -257,12 +255,18 @@ describe('Room', () => {
   });
 
   it('starts quiz when Start button is clicked', () => {
+    const mockRoomWithQuiz = {
+      ...mockRoom,
+      quizzes: [
+        { id: 'quiz-1', question: 'Q1', answer: 'A1', type: 'text' as const },
+      ],
+    };
+
     render(
       <Room
-        room={mockRoom}
-        currentUser={mockCurrentUser}
-        onLeave={mockOnLeave}
-        onQuizStart={mockOnQuizStart}
+        room={mockRoomWithQuiz}
+        currentUser={mockCurrentUserHost}
+        onLeave={() => {}}
       />
     );
 
@@ -272,7 +276,7 @@ describe('Room', () => {
     const startButton = screen.getByText('Start');
     fireEvent.click(startButton);
 
-    expect(mockOnQuizStart).toHaveBeenCalledWith(mockRoom.quizzes[0]);
+    expect(socketClient.startQuiz).toHaveBeenCalledWith('quiz-1');
   });
 
   it('shows empty state when no quizzes available', () => {
@@ -283,7 +287,6 @@ describe('Room', () => {
         room={roomWithoutQuizzes}
         currentUser={mockCurrentUser}
         onLeave={mockOnLeave}
-        onQuizStart={mockOnQuizStart}
       />
     );
 
@@ -302,7 +305,6 @@ describe('Room', () => {
         room={roomWithoutQuizzes}
         currentUser={mockCurrentUser}
         onLeave={mockOnLeave}
-        onQuizStart={mockOnQuizStart}
       />
     );
 
@@ -324,7 +326,6 @@ describe('Room', () => {
         room={roomWithoutQuizzes}
         currentUser={mockCurrentUser}
         onLeave={mockOnLeave}
-        onQuizStart={mockOnQuizStart}
       />
     );
 
@@ -359,7 +360,6 @@ describe('Room', () => {
         room={roomWithoutQuizzes}
         currentUser={mockCurrentUser}
         onLeave={mockOnLeave}
-        onQuizStart={mockOnQuizStart}
       />
     );
 
@@ -401,7 +401,6 @@ describe('Room', () => {
         room={roomWithoutQuizzes}
         currentUser={mockCurrentUser}
         onLeave={mockOnLeave}
-        onQuizStart={mockOnQuizStart}
       />
     );
 
@@ -453,7 +452,6 @@ describe('Room', () => {
         room={roomWithoutQuizzes}
         currentUser={mockCurrentUser}
         onLeave={mockOnLeave}
-        onQuizStart={mockOnQuizStart}
       />
     );
 
@@ -501,7 +499,6 @@ describe('Room', () => {
         room={mockRoom}
         currentUser={nonHostUser}
         onLeave={mockOnLeave}
-        onQuizStart={mockOnQuizStart}
       />
     );
 
@@ -516,7 +513,6 @@ describe('Room', () => {
         room={roomWithoutQuizzes}
         currentUser={mockCurrentUser}
         onLeave={mockOnLeave}
-        onQuizStart={mockOnQuizStart}
       />
     );
 
@@ -529,7 +525,6 @@ describe('Room', () => {
         room={mockRoom}
         currentUser={mockCurrentUser}
         onLeave={mockOnLeave}
-        onQuizStart={mockOnQuizStart}
       />
     );
 
@@ -544,7 +539,6 @@ describe('Room', () => {
         room={mockRoom}
         currentUser={mockCurrentUser}
         onLeave={mockOnLeave}
-        onQuizStart={mockOnQuizStart}
       />
     );
 
@@ -565,7 +559,6 @@ describe('Room', () => {
         room={mockRoom}
         currentUser={mockCurrentUser}
         onLeave={mockOnLeave}
-        onQuizStart={mockOnQuizStart}
       />
     );
 
@@ -611,7 +604,6 @@ describe('User ID Persistence', () => {
         room={room}
         currentUser={currentUser}
         onLeave={vi.fn()}
-        onQuizStart={vi.fn()}
       />
     );
 
@@ -650,7 +642,6 @@ describe('User ID Persistence', () => {
         room={room}
         currentUser={currentUser}
         onLeave={vi.fn()}
-        onQuizStart={vi.fn()}
       />
     );
 
@@ -664,7 +655,6 @@ describe('User ID Persistence', () => {
         room={room}
         currentUser={currentUser}
         onLeave={vi.fn()}
-        onQuizStart={vi.fn()}
       />
     );
 

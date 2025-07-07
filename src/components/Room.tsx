@@ -12,7 +12,7 @@ import { Button } from './ui/Button';
 import { Modal } from './ui/Modal';
 import { QuizCreator } from './QuizCreator';
 import type { Room, User, Quiz } from '../types';
-import { leaveRoom, transferHost } from '../lib/socketClient';
+import { leaveRoom, transferHost, startQuiz } from '../lib/socketClient';
 import { getUserName, getUserId } from '../lib/userStorage';
 
 /**
@@ -22,7 +22,6 @@ export interface RoomProps {
   room: Room;
   currentUser: User;
   onLeave?: () => void;
-  onQuizStart?: (quiz: Quiz) => void;
   className?: string;
 }
 
@@ -41,7 +40,7 @@ interface ChatMessage {
 /**
  * Room component with anime pop style
  */
-export function Room({ room, currentUser, onLeave, onQuizStart, className }: RoomProps) {
+export function Room({ room, currentUser, onLeave, className }: RoomProps) {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [showQuizModal, setShowQuizModal] = useState(false);
@@ -110,8 +109,13 @@ export function Room({ room, currentUser, onLeave, onQuizStart, className }: Roo
    * Start a quiz
    */
   const handleStartQuiz = (quiz: Quiz) => {
-    onQuizStart?.(quiz);
-    setShowQuizModal(false);
+    try {
+      // Call Socket.io startQuiz function
+      startQuiz(quiz.id);
+      setShowQuizModal(false);
+    } catch (error) {
+      console.error('Failed to start quiz:', error);
+    }
   };
 
   /**

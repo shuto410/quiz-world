@@ -220,11 +220,12 @@ export function disconnect(): void {
  * @param userId - User ID (host)
  */
 export function createRoom(name: string, isPublic: boolean, maxPlayers: number = 8, userName?: string, userId?: string): void {
-  if (!socket?.connected) {
+  const currentSocket = getSocket();
+  if (!currentSocket?.connected) {
     throw new Error('Socket not connected');
   }
   console.log('Creating room with:', { name, isPublic, maxPlayers, userName, userId });
-  socket.emit('room:create', { name, isPublic, maxPlayers, userName, userId });
+  currentSocket.emit('room:create', { name, isPublic, maxPlayers, userName, userId });
 }
 
 /**
@@ -240,33 +241,35 @@ export function joinRoom(
   userName: string,
   socketArg?: import('socket.io-client').Socket<ServerToClientEvents, ClientToServerEvents> | null
 ): void {
-  const socket = socketArg ?? getSocket();
-  if (!socket?.connected) {
+  const socketToUse = socketArg ?? getSocket();
+  if (!socketToUse?.connected) {
     throw new Error('Socket not connected');
   }
   
   console.log('Socket client joining room:', { roomId, userId, userName });
-  socket.emit('room:join', { roomId, userId, userName });
+  socketToUse.emit('room:join', { roomId, userId, userName });
 }
 
 /**
  * Leave the current room
  */
 export function leaveRoom(): void {
-  if (!socket?.connected) {
+  const currentSocket = getSocket();
+  if (!currentSocket?.connected) {
     throw new Error('Socket not connected');
   }
-  socket.emit('room:leave');
+  currentSocket.emit('room:leave');
 }
 
 /**
  * Request list of public rooms
  */
 export function requestRoomList(): void {
-  if (!socket?.connected) {
+  const currentSocket = getSocket();
+  if (!currentSocket?.connected) {
     throw new Error('Socket not connected');
   }
-  socket.emit('room:list');
+  currentSocket.emit('room:list');
 }
 
 /**
@@ -274,10 +277,11 @@ export function requestRoomList(): void {
  * @param newHostId - New host user ID
  */
 export function transferHost(newHostId: string): void {
-  if (!socket?.connected) {
+  const currentSocket = getSocket();
+  if (!currentSocket?.connected) {
     throw new Error('Socket not connected');
   }
-  socket.emit('host:transfer', { newHostId });
+  currentSocket.emit('host:transfer', { newHostId });
 }
 
 /**
@@ -285,10 +289,11 @@ export function transferHost(newHostId: string): void {
  * @param updates - Properties to update
  */
 export function updateRoom(updates: { name?: string; isPublic?: boolean }): void {
-  if (!socket?.connected) {
+  const currentSocket = getSocket();
+  if (!currentSocket?.connected) {
     throw new Error('Socket not connected');
   }
-  socket.emit('room:update', updates);
+  currentSocket.emit('room:update', updates);
 }
 
 /**
@@ -296,10 +301,11 @@ export function updateRoom(updates: { name?: string; isPublic?: boolean }): void
  * @param quiz - Quiz to add
  */
 export function addQuiz(quiz: Quiz): void {
-  if (!socket?.connected) {
+  const currentSocket = getSocket();
+  if (!currentSocket?.connected) {
     throw new Error('Socket not connected');
   }
-  socket.emit('quiz:add', quiz);
+  currentSocket.emit('quiz:add', quiz);
 }
 
 /**
@@ -307,10 +313,11 @@ export function addQuiz(quiz: Quiz): void {
  * @param quizId - Quiz ID to remove
  */
 export function removeQuiz(quizId: string): void {
-  if (!socket?.connected) {
+  const currentSocket = getSocket();
+  if (!currentSocket?.connected) {
     throw new Error('Socket not connected');
   }
-  socket.emit('quiz:remove', { quizId });
+  currentSocket.emit('quiz:remove', { quizId });
 }
 
 /**
@@ -319,10 +326,11 @@ export function removeQuiz(quizId: string): void {
  * @param timeLimit - Time limit in seconds
  */
 export function startQuiz(quizId: string, timeLimit?: number): void {
-  if (!socket?.connected) {
+  const currentSocket = getSocket();
+  if (!currentSocket?.connected) {
     throw new Error('Socket not connected');
   }
-  socket.emit('quiz:start', { quizId, timeLimit });
+  currentSocket.emit('quiz:start', { quizId, timeLimit });
 }
 
 /**
@@ -331,10 +339,11 @@ export function startQuiz(quizId: string, timeLimit?: number): void {
  * @param answer - User's answer
  */
 export function submitAnswer(quizId: string, answer: string): void {
-  if (!socket?.connected) {
+  const currentSocket = getSocket();
+  if (!currentSocket?.connected) {
     throw new Error('Socket not connected');
   }
-  socket.emit('quiz:answer', { quizId, answer });
+  currentSocket.emit('quiz:answer', { quizId, answer });
 }
 
 /**
@@ -344,8 +353,9 @@ export function submitAnswer(quizId: string, answer: string): void {
  * @param score - Score to award
  */
 export function judgeAnswer(userId: string, isCorrect: boolean, score?: number): void {
-  if (!socket?.connected) {
+  const currentSocket = getSocket();
+  if (!currentSocket?.connected) {
     throw new Error('Socket not connected');
   }
-  socket.emit('quiz:judge', { userId, isCorrect, score });
+  currentSocket.emit('quiz:judge', { userId, isCorrect, score });
 } 

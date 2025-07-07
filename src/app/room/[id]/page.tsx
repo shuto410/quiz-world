@@ -12,7 +12,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Room } from '@/components/Room';
-import type { Room as RoomType, User } from '@/types';
+import type { Room as RoomType, User, Quiz } from '@/types';
 import { getUserName, getUserId } from '@/lib/userStorage';
 import { getSocket, isConnected, joinRoom, leaveRoom } from '@/lib/socketClient';
 
@@ -123,6 +123,19 @@ export default function RoomPage() {
     socket.on('room:userLeft', handleUserLeft);
     socket.on('room:updated', handleRoomUpdated);
     socket.on('room:notFound', handleRoomNotFound);
+    
+    // Quiz events
+    socket.on('quiz:started', (data: { quiz: Quiz; timeLimit: number }) => {
+      console.log('Quiz started event received:', data);
+      // Navigate to quiz game page
+      const params = new URLSearchParams({
+        quiz: JSON.stringify(data.quiz),
+        users: JSON.stringify(room?.users || []),
+        scores: JSON.stringify([]), // Empty scores for new game
+        gameState: 'active',
+      });
+      router.push(`/quiz-game?${params.toString()}`);
+    });
 
     // If user is already host (from room creation), don't call joinRoom
     // The server should send room:joined event automatically for room creation
@@ -153,24 +166,19 @@ export default function RoomPage() {
       socket.off('room:userLeft', handleUserLeft);
       socket.off('room:updated', handleRoomUpdated);
       socket.off('room:notFound', handleRoomNotFound);
+      socket.off('quiz:started');
       
       // Don't leave room if this is a fresh room creation (to avoid leaving immediately after creation)
       if (!isFreshRoomCreation) {
         leaveRoom();
       }
     };
-  }, [roomId, router]); // Remove isHost from dependencies to prevent re-execution
+  }, [roomId, router, room?.users]); // Add room?.users to dependencies
 
   // Handle room leave
   const handleRoomLeave = () => {
     leaveRoom();
     router.push('/');
-  };
-
-  // Handle quiz start
-  const handleQuizStart = (quiz: unknown) => {
-    // TODO: Navigate to quiz game page
-    console.log('Starting quiz:', quiz);
   };
 
   if (loading) {
@@ -227,7 +235,6 @@ export default function RoomPage() {
           room={room}
           currentUser={currentUser}
           onLeave={handleRoomLeave}
-          onQuizStart={handleQuizStart}
         />
       </div>
     </div>
