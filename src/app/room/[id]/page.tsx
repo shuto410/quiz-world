@@ -81,7 +81,9 @@ export default function RoomPage() {
 
     // room:joined handler
     const handleRoomJoined = (data: { room: RoomType; user: User }) => {
-      console.log('Received room:joined event:', { roomId: data.room.id, userId: data.user.id, userName: data.user.name, isHost: data.user.isHost });
+      if (data.room && data.user) {
+        console.log('Received room:joined event:', { roomId: data.room.id, userId: data.user.id, userName: data.user.name, isHost: data.user.isHost });
+      }
       setRoom(data.room);
       setCurrentUser(data.user);
       setLoading(false);

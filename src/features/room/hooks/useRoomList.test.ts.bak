@@ -1,0 +1,212 @@
+/**
+ * Tests for useRoomList hook
+ */
+import { describe, test, expect, beforeEach, vi } from 'vitest';
+import { renderHook, waitFor, act } from '@testing-library/react';
+import { useRoomList } from './useRoomList';
+import * as socketClient from '../../../lib/socketClient';
+import type { Room } from '../../../types';
+
+// Mock socket client
+vi.mock('../../../lib/socketClient', () => ({
+  requestRoomList: vi.fn(),
+  getConnectionState: vi.fn(),
+}));
+
+const mockRooms: Room[] = [
+  {
+    id: 'room-1',
+    name: 'Test Room 1',
+    isPublic: true,
+    maxPlayers: 8,
+    hostId: 'user-1',
+    users: [{ id: 'user-1', name: 'Host', isHost: true }],
+    quizzes: [],
+  },
+  {
+    id: 'room-2',
+    name: 'Test Room 2',
+    isPublic: false,
+    maxPlayers: 4,
+    hostId: 'user-2',
+    users: [{ id: 'user-2', name: 'Host2', isHost: true }],
+    quizzes: [],
+  },
+];
+
+describe('useRoomList', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  test('初期状態は空の配列でローディング中', () => {
+    const { result } = renderHook(() => useRoomList());
+    
+    expect(result.current.rooms).toEqual([]);
+    expect(result.current.loading).toBe(true);
+    expect(result.current.error).toBeNull();
+  });
+
+  test('接続時に自動的にルーム一覧を取得する', async () => {
+    const mockRequestRoomList = vi.mocked(socketClient.requestRoomList);
+    mockRequestRoomList.mockResolvedValue(mockRooms);
+
+    const { result } = renderHook(() => useRoomList({ isConnected: true }));
+
+    await waitFor(() => {
+      expect(mockRequestRoomList).toHaveBeenCalled();
+      expect(result.current.rooms).toEqual(mockRooms);
+      expect(result.current.loading).toBe(false);
+    });
+  });
+
+  test('未接続時はルーム一覧を取得しない', () => {
+    const mockRequestRoomList = vi.mocked(socketClient.requestRoomList);
+
+    renderHook(() => useRoomList({ isConnected: false }));
+
+    expect(mockRequestRoomList).not.toHaveBeenCalled();
+  });
+
+  test('ルーム一覧取得エラー時はエラーを設定する', async () => {
+    const mockRequestRoomList = vi.mocked(socketClient.requestRoomList);
+    const error = new Error('Failed to fetch rooms');
+    mockRequestRoomList.mockRejectedValue(error);
+
+    const { result } = renderHook(() => useRoomList({ isConnected: true }));
+
+    await waitFor(() => {
+      expect(result.current.error).toBe('Failed to fetch rooms');
+      expect(result.current.loading).toBe(false);
+      expect(result.current.rooms).toEqual([]);
+    });
+  });
+
+  test('refreshRoomsでルーム一覧を再取得できる', async () => {
+    const mockRequestRoomList = vi.mocked(socketClient.requestRoomList);
+    mockRequestRoomList.mockResolvedValue(mockRooms);
+
+    const { result } = renderHook(() => useRoomList({ isConnected: true }));
+
+    await waitFor(() => {
+      expect(result.current.rooms).toEqual(mockRooms);
+    });
+
+    // Clear mock and set new data
+    mockRequestRoomList.mockClear();
+    const newRooms = [...mockRooms, {
+      id: 'room-3',
+      name: 'New Room',
+      isPublic: true,
+      maxPlayers: 6,
+      hostId: 'user-3',
+      users: [],
+      quizzes: [],
+    }];
+    mockRequestRoomList.mockResolvedValue(newRooms);
+
+    // Refresh rooms
+    await act(async () => {
+      await result.current.refreshRooms();
+    });
+
+    expect(mockRequestRoomList).toHaveBeenCalledTimes(1);
+    expect(result.current.rooms).toEqual(newRooms);
+  });
+
+  test('ローディング中は再度リクエストしない', async () => {
+    const mockRequestRoomList = vi.mocked(socketClient.requestRoomList);
+    mockRequestRoomList.mockImplementation(() => 
+      new Promise(resolve => setTimeout(() => resolve(mockRooms), 1000))
+    );
+
+    const { result } = renderHook(() => useRoomList({ isConnected: true }));
+
+    // First request starts
+    expect(result.current.loading).toBe(true);
+
+    // Try to refresh while loading
+    act(() => {
+      result.current.refreshRooms();
+    });
+
+    // Should not make another request
+    expect(mockRequestRoomList).toHaveBeenCalledTimes(1);
+  });
+
+  test('リアルタイムアップデートを受信できる', async () => {
+    const onRoomListUpdate = vi.fn();
+    const { result } = renderHook(() => 
+      useRoomList({ 
+        isConnected: true,
+        onRoomListUpdate 
+      })
+    );
+
+    const updatedRooms = [...mockRooms];
+    updatedRooms[0].users.push({ id: 'user-3', name: 'New User', isHost: false });
+
+    // Simulate real-time update
+    act(() => {
+      result.current.handleRoomListUpdate(updatedRooms);
+    });
+
+    expect(result.current.rooms).toEqual(updatedRooms);
+    expect(onRoomListUpdate).toHaveBeenCalledWith(updatedRooms);
+  });
+
+  test('フィルター関数でルームを絞り込める', async () => {
+    const mockRequestRoomList = vi.mocked(socketClient.requestRoomList);
+    mockRequestRoomList.mockResolvedValue(mockRooms);
+
+    const filterPublicRooms = (room: Room) => room.isPublic;
+    
+    const { result } = renderHook(() => 
+      useRoomList({ 
+        isConnected: true,
+        filter: filterPublicRooms 
+      })
+    );
+
+    await waitFor(() => {
+      expect(result.current.rooms).toHaveLength(1);
+      expect(result.current.rooms[0].id).toBe('room-1');
+    });
+  });
+
+  test('ソート関数でルームを並び替えられる', async () => {
+    const mockRequestRoomList = vi.mocked(socketClient.requestRoomList);
+    mockRequestRoomList.mockResolvedValue(mockRooms);
+
+    const sortByName = (a: Room, b: Room) => b.name.localeCompare(a.name);
+    
+    const { result } = renderHook(() => 
+      useRoomList({ 
+        isConnected: true,
+        sort: sortByName 
+      })
+    );
+
+    await waitFor(() => {
+      expect(result.current.rooms[0].id).toBe('room-2');
+      expect(result.current.rooms[1].id).toBe('room-1');
+    });
+  });
+
+  test('コンポーネントのアンマウント時にクリーンアップされる', () => {
+    const mockRequestRoomList = vi.mocked(socketClient.requestRoomList);
+    mockRequestRoomList.mockImplementation(() => 
+      new Promise(resolve => setTimeout(() => resolve(mockRooms), 1000))
+    );
+
+    const { unmount } = renderHook(() => useRoomList({ isConnected: true }));
+    
+    unmount();
+    
+    // Should not throw error on state update after unmount
+    expect(() => {
+      // Simulate delayed response
+      mockRequestRoomList.mockResolvedValue(mockRooms);
+    }).not.toThrow();
+  });
+});
