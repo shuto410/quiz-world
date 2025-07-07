@@ -89,6 +89,11 @@ function CreateRoomModal({ isOpen, onClose, onCreateRoom, initialUserName }: Cre
   const [maxPlayers, setMaxPlayers] = useState(8);
   const [userName, setUserNameState] = useState(initialUserName);
 
+  // Update userName when initialUserName changes
+  useEffect(() => {
+    setUserNameState(initialUserName);
+  }, [initialUserName]);
+
   const handleSubmit = () => {
     if (name.trim() && userName.trim()) {
       onCreateRoom(name, isPublic, maxPlayers, userName);
@@ -187,6 +192,11 @@ interface JoinRoomModalProps {
 
 function JoinRoomModal({ isOpen, onClose, onJoinRoom, roomName, initialUserName }: JoinRoomModalProps) {
   const [userName, setUserNameState] = useState(initialUserName);
+
+  // Update userName when initialUserName changes
+  useEffect(() => {
+    setUserNameState(initialUserName);
+  }, [initialUserName]);
 
   const handleSubmit = () => {
     if (userName.trim()) {
