@@ -69,6 +69,79 @@ describe('Room Manager', () => {
       const result = joinRoom(testRoom.id, 'Extra User');
       expect(result).toBeNull();
     });
+
+    test('should reuse existing user ID when provided', () => {
+      const existingUserId = 'existing-user-id';
+      const result = joinRoom(testRoom.id, 'Existing User', existingUserId);
+      
+      expect(result).not.toBeNull();
+      if (result) {
+        expect(result.user.id).toBe(existingUserId);
+        expect(result.user.name).toBe('Existing User');
+        expect(result.user.isHost).toBe(false);
+      }
+    });
+
+    test('should not create duplicate users with same ID', () => {
+      const existingUserId = 'existing-user-id';
+      
+      // First join
+      const firstJoin = joinRoom(testRoom.id, 'User 1', existingUserId);
+      expect(firstJoin).not.toBeNull();
+      
+      // Leave the room
+      if (firstJoin) {
+        leaveRoom(testRoom.id, existingUserId);
+      }
+      
+      // Second join with same ID
+      const secondJoin = joinRoom(testRoom.id, 'User 2', existingUserId);
+      expect(secondJoin).not.toBeNull();
+      
+      if (secondJoin) {
+        expect(secondJoin.user.id).toBe(existingUserId);
+        expect(secondJoin.user.name).toBe('User 2');
+        expect(secondJoin.room.users).toHaveLength(2); // host + this user
+      }
+    });
+
+    test('should return existing user when same ID joins again', () => {
+      const existingUserId = 'existing-user-id';
+      
+      // First join
+      const firstJoin = joinRoom(testRoom.id, 'User 1', existingUserId);
+      expect(firstJoin).not.toBeNull();
+      
+      if (firstJoin) {
+        const initialUserCount = firstJoin.room.users.length;
+        
+        // Second join with same ID (should return existing user)
+        const secondJoin = joinRoom(testRoom.id, 'User 2', existingUserId);
+        expect(secondJoin).not.toBeNull();
+        
+        if (secondJoin) {
+          expect(secondJoin.user.id).toBe(existingUserId);
+          expect(secondJoin.user.name).toBe('User 2'); // Name should be updated
+          expect(secondJoin.room.users).toHaveLength(initialUserCount); // Same user count
+          
+          // Verify it's the same user object
+          const userInRoom = secondJoin.room.users.find(u => u.id === existingUserId);
+          expect(userInRoom).toBe(secondJoin.user);
+        }
+      }
+    });
+
+    test('should generate new ID when no existing ID provided', () => {
+      const result1 = joinRoom(testRoom.id, 'User 1');
+      const result2 = joinRoom(testRoom.id, 'User 2');
+      
+      expect(result1).not.toBeNull();
+      expect(result2).not.toBeNull();
+      
+      if (result1 && result2) {
+        expect(result1.user.id).not.toBe(result2.user.id);
+      }
+    });
   });
 
   describe('leaveRoom', () => {

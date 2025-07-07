@@ -14,6 +14,7 @@ export type StorageType = 'cookie' | 'localStorage' | 'sessionStorage';
  * User data structure
  */
 export interface UserData {
+  id: string;
   name: string;
   lastUsed: number;
 }
@@ -27,6 +28,12 @@ const STORAGE_CONFIG = {
   SESSION_STORAGE_KEY: 'quiz_world_user',
   COOKIE_EXPIRES_DAYS: 30,
 } as const;
+
+/**
+ * In-memory cache for user data to avoid repeated storage access
+ */
+let userDataCache: UserData | null = null;
+let cacheInitialized = false;
 
 /**
  * Get user data from cookies
@@ -138,22 +145,90 @@ function setUserInSessionStorage(userData: UserData): void {
 
 /**
  * Get user data with fallback mechanism
- * Priority: localStorage > sessionStorage > cookie
- * @returns User data or null if not found in any storage
+ * @returns User data or null if not found
  */
 export function getUserData(): UserData | null {
-  // Try localStorage first
+  console.log('=== getUserData Debug ===');
+  
+  // Return cached data if available and valid
+  if (cacheInitialized && userDataCache && userDataCache.id) {
+    console.log('Returning cached user data:', userDataCache);
+    return userDataCache;
+  }
+  
+  // Try to get data from localStorage
   let userData = getUserFromLocalStorage();
-  if (userData) return userData;
+  console.log('User data from localStorage:', userData);
   
-  // Try sessionStorage second
+  if (userData) {
+    // Check if user data has ID, if not, it's old format
+    if (!userData.id) {
+      console.log('Converting old format localStorage data to new format');
+      userData = {
+        id: generateUserId(),
+        name: userData.name || '',
+        lastUsed: userData.lastUsed || Date.now(),
+      };
+      // Update storage with new format
+      setUserInLocalStorage(userData);
+    }
+    
+    userDataCache = userData;
+    cacheInitialized = true;
+    console.log('Using localStorage data:', userData);
+    return userData;
+  }
+  
+  // Try to get data from sessionStorage
   userData = getUserFromSessionStorage();
-  if (userData) return userData;
+  console.log('User data from sessionStorage:', userData);
   
-  // Try cookie last
+  if (userData) {
+    // Check if user data has ID, if not, it's old format
+    if (!userData.id) {
+      console.log('Converting old format sessionStorage data to new format');
+      userData = {
+        id: generateUserId(),
+        name: userData.name || '',
+        lastUsed: userData.lastUsed || Date.now(),
+      };
+      // Update storage with new format
+      setUserInSessionStorage(userData);
+    }
+    
+    userDataCache = userData;
+    cacheInitialized = true;
+    console.log('Using sessionStorage data:', userData);
+    return userData;
+  }
+  
+  // Try to get data from cookie
   userData = getUserFromCookie();
-  if (userData) return userData;
+  console.log('User data from cookie:', userData);
   
+  if (userData) {
+    // Check if user data has ID, if not, it's old format
+    if (!userData.id) {
+      console.log('Converting old format cookie data to new format');
+      userData = {
+        id: generateUserId(),
+        name: userData.name || '',
+        lastUsed: userData.lastUsed || Date.now(),
+      };
+      // Update storage with new format
+      setUserInCookie(userData);
+    }
+    
+    userDataCache = userData;
+    cacheInitialized = true;
+    console.log('Using cookie data:', userData);
+    return userData;
+  }
+  
+  console.log('No user data found in any storage');
+  console.log('=== End getUserData Debug ===');
+  
+  cacheInitialized = true;
   return null;
 }
 
@@ -167,20 +242,116 @@ export function getUserName(): string | null {
 }
 
 /**
+ * Generate a unique user ID
+ * @returns A unique user ID string
+ */
+function generateUserId(): string {
+  return 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+}
+
+/**
+ * Get user ID with automatic generation if needed
+ * @returns User ID string
+ */
+export function getUserId(): string {
+  console.log('=== getUserId Debug ===');
+  console.log('Cache initialized:', cacheInitialized);
+  console.log('User data cache:', userDataCache);
+  
+  // Return cached ID if available and valid
+  if (cacheInitialized && userDataCache && userDataCache.id) {
+    console.log('Returning cached user ID:', userDataCache.id);
+    return userDataCache.id;
+  }
+  
+  let userData = getUserData();
+  console.log('User data from storage:', userData);
+  
+  // If no user data exists or user data doesn't have ID, generate new user with ID
+  if (!userData || !userData.id) {
+    const newId = generateUserId();
+    console.log('Generating new user ID:', newId);
+    
+    // If we have existing user data without ID, preserve the name
+    const existingName = userData?.name || '';
+    
+    userData = {
+      id: newId,
+      name: existingName,
+      lastUsed: Date.now(),
+    };
+    
+    // Update cache
+    userDataCache = userData;
+    cacheInitialized = true;
+    
+    // Store in all available storage types
+    setUserInLocalStorage(userData);
+    setUserInSessionStorage(userData);
+    setUserInCookie(userData);
+  } else {
+    // Update lastUsed timestamp for existing user
+    const updatedUserData = {
+      ...userData,
+      lastUsed: Date.now(),
+    };
+    
+    console.log('Updating existing user data:', updatedUserData);
+    
+    // Update cache
+    userDataCache = updatedUserData;
+    
+    // Update storage with new timestamp
+    setUserInLocalStorage(updatedUserData);
+    setUserInSessionStorage(updatedUserData);
+    setUserInCookie(updatedUserData);
+  }
+  
+  console.log('Final user ID to return:', userData.id);
+  console.log('=== End getUserId Debug ===');
+  return userData.id;
+}
+
+/**
+ * Set user data with ID and name
+ * @param name - User name to store
+ */
+export function setUserWithId(name: string): void {
+  let userData = getUserData();
+  
+  // If no user data exists, generate new ID
+  if (!userData) {
+    userData = {
+      id: generateUserId(),
+      name,
+      lastUsed: Date.now(),
+    };
+  } else {
+    // Update existing user data
+    userData = {
+      ...userData,
+      name,
+      lastUsed: Date.now(),
+    };
+  }
+  
+  // Update cache
+  userDataCache = userData;
+  cacheInitialized = true;
+  
+  // Store in all available storage types
+  setUserInLocalStorage(userData);
+  setUserInSessionStorage(userData);
+  setUserInCookie(userData);
+}
+
+/**
  * Set user data with fallback mechanism
  * Stores in all available storage types for redundancy
  * @param name - User name to store
  */
 export function setUserName(name: string): void {
-  const userData: UserData = {
-    name,
-    lastUsed: Date.now(),
-  };
-  
-  // Try to store in all available storage types
-  setUserInLocalStorage(userData);
-  setUserInSessionStorage(userData);
-  setUserInCookie(userData);
+  setUserWithId(name);
 }
 
 /**
@@ -188,6 +359,10 @@ export function setUserName(name: string): void {
  */
 export function clearUserData(): void {
   try {
+    // Clear cache
+    userDataCache = null;
+    cacheInitialized = false;
+    
     // Clear localStorage
     if (typeof window !== 'undefined' && window.localStorage) {
       window.localStorage.removeItem(STORAGE_CONFIG.LOCAL_STORAGE_KEY);
@@ -205,6 +380,14 @@ export function clearUserData(): void {
   } catch (error) {
     console.warn('Failed to clear user data:', error);
   }
+}
+
+/**
+ * Reset cache for testing purposes
+ */
+export function resetCache(): void {
+  userDataCache = null;
+  cacheInitialized = false;
 }
 
 /**

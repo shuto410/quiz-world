@@ -29,7 +29,7 @@ initializeSocket(server);
 // Start server
 server.listen(PORT, () => {
   console.log(`🚀 Socket.io server running on port ${PORT}`);
-  console.log(`📡 CORS enabled for: ${process.env.NODE_ENV === 'production' ? 'production' : 'http://localhost:3000'}`);
+  console.log(`📡 CORS enabled for: ${process.env.NODE_ENV === 'production' ? 'production' : 'http://localhost:3000, http://localhost:3001'}`);
 });
 
 // Handle graceful shutdown

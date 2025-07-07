@@ -12,8 +12,8 @@ import type { Room, User, Quiz } from './index';
  */
 export interface ClientToServerEvents {
   // Room management
-  'room:create': (data: { name: string; isPublic: boolean; maxPlayers?: number }) => void;
-  'room:join': (data: { roomId: string; userName: string }) => void;
+  'room:create': (data: { name: string; isPublic: boolean; maxPlayers?: number; userName?: string; userId?: string }) => void;
+  'room:join': (data: { roomId: string; userId: string; userName: string }) => void;
   'room:leave': () => void;
   'room:list': () => void;
   
@@ -55,6 +55,10 @@ export interface ServerToClientEvents {
   
   // Error events
   'error': (data: { message: string }) => void;
+  
+  // Room events
+  'room:alreadyJoined': (data: { room: Room; user: User }) => void;
+  'room:notFound': () => void;
 }
 
 /**

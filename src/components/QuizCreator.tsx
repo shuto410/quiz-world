@@ -7,6 +7,7 @@
  */
 
 import React, { useState, useRef } from 'react';
+import Image from 'next/image';
 import { Card, CardHeader, CardContent } from './ui/Card';
 import { Button } from './ui/Button';
 import { Modal } from './ui/Modal';
@@ -99,6 +100,7 @@ export function QuizCreator({ isOpen, onClose, onQuizCreated }: QuizCreatorProps
       }));
     } else {
       setFormData(prev => {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { image, ...rest } = prev;
         return rest;
       });
@@ -350,10 +352,12 @@ export function QuizCreator({ isOpen, onClose, onQuizCreated }: QuizCreatorProps
                   <div>
                     <span className="text-sm text-gray-600">Image:</span>
                     <div className="mt-2">
-                      <img
+                      <Image
                         src={formData.image.type === 'url' ? formData.image.data : formData.image.data}
                         alt="Preview"
-                        className="max-w-full max-h-32 rounded-lg"
+                        width={200}
+                        height={128}
+                        className="max-w-full max-h-32 rounded-lg object-cover"
                       />
                     </div>
                   </div>

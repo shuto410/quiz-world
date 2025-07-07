@@ -8,12 +8,13 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { Card, CardHeader, CardContent } from './ui/Card';
 import { Button } from './ui/Button';
 import { Modal } from './ui/Modal';
 import type { Quiz, User, Score } from '../types';
 import { submitAnswer } from '../lib/socketClient';
-import { getUserName } from '../lib/userStorage';
+
 
 /**
  * Quiz Game props interface
@@ -158,10 +159,12 @@ export function QuizGame({
                 {/* Image for image quiz */}
                 {quiz.type === 'image' && quiz.image && (
                   <div className="flex justify-center">
-                    <img
+                    <Image
                       src={quiz.image.type === 'url' ? quiz.image.data : quiz.image.data}
                       alt="Quiz image"
-                      className="max-w-full max-h-96 rounded-lg shadow-lg"
+                      width={400}
+                      height={384}
+                      className="max-w-full max-h-96 rounded-lg shadow-lg object-cover"
                     />
                   </div>
                 )}

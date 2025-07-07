@@ -22,12 +22,14 @@ Quiz World is a real-time multiplayer quiz application where users can create ro
    - User registration with persistent storage
    - User authentication and session management
    - Real-time user presence tracking
+   - User ID consistency across sessions
 
 2. **Room System**
    - Create public and private rooms
    - Join existing rooms with real-time updates
    - Room listing with current user count
    - Host management (room creator becomes host)
+   - Host transfer functionality
 
 3. **Real-time Communication**
    - Socket.io client-server communication
@@ -38,7 +40,9 @@ Quiz World is a real-time multiplayer quiz application where users can create ro
 4. **Quiz System**
    - Text-based quiz creation
    - Image-based quiz support (upload/URL)
-   - Quiz management interface
+   - Quiz management interface with real-time updates
+   - Multiple quiz creation and management
+   - Quiz list display in room interface
    - Answer validation system
 
 5. **Game Flow**
@@ -46,6 +50,13 @@ Quiz World is a real-time multiplayer quiz application where users can create ro
    - Quiz selection and starting
    - Real-time score tracking
    - Game state management
+
+6. **Quiz Management**
+   - Quiz Management popup with Create Quiz button
+   - Real-time quiz list updates
+   - Multiple quiz creation support
+   - Quiz creator modal integration
+   - Empty state handling for rooms without quizzes
 
 ### 🚧 In Progress / Planned Features
 
@@ -77,18 +88,20 @@ src/
 │   └── page.tsx           # Home page
 ├── components/            # React components
 │   ├── ui/               # Reusable UI components
-│   ├── Room.tsx          # Room component
+│   ├── Room.tsx          # Room component with quiz management
 │   ├── RoomList.tsx      # Room listing
 │   ├── QuizGame.tsx      # Quiz game interface
 │   └── QuizCreator.tsx   # Quiz creation tool
 ├── lib/                  # Utility libraries
 │   ├── socketClient.ts   # Socket.io client
-│   └── userStorage.ts    # User data persistence
+│   ├── userStorage.ts    # User data persistence
+│   └── roomManager.ts    # Room management logic
 ├── server/               # Socket.io server
 │   ├── index.ts          # Server entry point
 │   └── socket.ts         # Socket event handlers
 ├── types/                # TypeScript type definitions
-│   └── index.ts          # Domain models
+│   ├── index.ts          # Domain models
+│   └── socket.ts         # Socket event types
 └── test/                 # Test utilities
 ```
 
@@ -101,6 +114,7 @@ src/
 - **Quiz**: Questions with text or image support
 - **Score**: User performance tracking
 - **ImageResource**: Image handling for visual questions
+- **ChatMessage**: Real-time chat functionality
 
 ## 🚀 Getting Started
 
@@ -156,9 +170,10 @@ npm run dev:server
 The project follows TDD principles with comprehensive test coverage:
 
 - **Unit Tests**: Vitest with React Testing Library
-- **Coverage Target**: 100% test coverage
+- **Coverage Target**: 100% test coverage (Current: 72.62%)
 - **Test Files**: `*.test.ts` for each `*.ts` implementation
 - **Mock Strategy**: Socket.io events and Next.js router
+- **TDD Approach**: Test-first development for all new features
 
 Run tests with coverage:
 ```bash
@@ -172,7 +187,9 @@ npm run test:coverage
 - `leaveRoom` - Leave current room
 - `requestRoomList` - Get available rooms
 - `createRoom` - Create new room
+- `createRoomWithHost` - Create room with specified host
 - `startQuiz` - Begin quiz game
+- `transferHost` - Transfer host role to another user
 
 ### Server to Client
 - `room:joined` - Confirmation of room join
@@ -180,19 +197,23 @@ npm run test:coverage
 - `room:userLeft` - User left room
 - `room:updated` - Room state changed
 - `roomList` - Available rooms list
+- `host:transferred` - Host role transferred
 
 ## 🎨 UI Components
 
 ### Core Components
 - **RoomList**: Display and manage available rooms
-- **Room**: Main game room interface
+- **Room**: Main game room interface with quiz management
 - **QuizGame**: Quiz execution interface
 - **QuizCreator**: Quiz creation and management
+- **Modal**: Reusable modal component
+- **Button**: Styled button component with variants
 
 ### Design System
 - **Styling**: Tailwind CSS with custom utilities
 - **Responsive**: Mobile-first design approach
 - **Accessibility**: ARIA labels and keyboard navigation
+- **Interactive**: Hover effects and transitions
 
 ## 🔧 Development Guidelines
 
@@ -212,6 +233,7 @@ npm run test:coverage
 - **Local State**: React useState for component state
 - **Real-time State**: Socket.io events for server synchronization
 - **Persistence**: LocalStorage for user preferences
+- **Room State**: Real-time quiz list management
 
 ## 🚀 Deployment
 
@@ -233,12 +255,17 @@ npm run start
 - [x] Socket.io server implementation
 - [x] Room creation and management
 - [x] Real-time user synchronization
-- [x] Basic quiz creation interface
+- [x] Quiz creation interface
+- [x] Quiz Management popup functionality
+- [x] Multiple quiz creation and management
+- [x] Real-time quiz list updates
 - [x] Navigation and routing
-- [x] Comprehensive test coverage
+- [x] Host transfer functionality
+- [x] Comprehensive test coverage (72.62%)
 
-### 🚧 In Progress (75%)
+### 🚧 In Progress (85%)
 - [x] Quiz game execution logic
+- [x] Quiz management and creation flow
 - [ ] Timer and scoring system
 - [ ] Game state management
 - [ ] Results and statistics
@@ -249,13 +276,28 @@ npm run start
 - [ ] Performance optimizations
 - [ ] Mobile app version
 
+## 🆕 Recent Updates
+
+### Quiz Management Improvements
+- **Fixed Create Quiz Button**: Quiz Management popupのCreate Quizボタンが正常に動作するよう修正
+- **Real-time Quiz Updates**: 作成したクイズがルームに即座に反映される機能を実装
+- **Multiple Quiz Support**: 複数のクイズを作成・管理できる機能を追加
+- **UI Enhancements**: Quiz ManagementモーダルのUI改善とユーザビリティ向上
+
+### Technical Improvements
+- **TDD Development**: すべての新機能をTDDで開発
+- **Test Coverage**: テストカバレッジを維持しながら機能追加
+- **Type Safety**: TypeScriptの型安全性を向上
+- **Error Handling**: エラーハンドリングの改善
+
 ## 🤝 Contributing
 
 1. Follow TDD principles
-2. Maintain 100% test coverage
+2. Maintain high test coverage
 3. Use TypeScript for type safety
 4. Follow existing code style and patterns
 5. Add JSDoc comments for new functions
+6. Ensure all checks pass (`npm run check`)
 
 ## 📝 License
 
