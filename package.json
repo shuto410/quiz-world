@@ -17,11 +17,9 @@
     "check": "npm run typecheck && npm run lint && npm run test:coverage"
   },
   "dependencies": {
-    "@playwright/mcp": "^0.0.29",
     "@types/uuid": "^10.0.0",
     "clsx": "^2.1.1",
     "next": "15.3.5",
-    "playwright": "^1.53.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "socket.io": "^4.8.1",
@@ -30,6 +28,8 @@
     "uuid": "^11.1.0"
   },
   "devDependencies": {
+    "@playwright/mcp": "^0.0.29",
+    "playwright": "^1.53.2",
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^6.6.3",

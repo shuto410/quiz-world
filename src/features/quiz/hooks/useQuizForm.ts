@@ -50,30 +50,23 @@ export function useQuizForm(): UseQuizFormReturn {
   }, [errors]);
 
   const setQuizType = useCallback((type: 'text' | 'image') => {
-    setFormData(prev => ({ ...prev, type }));
-    // Clear image when switching to text type
-    if (type === 'text') {
-      setFormData(prev => {
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { image, ...rest } = prev;
+    setFormData(prev => {
+      if (type === 'text') {
+        const { image: _, ...rest } = prev;
         return { ...rest, type };
-      });
-    }
+      }
+      return { ...prev, type };
+    });
   }, []);
 
   const setImageFromUrl = useCallback((url: string) => {
-    if (url.trim()) {
-      setFormData(prev => ({
-        ...prev,
-        image: { type: 'url', data: url.trim() }
-      }));
-    } else {
-      setFormData(prev => {
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { image, ...rest } = prev;
-        return rest;
-      });
-    }
+    setFormData(prev => {
+      if (url.trim()) {
+        return { ...prev, image: { type: 'url', data: url.trim() } };
+      }
+      const { image: _, ...rest } = prev;
+      return rest;
+    });
   }, []);
 
   const setImageFromFile = useCallback((base64Data: string) => {

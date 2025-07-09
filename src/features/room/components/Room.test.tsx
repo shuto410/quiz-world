@@ -10,6 +10,7 @@
 
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { vi, beforeEach, afterEach, describe, it, expect } from 'vitest';
 import { Room } from './Room';
 import type { Room as RoomType, User, Quiz } from '@/types';
@@ -190,16 +191,24 @@ describe('Room Component', () => {
       expect(screen.queryByText('Make Host')).not.toBeInTheDocument();
     });
 
-    it('should call transferHost when Make Host button is clicked', async () => {
+    it('should open confirmation modal and call transferHost when Make Host is confirmed', async () => {
       const { transferHost } = await import('@/lib/socketClient');
       render(<Room room={mockRoom} currentUser={mockCurrentUser} onLeave={mockOnLeave} />);
 
       const makeHostButton = screen.getByText('Make Host');
       fireEvent.click(makeHostButton);
 
-      // Note: The actual implementation might not call transferHost directly from button click
-      // This test verifies the button exists and can be clicked
-      expect(makeHostButton).toBeInTheDocument();
+      // Check if the confirmation modal appears
+      const modalTitle = await screen.findByRole('heading', { name: /transfer host/i });
+      expect(modalTitle).toBeInTheDocument();
+
+      const confirmButton = screen.getByRole('button', { name: /transfer host/i });
+      fireEvent.click(confirmButton);
+
+      // Check if transferHost was called with the correct user id
+      await waitFor(() => {
+        expect(transferHost).toHaveBeenCalledWith('regular-user-id');
+      });
     });
   });
 
@@ -238,6 +247,7 @@ describe('Room Component', () => {
     });
 
     it('should send message when Enter key is pressed', async () => {
+      const user = userEvent.setup();
       const { useChat } = await import('@/features/chat/hooks/useChat');
       const mockSendMessage = vi.fn();
       (useChat as any).mockReturnValue({
@@ -249,12 +259,9 @@ describe('Room Component', () => {
 
       const messageInput = screen.getByPlaceholderText('Type a message...');
 
-      fireEvent.change(messageInput, { target: { value: 'Test message' } });
-      fireEvent.keyDown(messageInput, { key: 'Enter', code: 'Enter' });
+      await user.type(messageInput, 'Test message{enter}');
 
-      // Note: Enter key functionality might not be implemented yet
-      // This test verifies the input exists and can receive key events
-      expect(messageInput).toBeInTheDocument();
+      expect(mockSendMessage).toHaveBeenCalledWith('Test message', 'test-user-id', 'Test User');
     });
   });
 
