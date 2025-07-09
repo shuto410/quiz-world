@@ -54,6 +54,7 @@ export function useQuizForm(): UseQuizFormReturn {
     // Clear image when switching to text type
     if (type === 'text') {
       setFormData(prev => {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { image, ...rest } = prev;
         return { ...rest, type };
       });
@@ -68,6 +69,7 @@ export function useQuizForm(): UseQuizFormReturn {
       }));
     } else {
       setFormData(prev => {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { image, ...rest } = prev;
         return rest;
       });

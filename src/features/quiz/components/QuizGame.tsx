@@ -337,7 +337,7 @@ export function QuizGame({
   const [result, setResult] = useState<'correct' | 'incorrect' | null>(null);
 
   // Use quiz timer hook
-  const { timeLeft, isExpired } = useQuizTimer(30, {
+  const { timeLeft } = useQuizTimer(30, {
     autoStart: gameState === 'active',
     onExpire: () => {
       if (gameState === 'active') {

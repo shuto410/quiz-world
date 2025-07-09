@@ -19,7 +19,6 @@ vi.mock('socket.io-client', () => {
 });
 
 describe('Socket.io Client', () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let mockSocket: any;
 
   beforeEach(() => {

@@ -10,7 +10,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { QuizCreator } from '@/components/QuizCreator';
+import { QuizCreator } from '@/features/quiz/components/QuizCreator';
 import { Button } from '@/components/ui/Button';
 import type { Quiz } from '@/types';
 

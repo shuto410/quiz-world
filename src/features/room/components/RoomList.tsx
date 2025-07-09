@@ -5,7 +5,7 @@
  * - Maintains anime pop style design
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardHeader, CardContent, CardFooter } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -284,36 +284,52 @@ export function RoomList({ onRoomJoined, className }: RoomListProps) {
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
   const [userName, setUserNameState] = useState('');
 
+  // Memoize callback functions to prevent infinite re-renders
+  const handleRoomCreated = useCallback((data: { room: Room }) => {
+    console.log('Room created:', data.room.id);
+    setShowCreateModal(false);
+    
+    // Store room data for the room page
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('createdRoom', JSON.stringify(data.room));
+    }
+    
+    // Navigate to room as host
+    router.push(`/room/${data.room.id}?host=true`);
+  }, [router]);
+
+  const handleRoomJoined = useCallback((data: { room: Room; user: User }) => {
+    console.log('Room joined:', data.room.id);
+    
+    // Close the join modal
+    setShowJoinModal(false);
+    setSelectedRoom(null);
+    
+    // Navigate to room page
+    onRoomJoined?.(data.room);
+    
+    // Add host parameter if user is host
+    const roomUrl = data.user?.isHost 
+      ? `/room/${data.room.id}?host=true`
+      : `/room/${data.room.id}`;
+    
+    router.push(roomUrl);
+  }, [router, onRoomJoined]);
+
   // Use custom hooks
   const { isConnected, connectionState } = useSocketConnection({
     serverUrl: process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3002',
     autoConnect: true,
-         onRoomCreated: (data: { room: Room }) => {
-       console.log('Room created:', data.room.id);
-       setShowCreateModal(false);
-       
-       // Store room data for the room page
-       if (typeof window !== 'undefined') {
-         sessionStorage.setItem('createdRoom', JSON.stringify(data.room));
-       }
-       
-       // Navigate to room as host
-       router.push(`/room/${data.room.id}?host=true`);
-     },
-     onRoomJoined: (data: { room: Room; user: User }) => {
-       console.log('Room joined:', data.room.id);
-       
-       // Handle non-host joins
-       if (!data.user?.isHost) {
-         onRoomJoined?.(data.room);
-         router.push(`/room/${data.room.id}`);
-       }
-     },
+    onRoomCreated: handleRoomCreated,
+    onRoomJoined: handleRoomJoined,
   });
 
+  // Get current user ID for filtering
+  const currentUserId = getUserId();
+  
   const { rooms, loading, error, refresh } = useRoomList(isConnected, {
     autoFetch: true,
-    filter: (room) => room.isPublic,
+    filter: (room) => room.isPublic || room.hostId === currentUserId, // Show public rooms OR user's own private rooms
     sortBy: 'name',
     sortOrder: 'asc',
   });
@@ -343,8 +359,7 @@ export function RoomList({ onRoomJoined, className }: RoomListProps) {
     const userId = getUserId();
     
     joinRoom(selectedRoom.id, userId, userName);
-    setShowJoinModal(false);
-    setSelectedRoom(null);
+    // Modal will be closed in handleRoomJoined on success
   };
 
   // Open join modal for a room
@@ -405,7 +420,7 @@ export function RoomList({ onRoomJoined, className }: RoomListProps) {
       {/* Room List */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold text-gray-800">Public Rooms</h2>
+          <h2 className="text-xl font-semibold text-gray-800">Available Rooms</h2>
           <Button 
             variant="ghost" 
             size="sm" 

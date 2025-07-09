@@ -9,7 +9,7 @@ import React, { useState } from 'react';
 import { Card, CardHeader, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
-import { QuizCreator } from '@/components/QuizCreator';
+import { QuizCreator } from '@/features/quiz/components/QuizCreator';
 import type { Room, User, Quiz } from '@/types';
 import { leaveRoom, transferHost, startQuiz } from '@/lib/socketClient';
 import { getUserName, getUserId } from '@/lib/userStorage';
@@ -29,7 +29,7 @@ function RoomHeader({ room, isHost, onManageQuizzes, onLeave }: RoomHeaderProps)
   return (
     <div className="flex items-center justify-between mb-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-800">{room.name}</h1>
+        <h1 className="text-2xl font-bold text-gray-800" data-testid="room-name">{room.name}</h1>
         <p className="text-gray-600">
           {room.users.length}/{room.maxPlayers} players
           {room.isPublic && ' • Public Room'}
@@ -402,7 +402,7 @@ export function Room({ room, currentUser, onLeave, className }: RoomProps) {
   };
 
   return (
-    <div className={className}>
+    <div className={className} data-testid="room-component">
       {/* Room Header */}
       <RoomHeader 
         room={room}

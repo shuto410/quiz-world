@@ -232,7 +232,10 @@ function handleRoomLeave(socket: Socket<ClientToServerEvents, ServerToClientEven
     const { roomId, userId } = socket.data;
     
     if (!roomId || !userId) {
-      socket.emit('error', { message: 'Not in a room' });
+      // User is not in a room - this is not an error, just ignore silently
+      // This can happen when leaveRoom is called multiple times
+      console.log('User tried to leave room but was not in any room');
+      socket.emit('room:left'); // Still send confirmation to client
       return;
     }
     

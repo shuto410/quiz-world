@@ -27,6 +27,12 @@ export function useSocketConnection(
 ): UseSocketConnectionReturn {
   const [connectionState, setConnectionState] = useState<ConnectionState>('connecting');
   const isMountedRef = useRef(true);
+  const optionsRef = useRef(options);
+
+  // Update options ref when options change
+  useEffect(() => {
+    optionsRef.current = options;
+  }, [options]);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -36,11 +42,11 @@ export function useSocketConnection(
         const serverUrl = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3002';
         
         await initializeSocketClient(serverUrl, {
-          ...options,
+          ...optionsRef.current,
           onConnectionStateChange: (state) => {
             if (isMountedRef.current) {
               setConnectionState(state);
-              options?.onConnectionStateChange?.(state);
+              optionsRef.current?.onConnectionStateChange?.(state);
             }
           },
         });
@@ -59,7 +65,7 @@ export function useSocketConnection(
       isMountedRef.current = false;
       clearTimeout(timer);
     };
-  }, []); // Intentionally empty to run only once
+  }, []); // Remove options from dependencies to prevent re-initialization
 
   return {
     connectionState,

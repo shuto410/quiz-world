@@ -12,9 +12,7 @@ vi.mock('socket.io', () => ({
 }));
 
 describe('Socket.io Server', () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let mockServer: any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let mockSocket: any;
 
 
@@ -61,7 +59,6 @@ describe('Socket.io Server', () => {
       };
       
       // Simulate room:create event
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const eventHandlers = mockSocket.on.mock.calls.reduce((acc: any, call: any) => {
         acc[call[0]] = call[1];
         return acc;
@@ -92,7 +89,6 @@ describe('Socket.io Server', () => {
     test('should handle room join', () => {
       // First create a room
       const createData = { name: 'Test Room', isPublic: true };
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const eventHandlers = mockSocket.on.mock.calls.reduce((acc: any, call: any) => {
         acc[call[0]] = call[1];
         return acc;
@@ -134,7 +130,6 @@ describe('Socket.io Server', () => {
     });
 
     test('should handle room list request', () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const eventHandlers = mockSocket.on.mock.calls.reduce((acc: any, call: any) => {
         acc[call[0]] = call[1];
         return acc;
@@ -153,7 +148,6 @@ describe('Socket.io Server', () => {
     test('should handle quiz addition', () => {
       // First create a room and set up host
       const createData = { name: 'Test Room', isPublic: true };
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const eventHandlers = mockSocket.on.mock.calls.reduce((acc: any, call: any) => {
         acc[call[0]] = call[1];
         return acc;
@@ -186,7 +180,6 @@ describe('Socket.io Server', () => {
     test('should handle quiz answer', () => {
       // First create a room
       const createData = { name: 'Test Room', isPublic: true };
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const eventHandlers = mockSocket.on.mock.calls.reduce((acc: any, call: any) => {
         acc[call[0]] = call[1];
         return acc;
@@ -213,7 +206,6 @@ describe('Socket.io Server', () => {
     });
 
     test('should handle error cases', () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const eventHandlers = mockSocket.on.mock.calls.reduce((acc: any, call: any) => {
         acc[call[0]] = call[1];
         return acc;

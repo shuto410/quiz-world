@@ -118,14 +118,23 @@ export function joinRoom(roomId: string, userName: string, userId?: string): { r
     }
   }
 
+  // Special handling for original host returning to empty room
+  const isOriginalHostReturning = Boolean(userId && room.hostId === userId && room.users.length === 0);
+  
   const user: User = {
     id: userId || uuidv4(),
     name: userName,
-    isHost: false,
+    isHost: isOriginalHostReturning, // Restore host status if original host is returning
   };
 
   room.users.push(user);
-  console.log(`New user ${userName} (${user.id}) added to room`);
+  
+  if (isOriginalHostReturning) {
+    console.log(`Original host ${userName} (${userId}) returned to empty room, restoring host status`);
+  } else {
+    console.log(`New user ${userName} (${user.id}) added to room`);
+  }
+  
   return { room, user };
 }
 
@@ -146,15 +155,24 @@ export function leaveRoom(roomId: string, userId: string): Room | null {
     return null;
   }
 
+  const isHostLeaving = room.hostId === userId;
   room.users.splice(userIndex, 1);
 
   // If the host left and there are other users, transfer host to the first user
-  if (room.hostId === userId && room.users.length > 0) {
+  if (isHostLeaving && room.users.length > 0) {
     room.hostId = room.users[0].id;
     room.users[0].isHost = true;
   }
 
-  // If no users left, delete the room
+  // Special handling for host leaving empty room - keep room for host to return
+  if (room.users.length === 0 && isHostLeaving) {
+    // Mark room as temporarily empty but preserve it
+    // The room will be preserved with all its original properties
+    console.log(`Host left empty room ${roomId}, preserving room for potential return`);
+    return room; // Return the empty room instead of deleting it
+  }
+  
+  // If no users left and it's not a host leaving (edge case), delete the room
   if (room.users.length === 0) {
     rooms.delete(roomId);
     return null;

@@ -56,6 +56,23 @@ export function initializeSocketClient(
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     try {
+      // If socket already exists and is connected, just add new listeners
+      if (socket && socket.connected) {
+        console.log('Socket already connected, adding new listeners');
+        setupEventListeners(socket, listeners);
+        listeners.onConnectionStateChange?.('connected');
+        resolve();
+        return;
+      }
+
+      // If socket exists but is disconnected, disconnect and cleanup first
+      if (socket) {
+        console.log('Cleaning up existing disconnected socket');
+        socket.disconnect();
+        socket.removeAllListeners();
+        socket = null;
+      }
+
       // Create socket connection
       socket = io(serverUrl, {
         autoConnect: false,

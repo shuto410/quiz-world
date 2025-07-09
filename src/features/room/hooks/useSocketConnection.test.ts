@@ -128,4 +128,39 @@ describe('useSocketConnection', () => {
       );
     });
   });
+
+  test('initializeSocketClientが例外をスローした場合はerror状態になる', async () => {
+    const mockInitialize = vi.mocked(socketClient.initializeSocketClient);
+    mockInitialize.mockRejectedValue(new Error('Network error'));
+
+    const { result } = renderHook(() => useSocketConnection());
+
+    await waitFor(() => {
+      expect(result.current.connectionState).toBe('error');
+      expect(result.current.isConnected).toBe(false);
+    });
+  });
+
+  test('アンマウント後にコールバックが呼ばれてもエラーが発生しない', async () => {
+    const mockInitialize = vi.mocked(socketClient.initializeSocketClient);
+    let connectionCallback: ((state: ConnectionState) => void) | undefined;
+
+    mockInitialize.mockImplementation(async (_, options) => {
+      connectionCallback = options?.onConnectionStateChange;
+    });
+
+    const { unmount } = renderHook(() => useSocketConnection());
+
+    // Wait for initialization to complete
+    await waitFor(() => {
+      expect(connectionCallback).toBeDefined();
+    });
+
+    unmount();
+
+    // This should not throw an error
+    expect(() => {
+      connectionCallback?.('connected');
+    }).not.toThrow();
+  });
 });

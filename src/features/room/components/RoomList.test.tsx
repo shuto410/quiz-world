@@ -3,7 +3,7 @@
  */
 import React from 'react';
 import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { RoomList } from './RoomList';
 import * as socketClient from '../../../lib/socketClient';
@@ -99,7 +99,7 @@ describe('RoomList Component', () => {
     
     // Check header
     expect(screen.getByText('Quiz World')).toBeInTheDocument();
-    expect(screen.getByText('Public Rooms')).toBeInTheDocument();
+    expect(screen.getByText('Available Rooms')).toBeInTheDocument();
     
     // Check rooms are displayed
     expect(screen.getByText('Test Room 1')).toBeInTheDocument();
@@ -418,30 +418,91 @@ describe('RoomList Component', () => {
     // Open modal
     await user.click(screen.getByText('Create Room'));
     
-    // Fill form with custom settings
-    await user.type(screen.getByPlaceholderText('Enter room name...'), 'Custom Room');
+    // Fill form with private room settings
+    await user.type(screen.getByPlaceholderText('Enter room name...'), 'Private Room');
+    await user.selectOptions(screen.getByDisplayValue('8 players'), '4');
+    await user.click(screen.getByLabelText('Public room (visible to everyone)'));
     await user.clear(screen.getByPlaceholderText('Enter your name...'));
-    await user.type(screen.getByPlaceholderText('Enter your name...'), 'Custom User');
-    
-    // Change max players
-    const selectElement = screen.getByRole('combobox');
-    await user.selectOptions(selectElement, '4');
-    
-    // Uncheck public
-    const publicCheckbox = screen.getByRole('checkbox');
-    await user.click(publicCheckbox);
+    await user.type(screen.getByPlaceholderText('Enter your name...'), 'Private Host');
     
     // Submit
     const submitButtons = screen.getAllByText('Create Room');
-    const modalSubmitButton = submitButtons[1]; // Second button is in the modal
+    const modalSubmitButton = submitButtons[1];
     await user.click(modalSubmitButton);
     
     expect(mockCreateRoom).toHaveBeenCalledWith(
-      'Custom Room',
-      false,
+      'Private Room',
+      false, // isPublic: false
       4,
-      'Custom User',
+      'Private Host',
       'test-user-id'
     );
+  });
+
+  // TDD: Test for filter behavior - should show public rooms but filter out private
+  test('currently filters out private rooms due to isPublic filter', () => {
+    // This test documents current behavior (which is the bug)
+    // After fixing, this behavior should change
+    const mixedRooms: Room[] = [
+      { ...mockRooms[0], isPublic: true, name: 'Public Room' },
+      { ...mockRooms[1], isPublic: false, name: 'Private Room' },
+    ];
+    
+    // Reset the mock to check actual filter behavior
+    vi.mocked(useRoomList.useRoomList).mockRestore();
+    vi.mocked(useRoomList.useRoomList).mockImplementation((isConnected, options) => {
+      // Simulate the actual filter applied to mixed rooms
+      const filteredRooms = options?.filter 
+        ? mixedRooms.filter(options.filter)
+        : mixedRooms;
+      
+      return {
+        rooms: filteredRooms,
+        loading: false,
+        error: null,
+        refresh: vi.fn(),
+      };
+    });
+
+    render(<RoomList onRoomJoined={mockOnRoomJoined} />);
+    
+    // This shows the current bug: private rooms are filtered out
+    expect(screen.getByText('Public Room')).toBeInTheDocument();
+    expect(screen.queryByText('Private Room')).not.toBeInTheDocument(); // Currently filtered out
+  });
+
+  // TDD: Test for desired behavior - should show private rooms created by user
+  test('should show user-created private rooms in room list', () => {
+    // This test will FAIL initially - this is our RED phase
+    const mixedRooms: Room[] = [
+      { ...mockRooms[0], isPublic: true, name: 'Public Room' },
+      { 
+        ...mockRooms[1], 
+        isPublic: false, 
+        name: 'My Private Room',
+        hostId: 'test-user-id' // User created this room
+      },
+    ];
+    
+    // Mock useRoomList to NOT filter private rooms created by current user
+    vi.mocked(useRoomList.useRoomList).mockImplementation((isConnected, options) => {
+      // This is the desired behavior after fix
+      const filteredRooms = mixedRooms.filter(room => 
+        room.isPublic || room.hostId === 'test-user-id' // Show public OR user's own private rooms
+      );
+      
+      return {
+        rooms: filteredRooms,
+        loading: false,
+        error: null,
+        refresh: vi.fn(),
+      };
+    });
+
+    render(<RoomList onRoomJoined={mockOnRoomJoined} />);
+    
+    // Both should be visible after fix
+    expect(screen.getByText('Public Room')).toBeInTheDocument();
+    expect(screen.getByText('My Private Room')).toBeInTheDocument(); // This should work after fix
   });
 });

@@ -1,6 +1,7 @@
 import { describe, test, expect, beforeEach } from 'vitest';
 import {
   createRoom,
+  createRoomWithHost,
   joinRoom,
   leaveRoom,
   transferHost,
@@ -39,6 +40,42 @@ describe('Room Manager', () => {
     test('should create a room with default maxPlayers', () => {
       const room = createRoom('Default Room', true, undefined, 'Bob');
       expect(room.maxPlayers).toBe(8);
+    });
+  });
+
+  describe('createRoomWithHost', () => {
+    test('should create a room with specified host ID', () => {
+      const customHostId = 'custom-host-id';
+      const room = createRoomWithHost('Custom Room', false, 6, 'Custom Host', customHostId);
+      
+      expect(room.name).toBe('Custom Room');
+      expect(room.isPublic).toBe(false);
+      expect(room.maxPlayers).toBe(6);
+      expect(room.users).toHaveLength(1);
+      expect(room.users[0].name).toBe('Custom Host');
+      expect(room.users[0].id).toBe(customHostId);
+      expect(room.users[0].isHost).toBe(true);
+      expect(room.hostId).toBe(customHostId);
+      expect(room.quizzes).toHaveLength(0);
+    });
+
+    test('should create a room with default maxPlayers using host ID', () => {
+      const customHostId = 'another-host-id';
+      const room = createRoomWithHost('Another Room', true, undefined, 'Another Host', customHostId);
+      
+      expect(room.maxPlayers).toBe(8);
+      expect(room.users[0].id).toBe(customHostId);
+    });
+
+    test('should create a public room with host ID', () => {
+      const hostId = 'public-host-id';
+      const room = createRoomWithHost('Public Room', true, 10, 'Public Host', hostId);
+      
+      expect(room.isPublic).toBe(true);
+      expect(room.maxPlayers).toBe(10);
+      expect(room.hostId).toBe(hostId);
+      expect(room.users[0].id).toBe(hostId);
+      expect(room.users[0].isHost).toBe(true);
     });
   });
 
@@ -173,12 +210,34 @@ describe('Room Manager', () => {
       }
     });
 
-    test('should delete room when last user leaves', () => {
+    test('should preserve room when host is the only user and leaves', () => {
+      // This is now the expected behavior - host leaving preserves the room
       const result = leaveRoom(testRoom.id, testUser.id);
-      expect(result).toBeNull();
+      expect(result).not.toBeNull(); // Room should be preserved
+      expect(result?.users).toHaveLength(0); // But with no users
       
       const retrievedRoom = getRoom(testRoom.id);
-      expect(retrievedRoom).toBeNull();
+      expect(retrievedRoom).not.toBeNull(); // Room should still exist
+    });
+    
+    test('should delete room when non-host user is last to leave', () => {
+      // Create a room and add a non-host user
+      const nonHostUser = joinRoom(testRoom.id, 'Regular User');
+      expect(nonHostUser).not.toBeNull();
+      
+      // Transfer host to the new user
+      if (nonHostUser) {
+        const updatedRoom = transferHost(testRoom.id, nonHostUser.user.id);
+        expect(updatedRoom).not.toBeNull();
+        
+        // Remove the original host (now non-host)
+        const afterHostLeave = leaveRoom(testRoom.id, testUser.id);
+        expect(afterHostLeave).not.toBeNull();
+        
+        // Now remove the last user (who is now the host) - room should be preserved
+        const result = leaveRoom(testRoom.id, nonHostUser.user.id);
+        expect(result).not.toBeNull(); // Even when current host leaves, room is preserved
+      }
     });
 
     test('should return null for non-existent room', () => {
@@ -301,6 +360,45 @@ describe('Room Manager', () => {
     test('should return null for non-existent user', () => {
       const user = getUser(testRoom.id, 'non-existent-user');
       expect(user).toBeNull();
+    });
+  });
+
+  describe('Room persistence for host', () => {
+    // TDD: Test for room persistence when host temporarily leaves
+    test('should keep room when host leaves and allow host to rejoin', () => {
+      // Given: Create a room with host
+      const room = createRoom('Test Room', true, 8, 'Host User');
+      const originalRoomId = room.id;
+      const originalHostId = room.hostId;
+      
+      // When: Host leaves the room
+      const updatedRoom = leaveRoom(originalRoomId, originalHostId);
+      
+      // Then: Room should be preserved (not deleted) even when empty
+      expect(updatedRoom).not.toBeNull(); // This will FAIL - RED phase
+      expect(getRoom(originalRoomId)).not.toBeNull(); // Room should still exist
+      
+      // And: Host should be able to rejoin the same room
+      const rejoinResult = joinRoom(originalRoomId, 'Host User', originalHostId);
+      expect(rejoinResult).not.toBeNull();
+      expect(rejoinResult?.user.isHost).toBe(true); // Should regain host status
+    });
+    
+    test('should preserve room properties when host temporarily leaves', () => {
+      // Given: Create a private room with specific settings
+      const room = createRoom('Private Room', false, 4, 'Host User');
+      const originalRoomId = room.id;
+      const originalHostId = room.hostId;
+      
+      // When: Host leaves the room
+      leaveRoom(originalRoomId, originalHostId);
+      
+      // Then: Room should preserve its original properties
+      const preservedRoom = getRoom(originalRoomId);
+      expect(preservedRoom).not.toBeNull(); // This will FAIL - RED phase
+      expect(preservedRoom?.name).toBe('Private Room');
+      expect(preservedRoom?.isPublic).toBe(false);
+      expect(preservedRoom?.maxPlayers).toBe(4);
     });
   });
 }); 
