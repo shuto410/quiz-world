@@ -9,6 +9,37 @@ export interface UseRoomListOptions {
   sortOrder?: 'asc' | 'desc';
 }
 
+/**
+ * Sorts rooms based on the specified criteria
+ * @param rooms - The rooms to sort
+ * @param sortBy - The sorting criteria
+ * @param sortOrder - The sorting order (asc/desc)
+ * @returns Sorted rooms array
+ */
+const sortRooms = (rooms: Room[], sortBy?: string, sortOrder: 'asc' | 'desc' = 'asc'): Room[] => {
+  if (!sortBy) return rooms;
+  
+  return [...rooms].sort((a, b) => {
+    let compareValue = 0;
+    
+    switch (sortBy) {
+      case 'name':
+        compareValue = a.name.localeCompare(b.name);
+        break;
+      case 'playerCount':
+        compareValue = a.users.length - b.users.length;
+        break;
+      case 'createdAt':
+        compareValue = a.createdAt - b.createdAt;
+        break;
+      default:
+        return 0;
+    }
+    
+    return sortOrder === 'asc' ? compareValue : -compareValue;
+  });
+};
+
 export interface UseRoomListReturn {
   rooms: Room[];
   loading: boolean;
@@ -72,26 +103,7 @@ export function useRoomList(
       }
 
       // Apply sorting if specified
-      if (sortBy) {
-        processedRooms.sort((a, b) => {
-          let compareValue = 0;
-          
-          switch (sortBy) {
-            case 'name':
-              compareValue = a.name.localeCompare(b.name);
-              break;
-            case 'playerCount':
-              compareValue = a.users.length - b.users.length;
-              break;
-            case 'createdAt':
-              // Assuming rooms have IDs that are chronological
-              compareValue = a.id.localeCompare(b.id);
-              break;
-          }
-
-          return sortOrder === 'asc' ? compareValue : -compareValue;
-        });
-      }
+      processedRooms = sortRooms(processedRooms, sortBy, sortOrder);
 
       setRooms(processedRooms);
       setLoading(false);
@@ -106,35 +118,15 @@ export function useRoomList(
     // Handle individual room updates
     const handleRoomCreated = (data: { room: Room }) => {
       setRooms(prevRooms => {
-        const newRooms = [...prevRooms, data.room];
-        
         // Apply filter to new room
         if (filter && !filter(data.room)) {
           return prevRooms;
         }
 
+        const newRooms = [...prevRooms, data.room];
+        
         // Re-sort if needed
-        if (sortBy) {
-          newRooms.sort((a, b) => {
-            let compareValue = 0;
-            
-            switch (sortBy) {
-              case 'name':
-                compareValue = a.name.localeCompare(b.name);
-                break;
-              case 'playerCount':
-                compareValue = a.users.length - b.users.length;
-                break;
-              case 'createdAt':
-                compareValue = a.id.localeCompare(b.id);
-                break;
-            }
-
-            return sortOrder === 'asc' ? compareValue : -compareValue;
-          });
-        }
-
-        return newRooms;
+        return sortRooms(newRooms, sortBy, sortOrder);
       });
     };
 
@@ -150,27 +142,7 @@ export function useRoomList(
         }
 
         // Re-sort if needed
-        if (sortBy) {
-          newRooms.sort((a, b) => {
-            let compareValue = 0;
-            
-            switch (sortBy) {
-              case 'name':
-                compareValue = a.name.localeCompare(b.name);
-                break;
-              case 'playerCount':
-                compareValue = a.users.length - b.users.length;
-                break;
-              case 'createdAt':
-                compareValue = a.id.localeCompare(b.id);
-                break;
-            }
-
-            return sortOrder === 'asc' ? compareValue : -compareValue;
-          });
-        }
-
-        return newRooms;
+        return sortRooms(newRooms, sortBy, sortOrder);
       });
     };
 

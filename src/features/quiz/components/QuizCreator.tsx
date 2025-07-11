@@ -261,11 +261,16 @@ function QuizPreview({ formData }: QuizPreviewProps) {
               <span className="text-sm text-gray-600">Image:</span>
               <div className="mt-2">
                 <Image
-                  src={formData.image.type === 'url' ? formData.image.data : formData.image.data}
+                  src={
+                    formData.image.type === 'url'
+                      ? formData.image.data
+                      : `data:image/jpeg;base64,${formData.image.data}`
+                  }
                   alt="Preview"
                   width={200}
                   height={128}
-                  className="max-w-full max-h-32 rounded-lg object-cover"
+                  className="w-full max-w-sm h-auto rounded-lg object-contain"
+                  style={{ maxHeight: '8rem' }}
                 />
               </div>
             </div>

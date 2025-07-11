@@ -57,11 +57,16 @@ function QuestionDisplay({ quiz, gameState, buzzedUser }: QuestionDisplayProps) 
           {quiz.type === 'image' && quiz.image && (
             <div className="flex justify-center">
               <Image
-                src={quiz.image.type === 'url' ? quiz.image.data : quiz.image.data}
+                src={
+                  quiz.image.type === 'url'
+                    ? quiz.image.data
+                    : `data:image/jpeg;base64,${quiz.image.data}`
+                }
                 alt="Quiz image"
                 width={400}
                 height={384}
-                className="max-w-full max-h-96 rounded-lg shadow-lg object-cover"
+                className="w-full max-w-md h-auto rounded-lg shadow-lg object-contain"
+                style={{ maxHeight: '24rem' }}
               />
             </div>
           )}

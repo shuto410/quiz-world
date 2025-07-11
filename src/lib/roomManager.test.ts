@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach } from 'vitest';
+import { describe, test, expect, beforeEach, vi } from 'vitest';
 import {
   createRoom,
   createRoomWithHost,
@@ -9,6 +9,10 @@ import {
   getPublicRooms,
   getRoom,
   getUser,
+  cleanupAbandonedRooms,
+  getEmptyRoomsCount,
+  getEmptyRoomsInfo,
+  resetRoomState,
 } from './roomManager';
 import type { Room, User } from '../types';
 
@@ -399,6 +403,172 @@ describe('Room Manager', () => {
       expect(preservedRoom?.name).toBe('Private Room');
       expect(preservedRoom?.isPublic).toBe(false);
       expect(preservedRoom?.maxPlayers).toBe(4);
+    });
+  });
+
+  describe('Room cleanup functionality', () => {
+    beforeEach(() => {
+      // Reset all room state for clean test environment
+      resetRoomState();
+    });
+
+    test('should track empty rooms when host leaves', () => {
+      const room = createRoom('Test Room', true, 8, 'Host User');
+      const hostId = room.hostId;
+      
+      // Initially no empty rooms
+      expect(getEmptyRoomsCount()).toBe(0);
+      
+      // Host leaves empty room
+      leaveRoom(room.id, hostId);
+      
+      // Should now track the empty room
+      expect(getEmptyRoomsCount()).toBe(1);
+      
+      const emptyRooms = getEmptyRoomsInfo();
+      expect(emptyRooms).toHaveLength(1);
+      expect(emptyRooms[0].roomId).toBe(room.id);
+      expect(emptyRooms[0].emptyDuration).toBeGreaterThanOrEqual(0);
+    });
+
+    test('should clear tracking when host returns to empty room', () => {
+      const room = createRoom('Test Room', true, 8, 'Host User');
+      const hostId = room.hostId;
+      
+      // Host leaves empty room
+      leaveRoom(room.id, hostId);
+      expect(getEmptyRoomsCount()).toBe(1);
+      
+      // Host returns
+      const rejoinResult = joinRoom(room.id, 'Host User', hostId);
+      expect(rejoinResult).not.toBeNull();
+      
+      // Empty room tracking should be cleared
+      expect(getEmptyRoomsCount()).toBe(0);
+    });
+
+    test('should not track room when non-host user leaves empty room', () => {
+      const room = createRoom('Test Room', true, 8, 'Host User');
+      const nonHost = joinRoom(room.id, 'Regular User');
+      expect(nonHost).not.toBeNull();
+      
+      // Transfer host to the new user
+      transferHost(room.id, nonHost!.user.id);
+      
+      // Original host leaves (now non-host)
+      leaveRoom(room.id, room.hostId);
+      
+      // Should not track as empty room since a host is still present
+      expect(getEmptyRoomsCount()).toBe(0);
+    });
+
+    test('should cleanup abandoned rooms after timeout', () => {
+      const baseTime = 1000000000000; // Fixed timestamp
+      const mockDate = vi.spyOn(Date, 'now');
+      
+      // Set up the timeline
+      mockDate.mockReturnValue(baseTime); // Host leaves at base time
+      
+      const room = createRoom('Test Room', true, 8, 'Host User');
+      const hostId = room.hostId;
+      
+      // Host leaves empty room
+      leaveRoom(room.id, hostId);
+      expect(getEmptyRoomsCount()).toBe(1);
+      expect(getRoom(room.id)).not.toBeNull();
+      
+      // Fast forward 31 minutes
+      mockDate.mockReturnValue(baseTime + 31 * 60 * 1000);
+      
+      // Cleanup with 30 minute threshold (room is 31 minutes old)
+      const cleanedCount = cleanupAbandonedRooms(30 * 60 * 1000);
+      
+      expect(cleanedCount).toBe(1);
+      expect(getEmptyRoomsCount()).toBe(0);
+      expect(getRoom(room.id)).toBeNull(); // Room should be deleted
+      
+      vi.restoreAllMocks();
+    });
+
+    test('should not cleanup rooms within timeout threshold', () => {
+      const baseTime = 1000000000000; // Fixed timestamp
+      const mockDate = vi.spyOn(Date, 'now');
+      
+      // Set up the timeline
+      mockDate.mockReturnValue(baseTime); // Host leaves at base time
+      
+      const room = createRoom('Test Room', true, 8, 'Host User');
+      const hostId = room.hostId;
+      
+      // Host leaves empty room
+      leaveRoom(room.id, hostId);
+      expect(getEmptyRoomsCount()).toBe(1);
+      
+      // Fast forward only 29 minutes
+      mockDate.mockReturnValue(baseTime + 29 * 60 * 1000);
+      
+      // Cleanup with 30 minute threshold (room is only 29 minutes old)
+      const cleanedCount = cleanupAbandonedRooms(30 * 60 * 1000);
+      
+      expect(cleanedCount).toBe(0);
+      expect(getEmptyRoomsCount()).toBe(1);
+      expect(getRoom(room.id)).not.toBeNull(); // Room should still exist
+      
+      vi.restoreAllMocks();
+    });
+
+    test('should cleanup multiple abandoned rooms', () => {
+      const baseTime = 1000000000000; // Fixed timestamp
+      const mockDate = vi.spyOn(Date, 'now');
+      
+      // Set up the timeline - all rooms become empty at base time
+      mockDate.mockReturnValue(baseTime);
+      
+      // Create multiple rooms and make them empty
+      const room1 = createRoom('Room 1', true, 8, 'Host 1');
+      const room2 = createRoom('Room 2', true, 8, 'Host 2');
+      const room3 = createRoom('Room 3', true, 8, 'Host 3');
+      
+      leaveRoom(room1.id, room1.hostId);
+      leaveRoom(room2.id, room2.hostId);
+      leaveRoom(room3.id, room3.hostId);
+      
+      expect(getEmptyRoomsCount()).toBe(3);
+      
+      // Fast forward 31 minutes
+      mockDate.mockReturnValue(baseTime + 31 * 60 * 1000);
+      
+      // Cleanup all
+      const cleanedCount = cleanupAbandonedRooms(30 * 60 * 1000);
+      
+      expect(cleanedCount).toBe(3);
+      expect(getEmptyRoomsCount()).toBe(0);
+      
+      vi.restoreAllMocks();
+    });
+
+    test('should provide correct empty room information', () => {
+      const baseTime = 1000000000000; // Fixed timestamp
+      const mockDate = vi.spyOn(Date, 'now');
+      
+      // Set up the timeline
+      mockDate.mockReturnValue(baseTime); // Host leaves at base time
+      
+      const room = createRoom('Test Room', true, 8, 'Host User');
+      const hostId = room.hostId;
+      
+      // Host leaves empty room
+      leaveRoom(room.id, hostId);
+      
+      // Fast forward 15 minutes
+      mockDate.mockReturnValue(baseTime + 15 * 60 * 1000);
+      
+      const emptyRooms = getEmptyRoomsInfo();
+      expect(emptyRooms).toHaveLength(1);
+      expect(emptyRooms[0].roomId).toBe(room.id);
+      expect(emptyRooms[0].emptyDuration).toBe(15 * 60 * 1000); // 15 minutes
+      
+      vi.restoreAllMocks();
     });
   });
 }); 

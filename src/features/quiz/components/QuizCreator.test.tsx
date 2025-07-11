@@ -189,7 +189,7 @@ describe('QuizCreator Component', () => {
     expect(mockSetImageFromUrl).toHaveBeenCalledWith('https://example.com/image.jpg');
   });
 
-  test('shows image preview', () => {
+  test('shows image preview for URL type', () => {
     vi.mocked(useQuizForm.useQuizForm).mockReturnValue({
       ...defaultUseQuizFormReturn,
       formData: {
@@ -202,8 +202,35 @@ describe('QuizCreator Component', () => {
 
     render(<QuizCreator isOpen={true} onClose={mockOnClose} onQuizCreated={mockOnQuizCreated} />);
     
-    const previewImage = screen.getByAltText('Preview');
-    expect(previewImage).toHaveAttribute('src', 'https://example.com/image.jpg');
+    const previewImage = screen.getByAltText('Preview') as HTMLImageElement;
+    expect(previewImage.src).toBe('https://example.com/image.jpg');
+    expect(previewImage.className).toContain('object-contain');
+    expect(previewImage.className).toContain('w-full');
+    expect(previewImage.className).toContain('max-w-sm');
+  });
+
+  test('shows image preview for upload type with base64 data', () => {
+    vi.mocked(useQuizForm.useQuizForm).mockReturnValue({
+      ...defaultUseQuizFormReturn,
+      formData: {
+        ...defaultFormData,
+        type: 'image',
+        question: 'What is this uploaded image?',
+        image: { 
+          type: 'upload', 
+          data: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==' 
+        },
+      },
+    });
+
+    render(<QuizCreator isOpen={true} onClose={mockOnClose} onQuizCreated={mockOnQuizCreated} />);
+    
+    const previewImage = screen.getByAltText('Preview') as HTMLImageElement;
+    expect(previewImage).toBeInTheDocument();
+    expect(previewImage.src).toBe('data:image/jpeg;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==');
+    expect(previewImage.className).toContain('object-contain');
+    expect(previewImage.className).toContain('w-full');
+    expect(previewImage.className).toContain('max-w-sm');
   });
 
   // Note: Remove image functionality is not implemented in the current component

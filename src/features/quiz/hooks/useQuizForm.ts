@@ -52,6 +52,7 @@ export function useQuizForm(): UseQuizFormReturn {
   const setQuizType = useCallback((type: 'text' | 'image') => {
     setFormData(prev => {
       if (type === 'text') {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { image: _, ...rest } = prev;
         return { ...rest, type };
       }
@@ -64,6 +65,7 @@ export function useQuizForm(): UseQuizFormReturn {
       if (url.trim()) {
         return { ...prev, image: { type: 'url', data: url.trim() } };
       }
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { image: _, ...rest } = prev;
       return rest;
     });

@@ -51,6 +51,7 @@ const mockRooms: Room[] = [
     hostId: 'user-1',
     users: [{ id: 'user-1', name: 'Host', isHost: true }],
     quizzes: [],
+    createdAt: 1000,
   },
   {
     id: 'room-2',
@@ -63,6 +64,7 @@ const mockRooms: Room[] = [
       { id: 'user-3', name: 'Player', isHost: false },
     ],
     quizzes: [{ id: 'quiz-1', type: 'text', question: 'Q1', answer: 'A1' }],
+    createdAt: 2000,
   },
 ];
 
@@ -288,6 +290,7 @@ describe('RoomList Component', () => {
       hostId: 'test-user-id',
       users: [{ id: 'test-user-id', name: 'Test User', isHost: true }],
       quizzes: [],
+      createdAt: 3000,
     };
     
     if (roomCreatedHandler) {

@@ -5,13 +5,13 @@
  * - Maintains anime pop style design
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { QuizCreator } from '@/features/quiz/components/QuizCreator';
 import type { Room, User, Quiz } from '@/types';
-import { leaveRoom, transferHost, startQuiz } from '@/lib/socketClient';
+import { leaveRoom, transferHost, startQuiz, addQuiz, getSocket } from '@/lib/socketClient';
 import { getUserName, getUserId } from '@/lib/userStorage';
 import { useChat } from '@/features/chat/hooks/useChat';
 
@@ -340,10 +340,40 @@ export function Room({ room, currentUser, onLeave, className }: RoomProps) {
   const [showQuizCreator, setShowQuizCreator] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [roomQuizzes, setRoomQuizzes] = useState(room.quizzes);
+  const [error, setError] = useState<string | null>(null);
 
   const isHost = currentUser.isHost;
   const currentUserName = getUserName() || currentUser.name;
   const currentUserId = getUserId();
+
+  /**
+   * Set up socket event listeners for quiz synchronization
+   */
+  useEffect(() => {
+    const socket = getSocket();
+    if (!socket) return;
+
+    // Listen for quiz added event from server
+    const handleQuizAdded = (data: { quiz: Quiz }) => {
+      console.log('Quiz added via socket:', data.quiz);
+      setRoomQuizzes(prev => [...prev, data.quiz]);
+    };
+
+    // Listen for quiz removed event from server
+    const handleQuizRemoved = (data: { quizId: string }) => {
+      console.log('Quiz removed via socket:', data.quizId);
+      setRoomQuizzes(prev => prev.filter(quiz => quiz.id !== data.quizId));
+    };
+
+    socket.on('quiz:added', handleQuizAdded);
+    socket.on('quiz:removed', handleQuizRemoved);
+
+    // Cleanup listeners on unmount
+    return () => {
+      socket.off('quiz:added', handleQuizAdded);
+      socket.off('quiz:removed', handleQuizRemoved);
+    };
+  }, []);
 
   /**
    * Handle leaving the room
@@ -371,8 +401,15 @@ export function Room({ room, currentUser, onLeave, className }: RoomProps) {
     try {
       startQuiz(quiz.id);
       setShowQuizModal(false);
+      setError(null); // Clear any previous errors
     } catch (error) {
       console.error('Failed to start quiz:', error);
+      setError('Failed to start quiz. Please try again.');
+      
+      // Auto-clear error after 5 seconds
+      setTimeout(() => {
+        setError(null);
+      }, 5000);
     }
   };
 
@@ -395,10 +432,20 @@ export function Room({ room, currentUser, onLeave, className }: RoomProps) {
   /**
    * Handle quiz created
    */
-  const handleQuizCreated = (quiz: Quiz) => {
-    console.log('Quiz created:', quiz);
-    setRoomQuizzes(prev => [...prev, quiz]);
-    setShowQuizCreator(false);
+  const handleQuizCreated = async (quiz: Quiz) => {
+    try {
+      console.log('Quiz created:', quiz);
+      await addQuiz(quiz); // Send to server, which will broadcast to all clients
+      setShowQuizCreator(false);
+    } catch (error) {
+      console.error('Failed to add quiz:', error);
+      setError('Failed to add quiz. Please try again.');
+      
+      // Auto-clear error after 5 seconds
+      setTimeout(() => {
+        setError(null);
+      }, 5000);
+    }
   };
 
   return (
@@ -410,6 +457,21 @@ export function Room({ room, currentUser, onLeave, className }: RoomProps) {
         onManageQuizzes={() => setShowQuizModal(true)}
         onLeave={handleLeaveRoom}
       />
+
+      {/* Error Message */}
+      {error && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-red-800">{error}</span>
+            <button
+              onClick={() => setError(null)}
+              className="text-red-500 hover:text-red-700 text-sm font-medium"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* User List */}

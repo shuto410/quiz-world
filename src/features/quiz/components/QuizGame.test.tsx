@@ -114,6 +114,71 @@ describe('QuizGame Component', () => {
     expect(screen.getByText('Image Quiz')).toBeInTheDocument();
   });
 
+  test('renders image quiz with URL source correctly', () => {
+    const urlImageQuiz: Quiz = {
+      id: 'quiz-url',
+      type: 'image',
+      question: 'What is this URL image?',
+      answer: 'cat',
+      image: {
+        type: 'url',
+        data: 'https://example.com/cat.jpg',
+      },
+    };
+
+    render(
+      <QuizGame
+        quiz={urlImageQuiz}
+        currentUser={mockCurrentUser}
+        users={mockUsers}
+        isHost={false}
+        gameState="active"
+        scores={mockScores}
+        onEndQuiz={mockOnEndQuiz}
+        onNextQuiz={mockOnNextQuiz}
+      />
+    );
+    
+    const image = screen.getByAltText('Quiz image') as HTMLImageElement;
+    expect(image).toBeInTheDocument();
+    // Next.js Image component optimizes URLs, so we check for the encoded URL parameter
+    expect(image.src).toContain('https%3A%2F%2Fexample.com%2Fcat.jpg');
+    expect(image.className).toContain('object-contain');
+    expect(image.className).toContain('w-full');
+    expect(image.className).toContain('max-w-md');
+  });
+
+  test('renders image quiz with base64 upload source correctly', () => {
+    const uploadImageQuiz: Quiz = {
+      id: 'quiz-upload',
+      type: 'image',
+      question: 'What is this uploaded image?',
+      answer: 'dog',
+      image: {
+        type: 'upload',
+        data: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
+      },
+    };
+
+    render(
+      <QuizGame
+        quiz={uploadImageQuiz}
+        currentUser={mockCurrentUser}
+        users={mockUsers}
+        isHost={false}
+        gameState="active"
+        scores={mockScores}
+        onEndQuiz={mockOnEndQuiz}
+        onNextQuiz={mockOnNextQuiz}
+      />
+    );
+    
+    const image = screen.getByAltText('Quiz image') as HTMLImageElement;
+    expect(image).toBeInTheDocument();
+    expect(image.src).toBe('data:image/jpeg;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==');
+    expect(image.className).toContain('object-contain');
+  });
+
   test('displays timer correctly', () => {
     render(
       <QuizGame

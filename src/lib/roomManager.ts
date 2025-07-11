@@ -14,6 +14,11 @@ import type { Room, User } from '../types';
 const rooms = new Map<string, Room>();
 
 /**
+ * Track when rooms become empty for cleanup purposes
+ */
+const emptyRoomTimestamps = new Map<string, number>();
+
+/**
  * Creates a new room with the specified parameters
  * @param name - Room name
  * @param isPublic - Whether the room is public
@@ -44,6 +49,7 @@ export function createRoom(
     quizzes: [],
     hostId,
     maxPlayers,
+    createdAt: Date.now(),
   };
 
   rooms.set(roomId, room);
@@ -82,6 +88,7 @@ export function createRoomWithHost(
     quizzes: [],
     hostId,
     maxPlayers,
+    createdAt: Date.now(),
   };
 
   rooms.set(roomId, room);
@@ -130,6 +137,8 @@ export function joinRoom(roomId: string, userName: string, userId?: string): { r
   room.users.push(user);
   
   if (isOriginalHostReturning) {
+    // Clear empty room timestamp when host returns
+    emptyRoomTimestamps.delete(roomId);
     console.log(`Original host ${userName} (${userId}) returned to empty room, restoring host status`);
   } else {
     console.log(`New user ${userName} (${user.id}) added to room`);
@@ -166,8 +175,8 @@ export function leaveRoom(roomId: string, userId: string): Room | null {
 
   // Special handling for host leaving empty room - keep room for host to return
   if (room.users.length === 0 && isHostLeaving) {
-    // Mark room as temporarily empty but preserve it
-    // The room will be preserved with all its original properties
+    // Track when room becomes empty for potential cleanup
+    emptyRoomTimestamps.set(roomId, Date.now());
     console.log(`Host left empty room ${roomId}, preserving room for potential return`);
     return room; // Return the empty room instead of deleting it
   }
@@ -265,4 +274,53 @@ export function getUser(roomId: string, userId: string): User | null {
     return null;
   }
   return room.users.find(user => user.id === userId) || null;
+}
+
+/**
+ * Cleans up abandoned rooms that have been empty for too long
+ * @param maxEmptyDurationMs - Maximum time a room can be empty before cleanup (default: 30 minutes)
+ * @returns Number of rooms cleaned up
+ */
+export function cleanupAbandonedRooms(maxEmptyDurationMs: number = 30 * 60 * 1000): number {
+  const now = Date.now();
+  let cleanedCount = 0;
+  
+  for (const [roomId, timestamp] of emptyRoomTimestamps.entries()) {
+    if (now - timestamp > maxEmptyDurationMs) {
+      rooms.delete(roomId);
+      emptyRoomTimestamps.delete(roomId);
+      console.log(`Cleaned up abandoned room ${roomId}`);
+      cleanedCount++;
+    }
+  }
+  
+  return cleanedCount;
+}
+
+/**
+ * Gets the number of empty rooms being tracked
+ * @returns Number of empty rooms
+ */
+export function getEmptyRoomsCount(): number {
+  return emptyRoomTimestamps.size;
+}
+
+/**
+ * Gets information about empty rooms and their timestamps
+ * @returns Array of room IDs and their empty timestamps
+ */
+export function getEmptyRoomsInfo(): Array<{ roomId: string; emptyDuration: number }> {
+  const now = Date.now();
+  return Array.from(emptyRoomTimestamps.entries()).map(([roomId, timestamp]) => ({
+    roomId,
+    emptyDuration: now - timestamp,
+  }));
+}
+
+/**
+ * Resets all room state (for testing purposes)
+ */
+export function resetRoomState(): void {
+  rooms.clear();
+  emptyRoomTimestamps.clear();
 } 

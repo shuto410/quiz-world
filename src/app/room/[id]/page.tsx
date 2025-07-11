@@ -197,6 +197,7 @@ export default function RoomPage() {
         leaveRoom();
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomId, router]); // Remove room?.users from dependencies to prevent re-renders
 
   // Handle room leave

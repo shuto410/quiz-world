@@ -41,7 +41,7 @@ export function useQuizTimer(
 
   // Timer logic
   useEffect(() => {
-    if (isRunning && timeLeft > 0) {
+    if (isRunning) {
       intervalRef.current = setInterval(() => {
         setTimeLeft((prev) => {
           if (prev <= 1) {
@@ -68,7 +68,7 @@ export function useQuizTimer(
         intervalRef.current = null;
       }
     };
-  }, [isRunning, timeLeft]);
+  }, [isRunning]);
 
   const start = useCallback(() => {
     if (timeLeft > 0) {

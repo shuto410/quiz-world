@@ -182,7 +182,8 @@ describe('Socket.io Client', () => {
         users: [{ id: 'host1', name: 'Host', isHost: true }],
         isPublic: true,
         maxPlayers: 8,
-        quizzes: []
+        quizzes: [],
+        createdAt: Date.now(),
       };
       roomCreatedHandler?.({ room: mockRoom });
       expect(listeners.onRoomCreated).toHaveBeenCalledWith({ room: mockRoom });

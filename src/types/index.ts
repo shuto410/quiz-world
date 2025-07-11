@@ -65,6 +65,7 @@ export type Score = {
  * @property quizzes - Quizzes in the room
  * @property hostId - Current host's user id
  * @property maxPlayers - Maximum number of players
+ * @property createdAt - Creation timestamp for accurate chronological sorting
  */
 export type Room = {
   id: string;
@@ -74,4 +75,5 @@ export type Room = {
   quizzes: Quiz[];
   hostId: string;
   maxPlayers: number;
+  createdAt: number;
 }; 

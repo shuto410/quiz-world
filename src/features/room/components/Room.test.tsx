@@ -9,17 +9,26 @@
  */
 
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi, beforeEach, afterEach, describe, it, expect } from 'vitest';
 import { Room } from './Room';
 import type { Room as RoomType, User, Quiz } from '@/types';
 
 // Mock dependencies
+const mockSocket = {
+  on: vi.fn(),
+  off: vi.fn(),
+  emit: vi.fn(),
+  connected: true,
+};
+
 vi.mock('@/lib/socketClient', () => ({
   leaveRoom: vi.fn(),
   transferHost: vi.fn(),
   startQuiz: vi.fn(),
+  addQuiz: vi.fn(),
+  getSocket: vi.fn(() => mockSocket),
 }));
 
 vi.mock('@/lib/userStorage', () => ({
@@ -48,23 +57,27 @@ vi.mock('@/features/chat/hooks/useChat', () => ({
 }));
 
 vi.mock('@/features/quiz/components/QuizCreator', () => ({
-  QuizCreator: ({ onQuizCreated, onCancel }: { onQuizCreated: (quiz: Quiz) => void; onCancel: () => void }) => (
-    <div data-testid="quiz-creator">
-      <button
-        onClick={() =>
-          onQuizCreated({
-            id: 'new-quiz',
-            type: 'text',
-            question: 'What is 2+2?',
-            answer: '4',
-          })
-        }
-      >
-        Create Quiz
-      </button>
-      <button onClick={onCancel}>Cancel</button>
-    </div>
-  ),
+  QuizCreator: ({ isOpen, onQuizCreated, onClose }: { isOpen: boolean; onQuizCreated: (quiz: Quiz) => void; onClose: () => void }) => {
+    if (!isOpen) return null;
+    
+    return (
+      <div data-testid="quiz-creator">
+        <button
+          onClick={() =>
+            onQuizCreated({
+              id: 'new-quiz',
+              type: 'text',
+              question: 'What is 2+2?',
+              answer: '4',
+            })
+          }
+        >
+          Create Quiz
+        </button>
+        <button onClick={onClose}>Cancel</button>
+      </div>
+    );
+  },
 }));
 
 describe('Room Component', () => {
@@ -94,6 +107,7 @@ describe('Room Component', () => {
           answer: 'Tokyo',
         },
       ],
+      createdAt: Date.now(),
     };
 
     mockCurrentUser = {
@@ -167,11 +181,9 @@ describe('Room Component', () => {
       expect(regularUserElement).toHaveTextContent('👤');
     });
 
-    it('should highlight current user', () => {
+    it('should display current user in player list', () => {
       render(<Room room={mockRoom} currentUser={mockCurrentUser} onLeave={mockOnLeave} />);
 
-      // Check that current user is displayed correctly
-      // Note: Current implementation doesn't show special highlight, but user is displayed
       expect(screen.getByText('Host User')).toBeInTheDocument();
       expect(screen.getByText('Regular User')).toBeInTheDocument();
     });
@@ -329,23 +341,40 @@ describe('Room Component', () => {
       expect(screen.getByTestId('quiz-creator')).toBeInTheDocument();
     });
 
-    it('should close quiz creator and add quiz when quiz is created', () => {
+    it('should open quiz creator and handle quiz creation via socket', async () => {
+      const { addQuiz } = await import('@/lib/socketClient');
       render(<Room room={mockRoom} currentUser={mockCurrentUser} onLeave={mockOnLeave} />);
 
+      // Open quiz management modal
       fireEvent.click(screen.getByText('Manage Quizzes'));
       
-      // Click the Create Quiz button in the modal
+      // Open quiz creator - use getAllByText to handle multiple buttons
       const createQuizButtons = screen.getAllByText('Create Quiz');
-      fireEvent.click(createQuizButtons[0]);
+      fireEvent.click(createQuizButtons[0]); // Click the first one (in modal)
+      
+      // Verify quiz creator is displayed
+      const quizCreator = screen.getByTestId('quiz-creator');
+      expect(quizCreator).toBeInTheDocument();
+      
+      // Find and click the Create Quiz button within the quiz creator
+      const createQuizButton = within(quizCreator).getByText('Create Quiz');
+      
+      await act(async () => {
+        fireEvent.click(createQuizButton);
+      });
 
-      // Now click the Create Quiz button in the quiz creator (if it exists)
-      const allCreateButtons = screen.getAllByText('Create Quiz');
-      if (allCreateButtons.length > 1) {
-        fireEvent.click(allCreateButtons[1]);
-      }
+      // Verify that addQuiz was called with the new quiz
+      expect(addQuiz).toHaveBeenCalledWith({
+        id: 'new-quiz',
+        type: 'text',
+        question: 'What is 2+2?',
+        answer: '4',
+      });
 
-      // The quiz creator should still be in the document as it's mocked to always show
-      expect(screen.getByTestId('quiz-creator')).toBeInTheDocument();
+      // Quiz creator should be closed after successful creation
+      await waitFor(() => {
+        expect(screen.queryByTestId('quiz-creator')).not.toBeInTheDocument();
+      });
     });
   });
 
@@ -455,8 +484,239 @@ describe('Room Component', () => {
     it('should handle empty message submission', () => {
       render(<Room room={mockRoom} currentUser={mockCurrentUser} onLeave={mockOnLeave} />);
 
+      const messageInput = screen.getByPlaceholderText('Type a message...');
       const sendButton = screen.getByText('Send');
+
+      // Verify initial state
+      expect(messageInput).toHaveValue('');
       expect(sendButton).toBeDisabled();
+    });
+  });
+
+  describe('Error Handling', () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('should display error message when quiz start fails', async () => {
+      const { startQuiz } = await import('@/lib/socketClient');
+      vi.mocked(startQuiz).mockImplementation(() => {
+        throw new Error('Network error');
+      });
+
+      render(<Room room={mockRoom} currentUser={mockCurrentUser} onLeave={mockOnLeave} />);
+
+      // Open quiz management modal and start a quiz
+      fireEvent.click(screen.getByText('Manage Quizzes'));
+      fireEvent.click(screen.getByText('Start'));
+
+      // Error message should be displayed
+      expect(screen.getByText('Failed to start quiz. Please try again.')).toBeInTheDocument();
+    });
+
+    it('should auto-clear error message after 5 seconds', async () => {
+      const { startQuiz } = await import('@/lib/socketClient');
+      vi.mocked(startQuiz).mockImplementation(() => {
+        throw new Error('Network error');
+      });
+
+      render(<Room room={mockRoom} currentUser={mockCurrentUser} onLeave={mockOnLeave} />);
+
+      // Trigger error
+      fireEvent.click(screen.getByText('Manage Quizzes'));
+      fireEvent.click(screen.getByText('Start'));
+
+      // Error should be visible
+      expect(screen.getByText('Failed to start quiz. Please try again.')).toBeInTheDocument();
+
+      // Fast forward 5 seconds
+      act(() => {
+        vi.advanceTimersByTime(5000);
+      });
+
+      // Error should be cleared
+      expect(screen.queryByText('Failed to start quiz. Please try again.')).not.toBeInTheDocument();
+    });
+
+    it('should allow manual dismissal of error message', async () => {
+      const { startQuiz } = await import('@/lib/socketClient');
+      vi.mocked(startQuiz).mockImplementation(() => {
+        throw new Error('Network error');
+      });
+
+      render(<Room room={mockRoom} currentUser={mockCurrentUser} onLeave={mockOnLeave} />);
+
+      // Trigger error
+      fireEvent.click(screen.getByText('Manage Quizzes'));
+      fireEvent.click(screen.getByText('Start'));
+
+      // Error should be visible
+      expect(screen.getByText('Failed to start quiz. Please try again.')).toBeInTheDocument();
+
+      // Click dismiss button
+      fireEvent.click(screen.getByText('✕'));
+
+      // Error should be cleared immediately
+      expect(screen.queryByText('Failed to start quiz. Please try again.')).not.toBeInTheDocument();
+    });
+
+    it('should clear previous errors when quiz starts successfully', async () => {
+      const { startQuiz } = await import('@/lib/socketClient');
+      
+      // First, make startQuiz fail
+      vi.mocked(startQuiz).mockImplementationOnce(() => {
+        throw new Error('Network error');
+      });
+
+      render(<Room room={mockRoom} currentUser={mockCurrentUser} onLeave={mockOnLeave} />);
+
+      // Trigger error
+      fireEvent.click(screen.getByText('Manage Quizzes'));
+      fireEvent.click(screen.getByText('Start'));
+
+      // Error should be visible
+      expect(screen.getByText('Failed to start quiz. Please try again.')).toBeInTheDocument();
+
+      // Now make startQuiz succeed
+      vi.mocked(startQuiz).mockImplementationOnce(() => {
+        // Success case - no error thrown
+      });
+
+      // Try starting quiz again
+      fireEvent.click(screen.getByText('Start'));
+
+      // Error should be cleared
+      expect(screen.queryByText('Failed to start quiz. Please try again.')).not.toBeInTheDocument();
+    });
+
+    it('should not display error message initially', () => {
+      render(<Room room={mockRoom} currentUser={mockCurrentUser} onLeave={mockOnLeave} />);
+
+      // No error should be visible initially
+      expect(screen.queryByText('Failed to start quiz. Please try again.')).not.toBeInTheDocument();
+    });
+
+    it('should display error message when quiz creation fails', async () => {
+      const { addQuiz } = await import('@/lib/socketClient');
+      vi.mocked(addQuiz).mockImplementation(() => {
+        throw new Error('Network error');
+      });
+
+      render(<Room room={mockRoom} currentUser={mockCurrentUser} onLeave={mockOnLeave} />);
+
+      // Open quiz creator and create a quiz
+      fireEvent.click(screen.getByText('Manage Quizzes'));
+      const createQuizButtons = screen.getAllByText('Create Quiz');
+      fireEvent.click(createQuizButtons[0]);
+      
+      const quizCreator = screen.getByTestId('quiz-creator');
+      const createQuizButton = within(quizCreator).getByText('Create Quiz');
+      fireEvent.click(createQuizButton);
+
+      // Error message should be displayed
+      expect(screen.getByText('Failed to add quiz. Please try again.')).toBeInTheDocument();
+    });
+
+    it('should auto-clear quiz creation error after 5 seconds', async () => {
+      const { addQuiz } = await import('@/lib/socketClient');
+      vi.mocked(addQuiz).mockImplementation(() => {
+        throw new Error('Network error');
+      });
+
+      render(<Room room={mockRoom} currentUser={mockCurrentUser} onLeave={mockOnLeave} />);
+
+      // Trigger error
+      fireEvent.click(screen.getByText('Manage Quizzes'));
+      const createQuizButtons = screen.getAllByText('Create Quiz');
+      fireEvent.click(createQuizButtons[0]);
+      
+      const quizCreator = screen.getByTestId('quiz-creator');
+      const createQuizButton = within(quizCreator).getByText('Create Quiz');
+      fireEvent.click(createQuizButton);
+
+      // Error should be visible
+      expect(screen.getByText('Failed to add quiz. Please try again.')).toBeInTheDocument();
+
+      // Fast forward 5 seconds
+      act(() => {
+        vi.advanceTimersByTime(5000);
+      });
+
+      // Error should be cleared
+      expect(screen.queryByText('Failed to add quiz. Please try again.')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('Socket Quiz Synchronization', () => {
+    it('should set up socket event listeners for quiz synchronization', () => {
+      render(<Room room={mockRoom} currentUser={mockCurrentUser} onLeave={mockOnLeave} />);
+
+      // Verify that socket event listeners are set up
+      expect(mockSocket.on).toHaveBeenCalledWith('quiz:added', expect.any(Function));
+      expect(mockSocket.on).toHaveBeenCalledWith('quiz:removed', expect.any(Function));
+    });
+
+    it('should update quiz list when quiz:added event is received', () => {
+      render(<Room room={mockRoom} currentUser={mockCurrentUser} onLeave={mockOnLeave} />);
+
+      // Find the quiz:added event handler
+      const quizAddedHandler = mockSocket.on.mock.calls.find(
+        (call: any[]) => call[0] === 'quiz:added'
+      )?.[1];
+
+      expect(quizAddedHandler).toBeDefined();
+
+      // Simulate receiving a quiz:added event
+      const newQuiz = {
+        id: 'new-quiz-from-server',
+        type: 'text' as const,
+        question: 'What is 3+3?',
+        answer: '6',
+      };
+
+      act(() => {
+        quizAddedHandler({ quiz: newQuiz });
+      });
+
+      // Verify the quiz appears in the management modal
+      fireEvent.click(screen.getByText('Manage Quizzes'));
+      expect(screen.getByText('What is 3+3?')).toBeInTheDocument();
+    });
+
+    it('should remove quiz from list when quiz:removed event is received', () => {
+      render(<Room room={mockRoom} currentUser={mockCurrentUser} onLeave={mockOnLeave} />);
+
+      // Find the quiz:removed event handler
+      const quizRemovedHandler = mockSocket.on.mock.calls.find(
+        (call: any[]) => call[0] === 'quiz:removed'
+      )?.[1];
+
+      expect(quizRemovedHandler).toBeDefined();
+
+      // Simulate removing the existing quiz
+      act(() => {
+        quizRemovedHandler({ quizId: 'quiz-1' });
+      });
+
+      // Verify the quiz is no longer in the management modal
+      fireEvent.click(screen.getByText('Manage Quizzes'));
+      expect(screen.queryByText('What is the capital of Japan?')).not.toBeInTheDocument();
+      expect(screen.getByText('No quizzes available')).toBeInTheDocument();
+    });
+
+    it('should clean up socket listeners on component unmount', () => {
+      const { unmount } = render(<Room room={mockRoom} currentUser={mockCurrentUser} onLeave={mockOnLeave} />);
+
+      // Unmount the component
+      unmount();
+
+      // Verify that socket event listeners are cleaned up
+      expect(mockSocket.off).toHaveBeenCalledWith('quiz:added', expect.any(Function));
+      expect(mockSocket.off).toHaveBeenCalledWith('quiz:removed', expect.any(Function));
     });
   });
 }); 

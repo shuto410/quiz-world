@@ -23,6 +23,7 @@ const mockRooms: Room[] = [
     hostId: 'user-1',
     users: [{ id: 'user-1', name: 'Host', isHost: true }],
     quizzes: [],
+    createdAt: 1000,
   },
   {
     id: 'room-2',
@@ -32,6 +33,7 @@ const mockRooms: Room[] = [
     hostId: 'user-2',
     users: [{ id: 'user-2', name: 'Host2', isHost: true }],
     quizzes: [],
+    createdAt: 2000,
   },
 ];
 
@@ -241,6 +243,7 @@ describe('useRoomList', () => {
       hostId: 'user-3',
       users: [{ id: 'user-3', name: 'Host3', isHost: true }],
       quizzes: [],
+      createdAt: 3000,
     };
 
     act(() => {
@@ -272,6 +275,7 @@ describe('useRoomList', () => {
       hostId: 'user-p',
       users: [{ id: 'user-p', name: 'HostP', isHost: true }],
       quizzes: [],
+      createdAt: 2500,
     };
 
     act(() => {
@@ -309,6 +313,7 @@ describe('useRoomList', () => {
       hostId: 'user-3',
       users: [{ id: 'user-3', name: 'Host3', isHost: true }],
       quizzes: [],
+      createdAt: 1500,
     };
 
     act(() => {
@@ -520,6 +525,7 @@ describe('useRoomList', () => {
         { id: 'user-4', name: 'Player4', isHost: false },
       ],
       quizzes: [],
+      createdAt: 3000,
     };
 
     act(() => {
@@ -564,6 +570,7 @@ describe('useRoomList', () => {
       hostId: 'user-3',
       users: [{ id: 'user-3', name: 'Host3', isHost: true }],
       quizzes: [],
+      createdAt: 1500,
     };
 
     act(() => {
