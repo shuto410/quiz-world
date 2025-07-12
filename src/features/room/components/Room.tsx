@@ -131,7 +131,7 @@ function PlayerItem({ user, isCurrentUser, canMakeHost, onMakeHost }: PlayerItem
 }
 
 /**
- * Chat component using useChat hook
+ * Chat component using useChat hook - made smaller for sidebar
  */
 interface ChatProps {
   roomName: string;
@@ -152,18 +152,18 @@ function Chat({ roomName, currentUserId, currentUserName }: ChatProps) {
   return (
     <Card variant="elevated">
       <CardHeader>
-        <h2 className="text-lg font-semibold text-gray-800">Chat</h2>
+        <h2 className="text-sm font-semibold text-gray-800">Chat</h2>
       </CardHeader>
       <CardContent>
-        <div className="space-y-4">
-          {/* Messages */}
-          <div className="h-64 overflow-y-auto space-y-2">
+        <div className="space-y-3">
+          {/* Messages - made smaller */}
+          <div className="h-32 overflow-y-auto space-y-1">
             {messages.map((message) => (
               <ChatMessage key={message.id} message={message} />
             ))}
           </div>
 
-          {/* Message Input */}
+          {/* Message Input - made more compact */}
           <div className="flex gap-2">
             <input
               type="text"
@@ -171,9 +171,9 @@ function Chat({ roomName, currentUserId, currentUserName }: ChatProps) {
               onChange={(e) => setNewMessage(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
               placeholder="Type a message..."
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+              className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
             />
-            <Button onClick={handleSendMessage} disabled={!newMessage.trim()}>
+            <Button size="sm" onClick={handleSendMessage} disabled={!newMessage.trim()}>
               Send
             </Button>
           </div>
@@ -184,7 +184,7 @@ function Chat({ roomName, currentUserId, currentUserName }: ChatProps) {
 }
 
 /**
- * Individual chat message
+ * Individual chat message - made more compact
  */
 interface ChatMessageProps {
   message: {
@@ -198,20 +198,20 @@ interface ChatMessageProps {
 function ChatMessage({ message }: ChatMessageProps) {
   return (
     <div
-      className={`flex gap-2 ${
+      className={`flex gap-1 text-sm ${
         message.type === 'system' ? 'justify-center' : ''
       }`}
     >
       {message.type === 'user' && (
-        <span className="font-medium text-pink-600">
+        <span className="font-medium text-pink-600 text-xs">
           {message.userName}:
         </span>
       )}
       <span
         className={`${
           message.type === 'system'
-            ? 'text-gray-500 italic text-sm'
-            : 'text-gray-700'
+            ? 'text-gray-500 italic text-xs'
+            : 'text-gray-700 text-xs'
         }`}
       >
         {message.message}
@@ -809,27 +809,26 @@ export function Room({ room, currentUser, onLeave, className }: RoomProps) {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* User List */}
-        <div className="lg:col-span-1">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        {/* Left Sidebar - User List + Chat */}
+        <div className="lg:col-span-1 space-y-4">
           <PlayerList
             users={room.users}
             currentUserId={currentUserId}
             isHost={isHost}
             onMakeHost={handleMakeHost}
           />
-        </div>
-
-        {/* Chat and Game Area */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Chat */}
+          
+          {/* Chat - now in sidebar */}
           <Chat
             roomName={room.name}
             currentUserId={currentUserId}
             currentUserName={currentUserName}
           />
+        </div>
 
-          {/* Game Area */}
+        {/* Game Area - now takes up 3/4 of the width */}
+        <div className="lg:col-span-3">
           {renderGameArea()}
         </div>
       </div>
