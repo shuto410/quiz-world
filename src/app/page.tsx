@@ -9,7 +9,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { RoomList } from '../features/room/components/RoomList';
+import { RoomList } from '../features/room-list/components/RoomList';
 import { Button } from '../components/ui/Button';
 import type { Room } from '../types';
 import { createRoom } from '../lib/socketClient';
