@@ -347,6 +347,13 @@ export function Room({ room, currentUser, onLeave, className }: RoomProps) {
   const currentUserId = getUserId();
 
   /**
+   * Synchronize roomQuizzes with room.quizzes when room changes
+   */
+  useEffect(() => {
+    setRoomQuizzes(room.quizzes);
+  }, [room.quizzes]);
+
+  /**
    * Set up socket event listeners for quiz synchronization
    */
   useEffect(() => {
@@ -356,7 +363,15 @@ export function Room({ room, currentUser, onLeave, className }: RoomProps) {
     // Listen for quiz added event from server
     const handleQuizAdded = (data: { quiz: Quiz }) => {
       console.log('Quiz added via socket:', data.quiz);
-      setRoomQuizzes(prev => [...prev, data.quiz]);
+      setRoomQuizzes(prev => {
+        // Check if quiz already exists to prevent duplicates
+        const existingQuizIndex = prev.findIndex(quiz => quiz.id === data.quiz.id);
+        if (existingQuizIndex !== -1) {
+          console.log('Quiz already exists, not adding duplicate:', data.quiz.id);
+          return prev;
+        }
+        return [...prev, data.quiz];
+      });
     };
 
     // Listen for quiz removed event from server

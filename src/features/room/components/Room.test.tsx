@@ -378,6 +378,121 @@ describe('Room Component', () => {
     });
   });
 
+  describe('Quiz Duplicate Prevention', () => {
+    it('should prevent duplicate quizzes when receiving quiz:added event', async () => {
+      // Setup mock room with existing quiz
+      const existingQuiz = {
+        id: 'existing-quiz-1',
+        type: 'text' as const,
+        question: 'Existing quiz?',
+        answer: 'Yes',
+      };
+      
+      const mockRoomWithQuiz = {
+        ...mockRoom,
+        quizzes: [existingQuiz],
+      };
+
+      render(<Room room={mockRoomWithQuiz} currentUser={mockCurrentUser} onLeave={mockOnLeave} />);
+
+      // Verify initial quiz count
+      fireEvent.click(screen.getByText('Manage Quizzes'));
+      expect(screen.getByText('Existing quiz?')).toBeInTheDocument();
+      
+      // Simulate receiving quiz:added event for the same quiz
+      const mockSocket = {
+        on: vi.fn(),
+        off: vi.fn(),
+      };
+      
+      // Find the handleQuizAdded callback from the mock
+      const onCalls = mockSocket.on.mock?.calls || [];
+      const quizAddedCall = onCalls.find(call => call[0] === 'quiz:added');
+      
+      if (quizAddedCall) {
+        const handleQuizAdded = quizAddedCall[1];
+        // Simulate receiving the same quiz via socket
+        await act(async () => {
+          handleQuizAdded({ quiz: existingQuiz });
+        });
+        
+        // Should not have duplicate quizzes
+        const quizElements = screen.getAllByText('Existing quiz?');
+        expect(quizElements).toHaveLength(1);
+      }
+    });
+    
+    it('should handle quiz creation with existing quizzes without duplication', async () => {
+      // Setup mock room with existing quiz
+      const existingQuiz = {
+        id: 'existing-quiz-1',
+        type: 'text' as const,
+        question: 'Existing quiz?',
+        answer: 'Yes',
+      };
+      
+      const mockRoomWithQuiz = {
+        ...mockRoom,
+        quizzes: [existingQuiz],
+      };
+
+      render(<Room room={mockRoomWithQuiz} currentUser={mockCurrentUser} onLeave={mockOnLeave} />);
+
+      // Open quiz management and create new quiz
+      fireEvent.click(screen.getByText('Manage Quizzes'));
+      
+      // Verify existing quiz is shown
+      expect(screen.getByText('Existing quiz?')).toBeInTheDocument();
+      
+      // Create new quiz
+      const createQuizButtons = screen.getAllByText('Create Quiz');
+      fireEvent.click(createQuizButtons[0]);
+      
+      const quizCreator = screen.getByTestId('quiz-creator');
+      const createQuizButton = within(quizCreator).getByText('Create Quiz');
+      
+      await act(async () => {
+        fireEvent.click(createQuizButton);
+      });
+      
+      // Simulate the socket event for the new quiz
+      const mockSocket = {
+        on: vi.fn(),
+        off: vi.fn(),
+      };
+      
+      const newQuiz = {
+        id: 'new-quiz-from-socket',
+        type: 'text' as const,
+        question: 'New quiz from socket?',
+        answer: 'Yes',
+      };
+      
+      // Find the handleQuizAdded callback
+      const onCalls = mockSocket.on.mock?.calls || [];
+      const quizAddedCall = onCalls.find(call => call[0] === 'quiz:added');
+      
+      if (quizAddedCall) {
+        const handleQuizAdded = quizAddedCall[1];
+        await act(async () => {
+          handleQuizAdded({ quiz: newQuiz });
+        });
+        
+        // Should have both quizzes without duplication
+        await waitFor(() => {
+          expect(screen.getByText('Existing quiz?')).toBeInTheDocument();
+          expect(screen.getByText('New quiz from socket?')).toBeInTheDocument();
+        });
+        
+        // Verify no duplicates
+        const existingQuizElements = screen.getAllByText('Existing quiz?');
+        const newQuizElements = screen.getAllByText('New quiz from socket?');
+        expect(existingQuizElements).toHaveLength(1);
+        expect(newQuizElements).toHaveLength(1);
+      }
+    });
+  });
+
   describe('Room Actions', () => {
     it('should call leaveRoom when Leave Room button is clicked', async () => {
       const { leaveRoom } = await import('@/lib/socketClient');
