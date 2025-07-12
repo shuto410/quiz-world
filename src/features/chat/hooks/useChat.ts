@@ -2,6 +2,7 @@
  * Hook for managing chat messages
  */
 import { useState, useCallback, useEffect } from 'react';
+import { getSocket, sendChatMessage } from '@/lib/socketClient';
 
 export interface ChatMessage {
   id: string;
@@ -30,20 +31,6 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
   const { roomName, maxMessages } = options;
   const [messages, setMessages] = useState<ChatMessage[]>([]);
 
-  // Add welcome message if roomName is provided
-  useEffect(() => {
-    if (roomName) {
-      setMessages([{
-        id: 'welcome',
-        userId: 'system',
-        userName: 'System',
-        message: `Welcome to ${roomName}! The game will begin soon.`,
-        timestamp: Date.now(),
-        type: 'system',
-      }]);
-    }
-  }, [roomName]);
-
   const addMessage = useCallback((message: ChatMessage) => {
     setMessages((prev) => {
       const newMessages = [...prev, message];
@@ -60,14 +47,21 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
   const sendMessage = useCallback((message: string, userId: string, userName: string) => {
     if (!message.trim()) return;
 
-    addMessage({
-      id: Date.now().toString(),
-      userId,
-      userName,
-      message: message.trim(),
-      timestamp: Date.now(),
-      type: 'user',
-    });
+    try {
+      // Send message via Socket.io
+      sendChatMessage(message.trim(), userId, userName);
+    } catch (error) {
+      console.error('Failed to send chat message:', error);
+      // Fallback: add message locally if socket fails
+      addMessage({
+        id: Date.now().toString(),
+        userId,
+        userName,
+        message: message.trim(),
+        timestamp: Date.now(),
+        type: 'user',
+      });
+    }
   }, [addMessage]);
 
   const addSystemMessage = useCallback((message: string) => {
@@ -84,6 +78,43 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
   const clearMessages = useCallback(() => {
     setMessages([]);
   }, []);
+
+  // Add welcome message if roomName is provided
+  useEffect(() => {
+    if (roomName) {
+      setMessages([{
+        id: 'welcome',
+        userId: 'system',
+        userName: 'System',
+        message: `Welcome to ${roomName}! The game will begin soon.`,
+        timestamp: Date.now(),
+        type: 'system',
+      }]);
+    }
+  }, [roomName]);
+
+  // Set up Socket.io listeners for real-time chat
+  useEffect(() => {
+    const socket = getSocket();
+    if (!socket) return;
+
+    const handleChatMessage = (data: { message: string; userId: string; userName: string; timestamp: number }) => {
+      addMessage({
+        id: `${data.userId}-${data.timestamp}`,
+        userId: data.userId,
+        userName: data.userName,
+        message: data.message,
+        timestamp: data.timestamp,
+        type: 'user',
+      });
+    };
+
+    socket.on('chat:message', handleChatMessage);
+
+    return () => {
+      socket.off('chat:message', handleChatMessage);
+    };
+  }, [addMessage]);
 
   return {
     messages,

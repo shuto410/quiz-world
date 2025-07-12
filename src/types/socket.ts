@@ -32,6 +32,9 @@ export interface ClientToServerEvents {
   // Game events
   'game:buzz': (data: { user: User }) => void;
   'game:answer': (data: { user: User; answer: string }) => void;
+  
+  // Chat events
+  'chat:message': (data: { message: string; userId: string; userName: string }) => void;
 }
 
 /**
@@ -62,6 +65,9 @@ export interface ServerToClientEvents {
   'game:buzz': (data: { user: User }) => void;
   'game:answer': (data: { user: User; answer: string }) => void;
   'game:score': (data: { scores: Array<{ userId: string; score: number }> }) => void;
+  
+  // Chat events
+  'chat:message': (data: { message: string; userId: string; userName: string; timestamp: number }) => void;
   
   // Error events
   'error': (data: { message: string }) => void;

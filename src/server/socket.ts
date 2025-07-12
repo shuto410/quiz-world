@@ -81,6 +81,9 @@ function handleConnection(socket: Socket<ClientToServerEvents, ServerToClientEve
   socket.on('quiz:start', (data: { quizId: string; timeLimit?: number }) => handleQuizStart(socket, data));
   socket.on('quiz:answer', (data: { quizId: string; answer: string }) => handleQuizAnswer(socket, data));
   socket.on('quiz:judge', (data: { userId: string; isCorrect: boolean; score?: number }) => handleQuizJudge(socket, data));
+  
+  // Chat events
+  socket.on('chat:message', (data: { message: string; userId: string; userName: string }) => handleChatMessage(socket, data));
 
   // Handle disconnection
   socket.on('disconnect', () => handleDisconnect(socket));
@@ -552,6 +555,48 @@ function handleQuizJudge(socket: Socket<ClientToServerEvents, ServerToClientEven
     console.log(`Quiz judged for user ${data.userId} in room: ${roomId}`);
   } catch {
     socket.emit('error', { message: 'Failed to judge answer' });
+  }
+}
+
+/**
+ * Handle chat message
+ * @param socket - Socket instance
+ * @param data - Chat message data
+ */
+function handleChatMessage(socket: Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>, data: { message: string; userId: string; userName: string }) {
+  try {
+    const { roomId } = socket.data;
+    
+    if (!roomId) {
+      socket.emit('error', { message: 'Not in a room' });
+      return;
+    }
+    
+    const room = getRoom(roomId);
+    if (!room) {
+      socket.emit('error', { message: 'Room not found' });
+      return;
+    }
+    
+    // Verify user is in the room
+    const user = getUser(roomId, data.userId);
+    if (!user) {
+      socket.emit('error', { message: 'User not found in room' });
+      return;
+    }
+    
+    // Broadcast message to all users in the room
+    io.to(roomId).emit('chat:message', {
+      message: data.message.trim(),
+      userId: data.userId,
+      userName: data.userName,
+      timestamp: Date.now()
+    });
+    
+    console.log(`Chat message from ${data.userName} (${data.userId}) in room ${roomId}: ${data.message}`);
+  } catch (error) {
+    console.error('Error handling chat message:', error);
+    socket.emit('error', { message: 'Failed to send message' });
   }
 }
 
