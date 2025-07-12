@@ -49,11 +49,11 @@ export type Quiz = {
 /**
  * Represents a score entry for a user
  * @property userId - The user's id
- * @property value - The score value
+ * @property score - The score value
  */
 export type Score = {
   userId: string;
-  value: number;
+  score: number;
 };
 
 /**

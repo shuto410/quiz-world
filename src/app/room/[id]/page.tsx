@@ -12,7 +12,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Room } from '@/features/room/components/Room';
-import type { Room as RoomType, User, Quiz } from '@/types';
+import type { Room as RoomType, User } from '@/types';
 import { getUserName, getUserId } from '@/lib/userStorage';
 import { getSocket, isConnected, joinRoom, leaveRoom } from '@/lib/socketClient';
 
@@ -144,18 +144,8 @@ export default function RoomPage() {
     socket.on('room:updated', handleRoomUpdated);
     socket.on('room:notFound', handleRoomNotFound);
     
-    // Quiz events
-    socket.on('quiz:started', (data: { quiz: Quiz; timeLimit: number }) => {
-      console.log('Quiz started event received:', data);
-      // Navigate to quiz game page
-      const params = new URLSearchParams({
-        quiz: JSON.stringify(data.quiz),
-        users: JSON.stringify(room?.users || []),
-        scores: JSON.stringify([]), // Empty scores for new game
-        gameState: 'active',
-      });
-      router.push(`/quiz-game?${params.toString()}`);
-    });
+    // Quiz events are now handled by the Room component itself
+    // No need to navigate to separate quiz-game page
 
     // If user is already host (from room creation), don't call joinRoom
     // The server should send room:joined event automatically for room creation
@@ -188,7 +178,7 @@ export default function RoomPage() {
       socket.off('room:userLeft', handleUserLeft);
       socket.off('room:updated', handleRoomUpdated);
       socket.off('room:notFound', handleRoomNotFound);
-      socket.off('quiz:started');
+      // Quiz events are now handled by Room component
       
       // Only leave room on actual component unmount, not on re-renders or Fast Refresh
       // Check if this is a fresh room creation or if already left
@@ -197,7 +187,6 @@ export default function RoomPage() {
         leaveRoom();
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomId, router]); // Remove room?.users from dependencies to prevent re-renders
 
   // Handle room leave

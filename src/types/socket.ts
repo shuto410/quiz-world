@@ -27,6 +27,11 @@ export interface ClientToServerEvents {
   'quiz:start': (data: { quizId: string; timeLimit?: number }) => void;
   'quiz:answer': (data: { quizId: string; answer: string }) => void;
   'quiz:judge': (data: { userId: string; isCorrect: boolean; score?: number }) => void;
+  'quiz:end': () => void;
+  
+  // Game events
+  'game:buzz': (data: { user: User }) => void;
+  'game:answer': (data: { user: User; answer: string }) => void;
 }
 
 /**
@@ -52,6 +57,11 @@ export interface ServerToClientEvents {
   'quiz:answered': (data: { userId: string; answer: string }) => void;
   'quiz:judged': (data: { userId: string; isCorrect: boolean; score: number }) => void;
   'quiz:ended': (data: { results: Array<{ userId: string; score: number }> }) => void;
+  
+  // Game events
+  'game:buzz': (data: { user: User }) => void;
+  'game:answer': (data: { user: User; answer: string }) => void;
+  'game:score': (data: { scores: Array<{ userId: string; score: number }> }) => void;
   
   // Error events
   'error': (data: { message: string }) => void;

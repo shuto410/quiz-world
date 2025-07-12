@@ -493,6 +493,226 @@ describe('Room Component', () => {
     });
   });
 
+  describe('In-Room Quiz Game', () => {
+    it('should switch to quiz game view when quiz is started', async () => {
+      render(<Room room={mockRoom} currentUser={mockCurrentUser} onLeave={mockOnLeave} />);
+
+      // Simulate quiz started event
+      const quizStartedData = {
+        quiz: {
+          id: 'quiz-1',
+          type: 'text' as const,
+          question: 'What is 2+2?',
+          answer: '4',
+        },
+      };
+
+      act(() => {
+        const quizStartedCall = mockSocket.on.mock.calls
+          .find(call => call[0] === 'quiz:started');
+        if (quizStartedCall) {
+          quizStartedCall[1](quizStartedData);
+        }
+      });
+
+      // Should render quiz game instead of room lobby
+      // Check for quiz game elements instead of data-testid
+      await waitFor(() => {
+        expect(screen.getByText('What is 2+2?')).toBeInTheDocument();
+        expect(screen.getByText('🔔 Buzz In')).toBeInTheDocument();
+        expect(screen.getByText('End Quiz')).toBeInTheDocument();
+      });
+    });
+
+    it('should return to room lobby when quiz ends', async () => {
+      render(<Room room={mockRoom} currentUser={mockCurrentUser} onLeave={mockOnLeave} />);
+
+      // First, start a quiz
+      const quizStartedData = {
+        quiz: {
+          id: 'quiz-1',
+          type: 'text' as const,
+          question: 'What is 2+2?',
+          answer: '4',
+        },
+      };
+
+      act(() => {
+        const quizStartedCall = mockSocket.on.mock.calls
+          .find(call => call[0] === 'quiz:started');
+        if (quizStartedCall) {
+          quizStartedCall[1](quizStartedData);
+        }
+      });
+
+      // Now end the quiz
+      act(() => {
+        const quizEndedCall = mockSocket.on.mock.calls
+          .find(call => call[0] === 'quiz:ended');
+        if (quizEndedCall) {
+          quizEndedCall[1]();
+        }
+      });
+
+      // Should return to quiz finished view
+      await waitFor(() => {
+        expect(screen.getByText('Quiz Finished!')).toBeInTheDocument();
+        expect(screen.getByText('Back to Lobby')).toBeInTheDocument();
+      });
+    });
+
+    it('should handle quiz buzz event', async () => {
+      render(<Room room={mockRoom} currentUser={mockCurrentUser} onLeave={mockOnLeave} />);
+
+      // Start a quiz first
+      const quizStartedData = {
+        quiz: {
+          id: 'quiz-1',
+          type: 'text' as const,
+          question: 'What is 2+2?',
+          answer: '4',
+        },
+      };
+
+      act(() => {
+        const quizStartedCall = mockSocket.on.mock.calls
+          .find(call => call[0] === 'quiz:started');
+        if (quizStartedCall) {
+          quizStartedCall[1](quizStartedData);
+        }
+      });
+
+      // Simulate buzz event
+      const buzzData = {
+        user: { id: 'user-1', name: 'Test User', isHost: false },
+      };
+
+      act(() => {
+        const buzzCall = mockSocket.on.mock.calls
+          .find(call => call[0] === 'game:buzz');
+        if (buzzCall) {
+          buzzCall[1](buzzData);
+        }
+      });
+
+      // Verify state is updated (this would be tested through the QuizGame component props)
+      // Since we're mocking QuizGame, we can't directly test the internal state,
+      // but we can verify the socket listener was called
+      expect(mockSocket.on).toHaveBeenCalledWith('game:buzz', expect.any(Function));
+    });
+
+    it('should handle answer submission event', async () => {
+      render(<Room room={mockRoom} currentUser={mockCurrentUser} onLeave={mockOnLeave} />);
+
+      // Start a quiz first
+      const quizStartedData = {
+        quiz: {
+          id: 'quiz-1',
+          type: 'text' as const,
+          question: 'What is 2+2?',
+          answer: '4',
+        },
+      };
+
+      act(() => {
+        const quizStartedCall = mockSocket.on.mock.calls
+          .find(call => call[0] === 'quiz:started');
+        if (quizStartedCall) {
+          quizStartedCall[1](quizStartedData);
+        }
+      });
+
+      // Simulate answer submission
+      const answerData = {
+        user: { id: 'user-1', name: 'Test User', isHost: false },
+        answer: '4',
+      };
+
+      act(() => {
+        const answerCall = mockSocket.on.mock.calls
+          .find(call => call[0] === 'game:answer');
+        if (answerCall) {
+          answerCall[1](answerData);
+        }
+      });
+
+      // Verify socket listener was set up
+      expect(mockSocket.on).toHaveBeenCalledWith('game:answer', expect.any(Function));
+    });
+
+    it('should handle score update event', async () => {
+      render(<Room room={mockRoom} currentUser={mockCurrentUser} onLeave={mockOnLeave} />);
+
+      // Start a quiz first
+      const quizStartedData = {
+        quiz: {
+          id: 'quiz-1',
+          type: 'text' as const,
+          question: 'What is 2+2?',
+          answer: '4',
+        },
+      };
+
+      act(() => {
+        const quizStartedCall = mockSocket.on.mock.calls
+          .find(call => call[0] === 'quiz:started');
+        if (quizStartedCall) {
+          quizStartedCall[1](quizStartedData);
+        }
+      });
+
+      // Simulate score update
+      const scoreData = {
+        scores: [
+          { userId: 'user-1', score: 10 },
+          { userId: 'user-2', score: 5 },
+        ],
+      };
+
+      act(() => {
+        const scoreCall = mockSocket.on.mock.calls
+          .find(call => call[0] === 'game:score');
+        if (scoreCall) {
+          scoreCall[1](scoreData);
+        }
+      });
+
+      // Verify socket listener was set up
+      expect(mockSocket.on).toHaveBeenCalledWith('game:score', expect.any(Function));
+    });
+
+    it('should emit quiz:end event when ending quiz', async () => {
+      render(<Room room={mockRoom} currentUser={mockCurrentUser} onLeave={mockOnLeave} />);
+
+      // Start a quiz first
+      const quizStartedData = {
+        quiz: {
+          id: 'quiz-1',
+          type: 'text' as const,
+          question: 'What is 2+2?',
+          answer: '4',
+        },
+      };
+
+      act(() => {
+        const quizStartedCall = mockSocket.on.mock.calls
+          .find(call => call[0] === 'quiz:started');
+        if (quizStartedCall) {
+          quizStartedCall[1](quizStartedData);
+        }
+      });
+
+      // Find and click the "End Quiz" button
+      await waitFor(() => {
+        const endQuizButton = screen.getByText('End Quiz');
+        fireEvent.click(endQuizButton);
+      });
+
+      // Verify quiz:end event was emitted
+      expect(mockSocket.emit).toHaveBeenCalledWith('quiz:end');
+    });
+  });
+
   describe('Room Actions', () => {
     it('should call leaveRoom when Leave Room button is clicked', async () => {
       const { leaveRoom } = await import('@/lib/socketClient');
@@ -832,6 +1052,157 @@ describe('Room Component', () => {
       // Verify that socket event listeners are cleaned up
       expect(mockSocket.off).toHaveBeenCalledWith('quiz:added', expect.any(Function));
       expect(mockSocket.off).toHaveBeenCalledWith('quiz:removed', expect.any(Function));
+    });
+  });
+
+  describe('In-Room Quiz UI Integration', () => {
+    it('should embed quiz UI in room while keeping player list and chat visible', async () => {
+      render(<Room room={mockRoom} currentUser={mockCurrentUser} onLeave={mockOnLeave} />);
+
+      // Initially should show room lobby
+      expect(screen.getByText('Players')).toBeInTheDocument();
+      expect(screen.getByText('Chat')).toBeInTheDocument();
+      expect(screen.getByText('Waiting for Quiz')).toBeInTheDocument();
+
+      // Simulate quiz started event
+      const quizStartedData = {
+        quiz: {
+          id: 'quiz-1',
+          type: 'text' as const,
+          question: 'What is the capital of Japan?',
+          answer: 'Tokyo',
+        },
+      };
+
+      act(() => {
+        const quizStartedCall = mockSocket.on.mock.calls
+          .find(call => call[0] === 'quiz:started');
+        if (quizStartedCall) {
+          quizStartedCall[1](quizStartedData);
+        }
+      });
+
+      // Should still show room structure elements
+      await waitFor(() => {
+        expect(screen.getByText('Players')).toBeInTheDocument();
+        expect(screen.getByText('Chat')).toBeInTheDocument();
+        expect(screen.getByText('What is the capital of Japan?')).toBeInTheDocument();
+      });
+
+      // Should not show the "Waiting for Quiz" message anymore
+      expect(screen.queryByText('Waiting for Quiz')).not.toBeInTheDocument();
+    });
+
+    it('should show integrated quiz controls within room layout', async () => {
+      render(<Room room={mockRoom} currentUser={mockCurrentUser} onLeave={mockOnLeave} />);
+
+      // Simulate quiz started event
+      const quizStartedData = {
+        quiz: {
+          id: 'quiz-1',
+          type: 'text' as const,
+          question: 'What is 2+2?',
+          answer: '4',
+        },
+      };
+
+      act(() => {
+        const quizStartedCall = mockSocket.on.mock.calls
+          .find(call => call[0] === 'quiz:started');
+        if (quizStartedCall) {
+          quizStartedCall[1](quizStartedData);
+        }
+      });
+
+      // Should show quiz controls embedded in room
+      await waitFor(() => {
+        expect(screen.getByText('What is 2+2?')).toBeInTheDocument();
+        expect(screen.getByText('🔔 Buzz In')).toBeInTheDocument();
+      });
+
+      // Room header should still be visible
+      expect(screen.getByText('Test Room')).toBeInTheDocument();
+    });
+
+    it('should show quiz results embedded in room layout', async () => {
+      render(<Room room={mockRoom} currentUser={mockCurrentUser} onLeave={mockOnLeave} />);
+
+      // Start quiz first
+      const quizStartedData = {
+        quiz: {
+          id: 'quiz-1',
+          type: 'text' as const,
+          question: 'What is the capital of France?',
+          answer: 'Paris',
+        },
+      };
+
+      act(() => {
+        const quizStartedCall = mockSocket.on.mock.calls
+          .find(call => call[0] === 'quiz:started');
+        if (quizStartedCall) {
+          quizStartedCall[1](quizStartedData);
+        }
+      });
+
+      // Simulate quiz ended event
+      act(() => {
+        const quizEndedCall = mockSocket.on.mock.calls
+          .find(call => call[0] === 'quiz:ended');
+        if (quizEndedCall) {
+          quizEndedCall[1]();
+        }
+      });
+
+      // Should show quiz results embedded in room
+      await waitFor(() => {
+        expect(screen.getByText('Quiz Finished!')).toBeInTheDocument();
+      });
+
+      // Room structure should still be visible
+      expect(screen.getByText('Players')).toBeInTheDocument();
+      expect(screen.getByText('Chat')).toBeInTheDocument();
+    });
+
+    it('should return to lobby state after quiz completion', async () => {
+      render(<Room room={mockRoom} currentUser={mockCurrentUser} onLeave={mockOnLeave} />);
+
+      // Start and end quiz
+      const quizStartedData = {
+        quiz: {
+          id: 'quiz-1',
+          type: 'text' as const,
+          question: 'Test question?',
+          answer: 'Test answer',
+        },
+      };
+
+      act(() => {
+        const quizStartedCall = mockSocket.on.mock.calls
+          .find(call => call[0] === 'quiz:started');
+        if (quizStartedCall) {
+          quizStartedCall[1](quizStartedData);
+        }
+      });
+
+      act(() => {
+        const quizEndedCall = mockSocket.on.mock.calls
+          .find(call => call[0] === 'quiz:ended');
+        if (quizEndedCall) {
+          quizEndedCall[1]();
+        }
+      });
+
+      // Click "Back to Lobby" button
+      await waitFor(() => {
+        const backButton = screen.getByText('Back to Lobby');
+        fireEvent.click(backButton);
+      });
+
+      // Should return to waiting state
+      await waitFor(() => {
+        expect(screen.getByText('Waiting for Quiz')).toBeInTheDocument();
+      });
     });
   });
 }); 

@@ -545,7 +545,7 @@ describe('RoomPage', () => {
     });
   });
 
-  it('should handle quiz:started event and navigate to quiz game', async () => {
+  it('should handle quiz events in integrated Room component', async () => {
     const { getSocket, isConnected } = await import('@/lib/socketClient');
     const { getUserName, getUserId } = await import('@/lib/userStorage');
     
@@ -555,18 +555,15 @@ describe('RoomPage', () => {
     (getUserId as unknown as ReturnType<typeof vi.fn>).mockReturnValue('test-user-id');
 
     let roomJoinedHandler: ((data: Record<string, unknown>) => void) | undefined;
-    let quizStartedHandler: ((data: Record<string, unknown>) => void) | undefined;
     mockSocket.on.mockImplementation((event: string, handler: (data: Record<string, unknown>) => void) => {
       if (event === 'room:joined') {
         roomJoinedHandler = handler;
-      } else if (event === 'quiz:started') {
-        quizStartedHandler = handler;
       }
     });
 
     render(<RoomPage />);
 
-    // First, join the room
+    // Join the room
     if (roomJoinedHandler) {
       roomJoinedHandler({
         room: {
@@ -582,16 +579,10 @@ describe('RoomPage', () => {
       });
     }
 
-    // Then simulate quiz start
-    if (quizStartedHandler) {
-      quizStartedHandler({
-        quiz: { id: 'quiz-1', type: 'text', question: 'Test?', answer: 'Yes' },
-        timeLimit: 30
-      });
-    }
-
+    // Verify Room component is rendered instead of navigation
     await waitFor(() => {
-      expect(mockRouter.push).toHaveBeenCalledWith(expect.stringContaining('/quiz-game?'));
+      expect(screen.getByTestId('room-component')).toBeInTheDocument();
+      expect(mockRouter.push).not.toHaveBeenCalledWith(expect.stringContaining('/quiz-game?'));
     });
   });
 

@@ -3,6 +3,7 @@
  * - Split into smaller, focused components
  * - Uses custom hooks for chat management
  * - Maintains anime pop style design
+ * - Integrates QuizGame component for in-room gaming
  */
 
 import React, { useState, useEffect } from 'react';
@@ -10,7 +11,7 @@ import { Card, CardHeader, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { QuizCreator } from '@/features/quiz/components/QuizCreator';
-import type { Room, User, Quiz } from '@/types';
+import type { Room, User, Quiz, Score } from '@/types';
 import { leaveRoom, transferHost, startQuiz, addQuiz, getSocket } from '@/lib/socketClient';
 import { getUserName, getUserId } from '@/lib/userStorage';
 import { useChat } from '@/features/chat/hooks/useChat';
@@ -220,7 +221,7 @@ function ChatMessage({ message }: ChatMessageProps) {
 }
 
 /**
- * Game status component
+ * Game status component - shows waiting state or embedded quiz
  */
 interface GameStatusProps {
   isHost: boolean;
@@ -247,6 +248,220 @@ function GameStatus({ isHost, hasQuizzes, onManageQuizzes }: GameStatusProps) {
             <Button onClick={onManageQuizzes}>
               Start Quiz
             </Button>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+/**
+ * Integrated Quiz Game component - embedded within room layout
+ */
+interface IntegratedQuizGameProps {
+  quiz: Quiz;
+  currentUser: User;
+  users: User[];
+  isHost: boolean;
+  gameState: 'waiting' | 'active' | 'answered' | 'finished';
+  scores: Score[];
+  buzzedUser: User | null;
+  onEndQuiz: () => void;
+  onNextQuiz: () => void;
+}
+
+function IntegratedQuizGame({
+  quiz,
+  currentUser,
+  users,
+  isHost,
+  gameState,
+  scores,
+  buzzedUser,
+  onEndQuiz,
+  onNextQuiz,
+}: IntegratedQuizGameProps) {
+  const [answer, setAnswer] = useState('');
+  const [hasAnswered, setHasAnswered] = useState(false);
+  const [showAnswer, setShowAnswer] = useState(false);
+
+  const handleBuzzIn = () => {
+    const socket = getSocket();
+    if (socket && !buzzedUser) {
+      socket.emit('game:buzz', { user: currentUser });
+    }
+  };
+
+  const handleSubmitAnswer = () => {
+    if (answer.trim()) {
+      const socket = getSocket();
+      if (socket) {
+        socket.emit('game:answer', { user: currentUser, answer: answer.trim() });
+        setHasAnswered(true);
+      }
+    }
+  };
+
+  const handleShowAnswer = () => {
+    setShowAnswer(true);
+  };
+
+  const handleBackToLobby = () => {
+    onEndQuiz();
+  };
+
+  if (gameState === 'finished') {
+    return (
+      <Card variant="gradient">
+        <CardContent>
+          <div className="text-center py-8">
+            <div className="text-6xl mb-4">🎉</div>
+            <h3 className="text-xl font-semibold text-gray-800 mb-4">
+              Quiz Finished!
+            </h3>
+            
+            {scores.length > 0 && (
+              <div className="mb-6">
+                <h4 className="text-lg font-medium text-gray-800 mb-3">Final Scores</h4>
+                <div className="space-y-2">
+                  {scores
+                    .sort((a, b) => b.score - a.score)
+                    .map((score, index) => (
+                      <div
+                        key={score.userId}
+                        className={`flex justify-between items-center p-3 rounded-lg ${
+                          index === 0
+                            ? 'bg-yellow-100 border-2 border-yellow-300'
+                            : 'bg-gray-50 border border-gray-200'
+                        }`}
+                      >
+                        <div className="flex items-center">
+                          {index === 0 && <span className="text-yellow-500 mr-2">🏆</span>}
+                          <span className="font-medium">
+                            {users.find(u => u.id === score.userId)?.name || 'Unknown'}
+                          </span>
+                        </div>
+                        <span className="text-lg font-bold text-gray-800">
+                          {score.score}
+                        </span>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            )}
+            
+            <div className="flex gap-3 justify-center">
+              <Button onClick={handleBackToLobby}>
+                Back to Lobby
+              </Button>
+              {isHost && (
+                <Button variant="success" onClick={onNextQuiz}>
+                  Next Quiz
+                </Button>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card variant="gradient">
+      <CardContent>
+        <div className="py-6">
+          {/* Question */}
+          <div className="text-center mb-6">
+            <div className="text-4xl mb-4">❓</div>
+            <h3 className="text-xl font-semibold text-gray-800 mb-2">
+              {quiz.question}
+            </h3>
+            <p className="text-gray-600">
+              Type: {quiz.type}
+            </p>
+          </div>
+
+          {/* Buzz In Section */}
+          {!buzzedUser && gameState === 'active' && (
+            <div className="text-center mb-6">
+              <Button
+                size="lg"
+                variant="success"
+                onClick={handleBuzzIn}
+                className="animate-pulse"
+              >
+                🔔 Buzz In
+              </Button>
+            </div>
+          )}
+
+          {/* Buzzed User Display */}
+          {buzzedUser && (
+            <div className="text-center mb-6">
+              <div className="text-2xl mb-2">⚡</div>
+              <p className="text-lg font-medium text-gray-800">
+                <strong>{buzzedUser.name}</strong> buzzed in!
+              </p>
+              
+              {/* Answer Input for Buzzed User */}
+              {buzzedUser.id === currentUser.id && !hasAnswered && (
+                <div className="mt-4 max-w-md mx-auto">
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={answer}
+                      onChange={(e) => setAnswer(e.target.value)}
+                      placeholder="Type your answer..."
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter') {
+                          handleSubmitAnswer();
+                        }
+                      }}
+                      autoFocus
+                    />
+                    <Button onClick={handleSubmitAnswer} disabled={!answer.trim()}>
+                      Submit
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Show Answer Button for Host */}
+              {isHost && hasAnswered && !showAnswer && (
+                <div className="mt-4">
+                  <Button onClick={handleShowAnswer}>
+                    Show Answer
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Answer Reveal */}
+          {showAnswer && (
+            <div className="text-center mb-6">
+              <div className="text-2xl mb-2">💡</div>
+              <p className="text-lg font-medium text-gray-800">
+                Correct Answer: <strong>{quiz.answer}</strong>
+              </p>
+            </div>
+          )}
+
+          {/* Game Controls for Host */}
+          {isHost && (
+            <div className="text-center">
+              <div className="flex gap-3 justify-center">
+                <Button variant="ghost" onClick={handleBackToLobby}>
+                  End Quiz
+                </Button>
+                {showAnswer && (
+                  <Button variant="success" onClick={onNextQuiz}>
+                    Next Quiz
+                  </Button>
+                )}
+              </div>
+            </div>
           )}
         </div>
       </CardContent>
@@ -322,14 +537,19 @@ function QuizItem({ quiz, onStart }: QuizItemProps) {
 }
 
 /**
- * Room props interface
+ * Room component interface
  */
-export interface RoomProps {
+interface RoomProps {
   room: Room;
   currentUser: User;
   onLeave?: () => void;
   className?: string;
 }
+
+/**
+ * Game state type
+ */
+type GameState = 'lobby' | 'quiz-active' | 'quiz-answered' | 'quiz-finished';
 
 /**
  * Refactored Room component
@@ -341,6 +561,13 @@ export function Room({ room, currentUser, onLeave, className }: RoomProps) {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [roomQuizzes, setRoomQuizzes] = useState(room.quizzes);
   const [error, setError] = useState<string | null>(null);
+  
+  // Game state management
+  const [gameState, setGameState] = useState<GameState>('lobby');
+  const [currentQuiz, setCurrentQuiz] = useState<Quiz | null>(null);
+  const [quizGameState, setQuizGameState] = useState<'waiting' | 'active' | 'answered' | 'finished'>('waiting');
+  const [scores, setScores] = useState<Score[]>([]);
+  const [buzzedUser, setBuzzedUser] = useState<User | null>(null);
 
   const isHost = currentUser.isHost;
   const currentUserName = getUserName() || currentUser.name;
@@ -354,7 +581,7 @@ export function Room({ room, currentUser, onLeave, className }: RoomProps) {
   }, [room.quizzes]);
 
   /**
-   * Set up socket event listeners for quiz synchronization
+   * Set up socket event listeners for quiz synchronization and game events
    */
   useEffect(() => {
     const socket = getSocket();
@@ -380,13 +607,54 @@ export function Room({ room, currentUser, onLeave, className }: RoomProps) {
       setRoomQuizzes(prev => prev.filter(quiz => quiz.id !== data.quizId));
     };
 
+    // Listen for quiz game events
+    const handleQuizStarted = (data: { quiz: Quiz }) => {
+      console.log('Quiz started via socket:', data.quiz);
+      setCurrentQuiz(data.quiz);
+      setGameState('quiz-active');
+      setQuizGameState('active');
+      setBuzzedUser(null);
+    };
+
+    const handleQuizEnded = () => {
+      console.log('Quiz ended via socket');
+      setGameState('quiz-active');
+      setQuizGameState('finished');
+      setBuzzedUser(null);
+    };
+
+    const handleBuzzIn = (data: { user: User }) => {
+      console.log('User buzzed in:', data.user);
+      setBuzzedUser(data.user);
+    };
+
+    const handleAnswerSubmitted = (data: { user: User, answer: string }) => {
+      console.log('Answer submitted:', data.user, data.answer);
+      setQuizGameState('answered');
+    };
+
+    const handleScoreUpdate = (data: { scores: Score[] }) => {
+      console.log('Score updated:', data.scores);
+      setScores(data.scores);
+    };
+
     socket.on('quiz:added', handleQuizAdded);
     socket.on('quiz:removed', handleQuizRemoved);
+    socket.on('quiz:started', handleQuizStarted);
+    socket.on('quiz:ended', handleQuizEnded);
+    socket.on('game:buzz', handleBuzzIn);
+    socket.on('game:answer', handleAnswerSubmitted);
+    socket.on('game:score', handleScoreUpdate);
 
     // Cleanup listeners on unmount
     return () => {
       socket.off('quiz:added', handleQuizAdded);
       socket.off('quiz:removed', handleQuizRemoved);
+      socket.off('quiz:started', handleQuizStarted);
+      socket.off('quiz:ended', handleQuizEnded);
+      socket.off('game:buzz', handleBuzzIn);
+      socket.off('game:answer', handleAnswerSubmitted);
+      socket.off('game:score', handleScoreUpdate);
     };
   }, []);
 
@@ -429,6 +697,31 @@ export function Room({ room, currentUser, onLeave, className }: RoomProps) {
   };
 
   /**
+   * End the current quiz
+   */
+  const handleEndQuiz = () => {
+    setGameState('lobby');
+    setQuizGameState('waiting');
+    setCurrentQuiz(null);
+    setBuzzedUser(null);
+    // Emit quiz end event to server
+    const socket = getSocket();
+    if (socket) {
+      socket.emit('quiz:end');
+    }
+  };
+
+  /**
+   * Handle next quiz (for now, just return to lobby)
+   */
+  const handleNextQuiz = () => {
+    setGameState('lobby');
+    setQuizGameState('waiting');
+    setCurrentQuiz(null);
+    setBuzzedUser(null);
+  };
+
+  /**
    * Handle making user host
    */
   const handleMakeHost = (user: User) => {
@@ -463,6 +756,34 @@ export function Room({ room, currentUser, onLeave, className }: RoomProps) {
     }
   };
 
+  // Determine what to show in the game area
+  const renderGameArea = () => {
+    if (gameState === 'quiz-active' && currentQuiz) {
+      return (
+        <IntegratedQuizGame
+          quiz={currentQuiz}
+          currentUser={currentUser}
+          users={room.users}
+          isHost={isHost}
+          gameState={quizGameState}
+          scores={scores}
+          buzzedUser={buzzedUser}
+          onEndQuiz={handleEndQuiz}
+          onNextQuiz={handleNextQuiz}
+        />
+      );
+    }
+    
+    return (
+      <GameStatus
+        isHost={isHost}
+        hasQuizzes={roomQuizzes.length > 0}
+        onManageQuizzes={() => setShowQuizModal(true)}
+      />
+    );
+  };
+
+  // Regular room lobby view
   return (
     <div className={className} data-testid="room-component">
       {/* Room Header */}
@@ -508,12 +829,8 @@ export function Room({ room, currentUser, onLeave, className }: RoomProps) {
             currentUserName={currentUserName}
           />
 
-          {/* Game Status */}
-          <GameStatus
-            isHost={isHost}
-            hasQuizzes={roomQuizzes.length > 0}
-            onManageQuizzes={() => setShowQuizModal(true)}
-          />
+          {/* Game Area */}
+          {renderGameArea()}
         </div>
       </div>
 
