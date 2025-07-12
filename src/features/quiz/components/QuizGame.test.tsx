@@ -51,9 +51,9 @@ const mockImageQuiz: Quiz = {
 };
 
 const mockScores: Score[] = [
-  { userId: 'user-1', value: 100 },
-  { userId: 'user-2', value: 50 },
-  { userId: 'user-3', value: 75 },
+  { userId: 'user-1', score: 100 },
+  { userId: 'user-2', score: 50 },
+  { userId: 'user-3', score: 75 },
 ];
 
 describe('QuizGame Component', () => {

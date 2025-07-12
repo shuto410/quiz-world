@@ -11,7 +11,7 @@ import { Card, CardHeader, CardContent, CardFooter } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import type { Room, User } from '@/types';
-import { useSocketConnection } from '../hooks/useSocketConnection';
+import { useSocketConnection } from '../../room/hooks/useSocketConnection';
 import { useRoomList } from '../hooks/useRoomList';
 import { joinRoom, createRoom } from '@/lib/socketClient';
 import { getUserName, setUserName, getUserId } from '@/lib/userStorage';

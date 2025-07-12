@@ -2,6 +2,14 @@
  * Hook for managing chat messages
  */
 import { useState, useCallback, useEffect } from 'react';
+import { getSocket, sendChatMessage } from '@/lib/socketClient';
+
+/**
+ * Generate a unique message ID with timestamp and random entropy
+ */
+const generateMessageId = (): string => {
+  return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+};
 
 export interface ChatMessage {
   id: string;
@@ -30,6 +38,47 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
   const { roomName, maxMessages } = options;
   const [messages, setMessages] = useState<ChatMessage[]>([]);
 
+  const addMessage = useCallback((message: ChatMessage) => {
+    setMessages((prev) => {
+      const newMessages = [...prev, message];
+      
+      // Limit messages if maxMessages is set
+      if (maxMessages && newMessages.length > maxMessages) {
+        return newMessages.slice(-maxMessages);
+      }
+      
+      return newMessages;
+    });
+  }, [maxMessages]);
+
+  const addSystemMessage = useCallback((message: string) => {
+    addMessage({
+      id: generateMessageId(),
+      userId: 'system',
+      userName: 'System',
+      message,
+      timestamp: Date.now(),
+      type: 'system',
+    });
+  }, [addMessage]);
+
+  const sendMessage = useCallback((message: string, userId: string, userName: string) => {
+    if (!message.trim()) return;
+
+    try {
+      // Send message via Socket.io
+      sendChatMessage(message.trim(), userId, userName);
+    } catch (error) {
+      console.error('Failed to send chat message:', error);
+      // Show error to user instead of silent fallback
+      addSystemMessage('Failed to send message. Please check your connection and try again.');
+    }
+  }, [addSystemMessage]);
+
+  const clearMessages = useCallback(() => {
+    setMessages([]);
+  }, []);
+
   // Add welcome message if roomName is provided
   useEffect(() => {
     if (roomName) {
@@ -44,46 +93,34 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
     }
   }, [roomName]);
 
-  const addMessage = useCallback((message: ChatMessage) => {
-    setMessages((prev) => {
-      const newMessages = [...prev, message];
-      
-      // Limit messages if maxMessages is set
-      if (maxMessages && newMessages.length > maxMessages) {
-        return newMessages.slice(-maxMessages);
+  // Set up Socket.io listeners for real-time chat
+  useEffect(() => {
+    const socket = getSocket();
+    if (!socket) return;
+
+    const handleChatMessage = (data: { message: string; userId: string; userName: string; timestamp: number }) => {
+      // Validate incoming data
+      if (!data.message || !data.userId || !data.userName || !data.timestamp) {
+        console.warn('Invalid chat message data received:', data);
+        return;
       }
-      
-      return newMessages;
-    });
-  }, [maxMessages]);
 
-  const sendMessage = useCallback((message: string, userId: string, userName: string) => {
-    if (!message.trim()) return;
+      addMessage({
+        id: `${data.userId}-${data.timestamp}-${Math.random().toString(36).substr(2, 9)}`,
+        userId: data.userId,
+        userName: data.userName,
+        message: data.message,
+        timestamp: data.timestamp,
+        type: 'user',
+      });
+    };
 
-    addMessage({
-      id: Date.now().toString(),
-      userId,
-      userName,
-      message: message.trim(),
-      timestamp: Date.now(),
-      type: 'user',
-    });
+    socket.on('chat:message', handleChatMessage);
+
+    return () => {
+      socket.off('chat:message', handleChatMessage);
+    };
   }, [addMessage]);
-
-  const addSystemMessage = useCallback((message: string) => {
-    addMessage({
-      id: Date.now().toString(),
-      userId: 'system',
-      userName: 'System',
-      message,
-      timestamp: Date.now(),
-      type: 'system',
-    });
-  }, [addMessage]);
-
-  const clearMessages = useCallback(() => {
-    setMessages([]);
-  }, []);
 
   return {
     messages,

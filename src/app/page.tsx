@@ -9,49 +9,41 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { RoomList } from '../features/room/components/RoomList';
+import { RoomList } from '../features/room-list/components/RoomList';
 import { Button } from '../components/ui/Button';
 import type { Room } from '../types';
+import { createRoom } from '../lib/socketClient';
+import { getUserName, getUserId } from '../lib/userStorage';
+import { ToastProvider, useToast } from '../contexts/ToastContext';
 
-export default function Home() {
+function HomeContent() {
   const router = useRouter();
+  const { showWarning, showError } = useToast();
 
   const handleRoomJoined = (room: Room) => {
     // Navigate to room page
     router.push(`/room/${room.id}`);
   };
 
-  const handleCreateQuiz = () => {
-    router.push('/quiz-creator');
-  };
-
-  const handlePlayQuiz = () => {
-    // Example quiz data for testing
-    const exampleQuiz = {
-      id: 'example-quiz',
-      type: 'text' as const,
-      question: 'What is the capital of Japan?',
-      answer: 'Tokyo',
-    };
+  const handleCreateDemoRoom = async () => {
+    const userName = getUserName();
+    const userId = getUserId();
     
-    const exampleUsers = [
-      { id: 'user-1', name: 'Alice', isHost: false },
-      { id: 'user-2', name: 'Bob', isHost: true },
-    ];
-    
-    const exampleScores = [
-      { userId: 'user-1', value: 100 },
-      { userId: 'user-2', value: 150 },
-    ];
+    if (!userName) {
+      showWarning('ユーザー名を設定してください');
+      return;
+    }
 
-    const params = new URLSearchParams({
-      quiz: JSON.stringify(exampleQuiz),
-      users: JSON.stringify(exampleUsers),
-      scores: JSON.stringify(exampleScores),
-      gameState: 'active',
-    });
-
-    router.push(`/quiz-game?${params.toString()}`);
+    try {
+      // Create demo room with mock quiz data using Socket.io
+      const demoRoomName = '🎯 デモルーム (サンプルクイズ付き)';
+      await createRoom(demoRoomName, true, 8, userName, userId, true);
+      
+      // Note: Navigation will be handled by RoomList component's onRoomCreated event
+    } catch (error) {
+      console.error('Failed to create demo room:', error);
+      showError('デモルームの作成に失敗しました');
+    }
   };
 
   return (
@@ -67,12 +59,9 @@ export default function Home() {
           </p>
           
           {/* Quick Actions */}
-          <div className="flex gap-4 justify-center mb-8">
-            <Button onClick={handleCreateQuiz}>
-              Create Quiz
-            </Button>
-            <Button variant="secondary" onClick={handlePlayQuiz}>
-              Demo Quiz Game
+          <div className="flex gap-4 justify-center mb-8 flex-wrap">
+            <Button variant="secondary" onClick={handleCreateDemoRoom}>
+              🎯 Create Demo Room
             </Button>
           </div>
         </div>
@@ -81,5 +70,13 @@ export default function Home() {
         <RoomList onRoomJoined={handleRoomJoined} />
       </div>
     </div>
+  );
+}
+
+export default function Home() {
+  return (
+    <ToastProvider position="top-right">
+      <HomeContent />
+    </ToastProvider>
   );
 }

@@ -8,7 +8,7 @@ import userEvent from '@testing-library/user-event';
 import { RoomList } from './RoomList';
 import * as socketClient from '../../../lib/socketClient';
 import * as userStorage from '../../../lib/userStorage';
-import * as useSocketConnection from '../hooks/useSocketConnection';
+import * as useSocketConnection from '../../room/hooks/useSocketConnection';
 import * as useRoomList from '../hooks/useRoomList';
 import type { Room, User } from '../../../types';
 
@@ -34,7 +34,7 @@ vi.mock('../../../lib/userStorage', () => ({
 }));
 
 // Mock hooks
-vi.mock('../hooks/useSocketConnection', () => ({
+vi.mock('../../room/hooks/useSocketConnection', () => ({
   useSocketConnection: vi.fn(),
 }));
 

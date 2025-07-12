@@ -66,7 +66,7 @@ function handleConnection(socket: Socket<ClientToServerEvents, ServerToClientEve
   console.log('User connected:', socket.id);
 
   // Room management events
-  socket.on('room:create', (data: { name: string; isPublic: boolean; maxPlayers?: number; userName?: string; userId?: string }) => handleRoomCreate(socket, data));
+  socket.on('room:create', (data: { name: string; isPublic: boolean; maxPlayers?: number; userName?: string; userId?: string; isDemo?: boolean }) => handleRoomCreate(socket, data));
   socket.on('room:join', (data: { roomId: string; userId: string; userName: string }) => handleRoomJoin(socket, data));
   socket.on('room:leave', () => handleRoomLeave(socket));
   socket.on('room:list', () => handleRoomList(socket));
@@ -81,6 +81,9 @@ function handleConnection(socket: Socket<ClientToServerEvents, ServerToClientEve
   socket.on('quiz:start', (data: { quizId: string; timeLimit?: number }) => handleQuizStart(socket, data));
   socket.on('quiz:answer', (data: { quizId: string; answer: string }) => handleQuizAnswer(socket, data));
   socket.on('quiz:judge', (data: { userId: string; isCorrect: boolean; score?: number }) => handleQuizJudge(socket, data));
+  
+  // Chat events
+  socket.on('chat:message', (data: { message: string; userId: string; userName: string }) => handleChatMessage(socket, data));
 
   // Handle disconnection
   socket.on('disconnect', () => handleDisconnect(socket));
@@ -91,14 +94,14 @@ function handleConnection(socket: Socket<ClientToServerEvents, ServerToClientEve
  * @param socket - Socket instance
  * @param data - Room creation data
  */
-function handleRoomCreate(socket: Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>, data: { name: string; isPublic: boolean; maxPlayers?: number; userName?: string; userId?: string }) {
+async function handleRoomCreate(socket: Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>, data: { name: string; isPublic: boolean; maxPlayers?: number; userName?: string; userId?: string; isDemo?: boolean }) {
   try {
     console.log('Room creation request:', data);
     
     const userName = data.userName || socket.data.userName || 'Anonymous';
     const userId = data.userId;
     
-    console.log('Creating room with:', { name: data.name, isPublic: data.isPublic, maxPlayers: data.maxPlayers, userName, userId });
+    console.log('Creating room with:', { name: data.name, isPublic: data.isPublic, maxPlayers: data.maxPlayers, userName, userId, isDemo: data.isDemo });
     
     // Create room with the provided user ID if available
     console.log('About to create room with userId:', userId);
@@ -107,7 +110,16 @@ function handleRoomCreate(socket: Socket<ClientToServerEvents, ServerToClientEve
       : createRoom(data.name, data.isPublic, data.maxPlayers, userName);
     console.log('Room creation method used:', userId ? 'createRoomWithHost' : 'createRoom');
     
-    console.log('Room created successfully:', { roomId: room.id, hostId: room.hostId, hostName: room.users[0].name });
+    // Add demo quizzes if this is a demo room
+    if (data.isDemo) {
+      console.log('Adding demo quiz data to room');
+      const { getRandomQuizzes } = await import('../data/mockQuizzes');
+      const demoQuizzes = getRandomQuizzes(5);
+      room.quizzes = demoQuizzes;
+      console.log(`Added ${demoQuizzes.length} demo quizzes to room ${room.id}`);
+    }
+    
+    console.log('Room created successfully:', { roomId: room.id, hostId: room.hostId, hostName: room.users[0].name, quizCount: room.quizzes.length });
     
     // Set socket data
     socket.data.userId = room.users[0].id;
@@ -124,7 +136,7 @@ function handleRoomCreate(socket: Socket<ClientToServerEvents, ServerToClientEve
     console.log(`Sending room:joined event to host ${userName} (${room.users[0].id})`);
     socket.emit('room:joined', { room, user: room.users[0] });
     
-    console.log(`Room created: ${room.id} by ${userName}`);
+    console.log(`Room created: ${room.id} by ${userName}${data.isDemo ? ' (with demo data)' : ''}`);
   } catch (error) {
     console.error('Error creating room:', error);
     socket.emit('error', { message: `Failed to create room: ${error instanceof Error ? error.message : 'Unknown error'}` });
@@ -543,6 +555,48 @@ function handleQuizJudge(socket: Socket<ClientToServerEvents, ServerToClientEven
     console.log(`Quiz judged for user ${data.userId} in room: ${roomId}`);
   } catch {
     socket.emit('error', { message: 'Failed to judge answer' });
+  }
+}
+
+/**
+ * Handle chat message
+ * @param socket - Socket instance
+ * @param data - Chat message data
+ */
+function handleChatMessage(socket: Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>, data: { message: string; userId: string; userName: string }) {
+  try {
+    const { roomId } = socket.data;
+    
+    if (!roomId) {
+      socket.emit('error', { message: 'Not in a room' });
+      return;
+    }
+    
+    const room = getRoom(roomId);
+    if (!room) {
+      socket.emit('error', { message: 'Room not found' });
+      return;
+    }
+    
+    // Verify user is in the room
+    const user = getUser(roomId, data.userId);
+    if (!user) {
+      socket.emit('error', { message: 'User not found in room' });
+      return;
+    }
+    
+    // Broadcast message to all users in the room
+    io.to(roomId).emit('chat:message', {
+      message: data.message.trim(),
+      userId: data.userId,
+      userName: data.userName,
+      timestamp: Date.now()
+    });
+    
+    console.log(`Chat message from ${data.userName} (${data.userId}) in room ${roomId}: ${data.message}`);
+  } catch (error) {
+    console.error('Error handling chat message:', error);
+    socket.emit('error', { message: 'Failed to send message' });
   }
 }
 

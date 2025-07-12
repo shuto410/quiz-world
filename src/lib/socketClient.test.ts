@@ -279,12 +279,32 @@ describe('Socket.io Client', () => {
         maxPlayers,
         userName,
         userId,
+        isDemo: false,
       });
     });
 
     it('createRoom should throw error when not connected', () => {
       mockSocket.connected = false;
       expect(() => socketClient.createRoom('Test', true)).toThrow('Socket not connected');
+    });
+
+    it('createRoom should support demo room creation', () => {
+      const name = 'Demo Room';
+      const isPublic = true;
+      const maxPlayers = 8;
+      const userName = 'Host';
+      const userId = 'user-1';
+      const isDemo = true;
+
+      socketClient.createRoom(name, isPublic, maxPlayers, userName, userId, isDemo);
+      expect(mockSocket.emit).toHaveBeenCalledWith('room:create', {
+        name,
+        isPublic,
+        maxPlayers,
+        userName,
+        userId,
+        isDemo: true,
+      });
     });
 
     it('joinRoom should emit "room:join" event', () => {

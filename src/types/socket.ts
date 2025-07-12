@@ -12,7 +12,7 @@ import type { Room, User, Quiz } from './index';
  */
 export interface ClientToServerEvents {
   // Room management
-  'room:create': (data: { name: string; isPublic: boolean; maxPlayers?: number; userName?: string; userId?: string }) => void;
+  'room:create': (data: { name: string; isPublic: boolean; maxPlayers?: number; userName?: string; userId?: string; isDemo?: boolean }) => void;
   'room:join': (data: { roomId: string; userId: string; userName: string }) => void;
   'room:leave': () => void;
   'room:list': () => void;
@@ -27,6 +27,14 @@ export interface ClientToServerEvents {
   'quiz:start': (data: { quizId: string; timeLimit?: number }) => void;
   'quiz:answer': (data: { quizId: string; answer: string }) => void;
   'quiz:judge': (data: { userId: string; isCorrect: boolean; score?: number }) => void;
+  'quiz:ended': () => void;
+  
+  // Game events
+  'game:buzz': (data: { user: User }) => void;
+  'game:answer': (data: { user: User; answer: string }) => void;
+  
+  // Chat events
+  'chat:message': (data: { message: string; userId: string; userName: string }) => void;
 }
 
 /**
@@ -52,6 +60,14 @@ export interface ServerToClientEvents {
   'quiz:answered': (data: { userId: string; answer: string }) => void;
   'quiz:judged': (data: { userId: string; isCorrect: boolean; score: number }) => void;
   'quiz:ended': (data: { results: Array<{ userId: string; score: number }> }) => void;
+  
+  // Game events
+  'game:buzz': (data: { user: User }) => void;
+  'game:answer': (data: { user: User; answer: string }) => void;
+  'game:score': (data: { scores: Array<{ userId: string; score: number }> }) => void;
+  
+  // Chat events
+  'chat:message': (data: { message: string; userId: string; userName: string; timestamp: number }) => void;
   
   // Error events
   'error': (data: { message: string }) => void;

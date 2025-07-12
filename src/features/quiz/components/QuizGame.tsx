@@ -262,7 +262,7 @@ interface ScoreboardProps {
 }
 
 function Scoreboard({ scores, users, currentUserId }: ScoreboardProps) {
-  const sortedScores = [...scores].sort((a, b) => b.value - a.value);
+  const sortedScores = [...scores].sort((a, b) => b.score - a.score);
 
   return (
     <Card variant="elevated">
@@ -290,7 +290,7 @@ function Scoreboard({ scores, users, currentUserId }: ScoreboardProps) {
                     {user?.name || 'Unknown'}
                   </span>
                 </div>
-                <span className="font-bold text-pink-600">{score.value}</span>
+                <span className="font-bold text-pink-600">{score.score}</span>
               </div>
             );
           })}

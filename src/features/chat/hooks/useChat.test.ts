@@ -4,10 +4,16 @@
 import { describe, test, expect, beforeEach, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useChat } from './useChat';
+import * as socketClientModule from '@/lib/socketClient';
 
 describe('useChat', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Mock the socket client functions
+    vi.spyOn(socketClientModule, 'getSocket').mockReturnValue(null);
+    vi.spyOn(socketClientModule, 'sendChatMessage').mockImplementation(() => {
+      throw new Error('Socket not connected');
+    });
   });
 
   test('should initialize with empty messages', () => {
@@ -16,7 +22,7 @@ describe('useChat', () => {
     expect(result.current.messages).toEqual([]);
   });
 
-  test('should add user message', () => {
+  test('should show error message when socket fails', () => {
     const { result } = renderHook(() => useChat());
     
     act(() => {
@@ -25,10 +31,10 @@ describe('useChat', () => {
     
     expect(result.current.messages).toHaveLength(1);
     expect(result.current.messages[0]).toMatchObject({
-      userId: 'user1',
-      userName: 'User 1',
-      message: 'Hello world',
-      type: 'user',
+      userId: 'system',
+      userName: 'System',
+      message: 'Failed to send message. Please check your connection and try again.',
+      type: 'system',
     });
     expect(result.current.messages[0].id).toBeDefined();
     expect(result.current.messages[0].timestamp).toBeDefined();
@@ -71,8 +77,8 @@ describe('useChat', () => {
     });
     
     expect(result.current.messages).toHaveLength(3);
-    expect(result.current.messages[0].message).toBe('First message');
-    expect(result.current.messages[1].message).toBe('Second message');
+    expect(result.current.messages[0].message).toBe('Failed to send message. Please check your connection and try again.');
+    expect(result.current.messages[1].message).toBe('Failed to send message. Please check your connection and try again.');
     expect(result.current.messages[2].message).toBe('System announcement');
   });
 
@@ -116,9 +122,9 @@ describe('useChat', () => {
     });
     
     expect(result.current.messages).toHaveLength(3);
-    expect(result.current.messages[0].message).toBe('Message 2');
-    expect(result.current.messages[1].message).toBe('Message 3');
-    expect(result.current.messages[2].message).toBe('Message 4');
+    expect(result.current.messages[0].message).toBe('Failed to send message. Please check your connection and try again.');
+    expect(result.current.messages[1].message).toBe('Failed to send message. Please check your connection and try again.');
+    expect(result.current.messages[2].message).toBe('Failed to send message. Please check your connection and try again.');
   });
 
   test('should provide message count', () => {
@@ -150,5 +156,28 @@ describe('useChat', () => {
     });
     
     expect(result.current.messages[0].timestamp).toBe(customTimestamp);
+  });
+
+  test('should add user message when socket is connected', () => {
+    // Mock successful socket connection
+    const mockSocket = {
+      on: vi.fn(),
+      off: vi.fn(),
+      emit: vi.fn(),
+    };
+    vi.spyOn(socketClientModule, 'getSocket').mockReturnValue(mockSocket as any);
+    vi.spyOn(socketClientModule, 'sendChatMessage').mockImplementation(() => {
+      // Simulate successful message sending
+    });
+
+    const { result } = renderHook(() => useChat());
+    
+    act(() => {
+      result.current.sendMessage('Hello world', 'user1', 'User 1');
+    });
+    
+    // When socket connection is successful, no error message should be added
+    expect(result.current.messages).toHaveLength(0);
+    expect(socketClientModule.sendChatMessage).toHaveBeenCalledWith('Hello world', 'user1', 'User 1');
   });
 });

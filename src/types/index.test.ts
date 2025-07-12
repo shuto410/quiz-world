@@ -28,8 +28,8 @@ test('Quiz type usage', () => {
 });
 
 test('Score type usage', () => {
-  const score: Score = { userId: 'u1', value: 10 };
-  expect(score.value).toBe(10);
+  const score: Score = { userId: 'u1', score: 10 };
+  expect(score.score).toBe(10);
 });
 
 test('Room type usage', () => {

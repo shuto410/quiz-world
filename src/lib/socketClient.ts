@@ -41,6 +41,7 @@ export type EventListeners = {
   onQuizJudged?: (data: { userId: string; isCorrect: boolean; score: number }) => void;
   onQuizEnded?: (data: { results: Array<{ userId: string; score: number }> }) => void;
   onError?: (data: { message: string }) => void;
+  onChatMessage?: (data: { message: string; userId: string; userName: string; timestamp: number }) => void;
   onConnectionStateChange?: (state: ConnectionState) => void;
 };
 
@@ -200,6 +201,12 @@ function setupEventListeners(
     console.error('Server error:', data.message);
     listeners.onError?.(data);
   });
+  
+  // Chat events
+  socket.on('chat:message', (data) => {
+    console.log('Chat message received:', data.message, 'from:', data.userName);
+    listeners.onChatMessage?.(data);
+  });
 }
 
 /**
@@ -235,14 +242,15 @@ export function disconnect(): void {
  * @param maxPlayers - Maximum number of players
  * @param userName - User name (host)
  * @param userId - User ID (host)
+ * @param isDemo - Whether this is a demo room with mock data
  */
-export function createRoom(name: string, isPublic: boolean, maxPlayers: number = 8, userName?: string, userId?: string): void {
+export function createRoom(name: string, isPublic: boolean, maxPlayers: number = 8, userName?: string, userId?: string, isDemo: boolean = false): void {
   const currentSocket = getSocket();
   if (!currentSocket?.connected) {
     throw new Error('Socket not connected');
   }
-  console.log('Creating room with:', { name, isPublic, maxPlayers, userName, userId });
-  currentSocket.emit('room:create', { name, isPublic, maxPlayers, userName, userId });
+  console.log('Creating room with:', { name, isPublic, maxPlayers, userName, userId, isDemo });
+  currentSocket.emit('room:create', { name, isPublic, maxPlayers, userName, userId, isDemo });
 }
 
 /**
@@ -361,6 +369,20 @@ export function submitAnswer(quizId: string, answer: string): void {
     throw new Error('Socket not connected');
   }
   currentSocket.emit('quiz:answer', { quizId, answer });
+}
+
+/**
+ * Send a chat message
+ * @param message - Message content
+ * @param userId - User ID
+ * @param userName - User name
+ */
+export function sendChatMessage(message: string, userId: string, userName: string): void {
+  const currentSocket = getSocket();
+  if (!currentSocket?.connected) {
+    throw new Error('Socket not connected');
+  }
+  currentSocket.emit('chat:message', { message, userId, userName });
 }
 
 /**
