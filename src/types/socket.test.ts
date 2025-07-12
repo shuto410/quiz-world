@@ -147,6 +147,7 @@ describe('Socket.io Event Types', () => {
       quizzes: [],
       hostId: 'user1',
       maxPlayers: 8,
+      createdAt: Date.now(),
     };
     events['room:created']({ room });
     

@@ -9,7 +9,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { RoomList } from '../components/RoomList';
+import { RoomList } from '../features/room/components/RoomList';
 import { Button } from '../components/ui/Button';
 import type { Room } from '../types';
 

@@ -1,0 +1,722 @@
+/**
+ * Room Component Tests
+ * Tests for the refactored Room component including:
+ * - Room header display
+ * - Player list functionality
+ * - Chat integration
+ * - Quiz management (host only)
+ * - Host privilege controls
+ */
+
+import React from 'react';
+import { render, screen, fireEvent, waitFor, within, act } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { vi, beforeEach, afterEach, describe, it, expect } from 'vitest';
+import { Room } from './Room';
+import type { Room as RoomType, User, Quiz } from '@/types';
+
+// Mock dependencies
+const mockSocket = {
+  on: vi.fn(),
+  off: vi.fn(),
+  emit: vi.fn(),
+  connected: true,
+};
+
+vi.mock('@/lib/socketClient', () => ({
+  leaveRoom: vi.fn(),
+  transferHost: vi.fn(),
+  startQuiz: vi.fn(),
+  addQuiz: vi.fn(),
+  getSocket: vi.fn(() => mockSocket),
+}));
+
+vi.mock('@/lib/userStorage', () => ({
+  getUserName: vi.fn(() => 'Test User'),
+  getUserId: vi.fn(() => 'test-user-id'),
+}));
+
+vi.mock('@/features/chat/hooks/useChat', () => ({
+  useChat: vi.fn(() => ({
+    messages: [
+      {
+        id: '1',
+        userName: 'System',
+        message: 'Welcome to the room!',
+        type: 'system',
+      },
+      {
+        id: '2',
+        userName: 'Test User',
+        message: 'Hello everyone!',
+        type: 'user',
+      },
+    ],
+    sendMessage: vi.fn(),
+  })),
+}));
+
+vi.mock('@/features/quiz/components/QuizCreator', () => ({
+  QuizCreator: ({ isOpen, onQuizCreated, onClose }: { isOpen: boolean; onQuizCreated: (quiz: Quiz) => void; onClose: () => void }) => {
+    if (!isOpen) return null;
+    
+    return (
+      <div data-testid="quiz-creator">
+        <button
+          onClick={() =>
+            onQuizCreated({
+              id: 'new-quiz',
+              type: 'text',
+              question: 'What is 2+2?',
+              answer: '4',
+            })
+          }
+        >
+          Create Quiz
+        </button>
+        <button onClick={onClose}>Cancel</button>
+      </div>
+    );
+  },
+}));
+
+describe('Room Component', () => {
+  let mockRoom: RoomType;
+  let mockCurrentUser: User;
+  let mockOnLeave: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    mockOnLeave = vi.fn();
+
+    // Default room setup
+    mockRoom = {
+      id: 'test-room-id',
+      name: 'Test Room',
+      hostId: 'host-user-id',
+      users: [
+        { id: 'host-user-id', name: 'Host User', isHost: true },
+        { id: 'regular-user-id', name: 'Regular User', isHost: false },
+      ],
+      isPublic: true,
+      maxPlayers: 8,
+      quizzes: [
+        {
+          id: 'quiz-1',
+          type: 'text',
+          question: 'What is the capital of Japan?',
+          answer: 'Tokyo',
+        },
+      ],
+      createdAt: Date.now(),
+    };
+
+    mockCurrentUser = {
+      id: 'host-user-id',
+      name: 'Host User',
+      isHost: true,
+    };
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  describe('Room Header', () => {
+    it('should display room name and player count', () => {
+      render(<Room room={mockRoom} currentUser={mockCurrentUser} onLeave={mockOnLeave} />);
+
+      expect(screen.getByTestId('room-name')).toHaveTextContent('Test Room');
+      expect(screen.getByText('2/8 players • Public Room')).toBeInTheDocument();
+    });
+
+    it('should show private room indicator when room is private', () => {
+      const privateRoom = { ...mockRoom, isPublic: false };
+      render(<Room room={privateRoom} currentUser={mockCurrentUser} onLeave={mockOnLeave} />);
+
+      expect(screen.getByText('2/8 players')).toBeInTheDocument();
+      expect(screen.queryByText('Public Room')).not.toBeInTheDocument();
+    });
+
+    it('should show Manage Quizzes button for host users', () => {
+      render(<Room room={mockRoom} currentUser={mockCurrentUser} onLeave={mockOnLeave} />);
+
+      expect(screen.getByText('Manage Quizzes')).toBeInTheDocument();
+    });
+
+    it('should not show Manage Quizzes button for non-host users', () => {
+      const nonHostUser = { id: 'regular-user-id', name: 'Regular User', isHost: false };
+      render(<Room room={mockRoom} currentUser={nonHostUser} onLeave={mockOnLeave} />);
+
+      expect(screen.queryByText('Manage Quizzes')).not.toBeInTheDocument();
+    });
+
+    it('should show Leave Room button for all users', () => {
+      render(<Room room={mockRoom} currentUser={mockCurrentUser} onLeave={mockOnLeave} />);
+
+      expect(screen.getByText('Leave Room')).toBeInTheDocument();
+    });
+  });
+
+  describe('Player List', () => {
+    it('should display all players in the room', () => {
+      render(<Room room={mockRoom} currentUser={mockCurrentUser} onLeave={mockOnLeave} />);
+
+      expect(screen.getByText('Host User')).toBeInTheDocument();
+      expect(screen.getByText('Regular User')).toBeInTheDocument();
+    });
+
+    it('should show crown icon for host users', () => {
+      render(<Room room={mockRoom} currentUser={mockCurrentUser} onLeave={mockOnLeave} />);
+
+      // Host should have crown emoji
+      const hostElement = screen.getByText('Host User').closest('div');
+      expect(hostElement).toHaveTextContent('👑');
+    });
+
+    it('should show user icon for non-host users', () => {
+      render(<Room room={mockRoom} currentUser={mockCurrentUser} onLeave={mockOnLeave} />);
+
+      // Regular user should have user emoji
+      const regularUserElement = screen.getByText('Regular User').closest('div');
+      expect(regularUserElement).toHaveTextContent('👤');
+    });
+
+    it('should display current user in player list', () => {
+      render(<Room room={mockRoom} currentUser={mockCurrentUser} onLeave={mockOnLeave} />);
+
+      expect(screen.getByText('Host User')).toBeInTheDocument();
+      expect(screen.getByText('Regular User')).toBeInTheDocument();
+    });
+
+    it('should show Make Host button for host users on non-host players', () => {
+      render(<Room room={mockRoom} currentUser={mockCurrentUser} onLeave={mockOnLeave} />);
+
+      // Should show Make Host button for regular user (not for host user themselves)
+      const makeHostButtons = screen.getAllByText('Make Host');
+      expect(makeHostButtons).toHaveLength(1);
+    });
+
+    it('should not show Make Host button for non-host users', () => {
+      const nonHostUser = { id: 'regular-user-id', name: 'Regular User', isHost: false };
+      render(<Room room={mockRoom} currentUser={nonHostUser} onLeave={mockOnLeave} />);
+
+      expect(screen.queryByText('Make Host')).not.toBeInTheDocument();
+    });
+
+    it('should open confirmation modal and call transferHost when Make Host is confirmed', async () => {
+      const { transferHost } = await import('@/lib/socketClient');
+      render(<Room room={mockRoom} currentUser={mockCurrentUser} onLeave={mockOnLeave} />);
+
+      const makeHostButton = screen.getByText('Make Host');
+      fireEvent.click(makeHostButton);
+
+      // Check if the confirmation modal appears
+      const modalTitle = await screen.findByRole('heading', { name: /transfer host/i });
+      expect(modalTitle).toBeInTheDocument();
+
+      const confirmButton = screen.getByRole('button', { name: /transfer host/i });
+      fireEvent.click(confirmButton);
+
+      // Check if transferHost was called with the correct user id
+      await waitFor(() => {
+        expect(transferHost).toHaveBeenCalledWith('regular-user-id');
+      });
+    });
+  });
+
+  describe('Chat Functionality', () => {
+    it('should display chat messages', () => {
+      render(<Room room={mockRoom} currentUser={mockCurrentUser} onLeave={mockOnLeave} />);
+
+      expect(screen.getByText('Welcome to the room!')).toBeInTheDocument();
+      expect(screen.getByText('Hello everyone!')).toBeInTheDocument();
+    });
+
+    it('should show message input and send button', () => {
+      render(<Room room={mockRoom} currentUser={mockCurrentUser} onLeave={mockOnLeave} />);
+
+      expect(screen.getByPlaceholderText('Type a message...')).toBeInTheDocument();
+      expect(screen.getByText('Send')).toBeInTheDocument();
+    });
+
+    it('should send message when Send button is clicked', async () => {
+      const { useChat } = await import('@/features/chat/hooks/useChat');
+      const mockSendMessage = vi.fn();
+      (useChat as any).mockReturnValue({
+        messages: [],
+        sendMessage: mockSendMessage,
+      });
+
+      render(<Room room={mockRoom} currentUser={mockCurrentUser} onLeave={mockOnLeave} />);
+
+      const messageInput = screen.getByPlaceholderText('Type a message...');
+      const sendButton = screen.getByText('Send');
+
+      fireEvent.change(messageInput, { target: { value: 'Test message' } });
+      fireEvent.click(sendButton);
+
+      expect(mockSendMessage).toHaveBeenCalledWith('Test message', 'test-user-id', 'Test User');
+    });
+
+    it('should send message when Enter key is pressed', async () => {
+      const user = userEvent.setup();
+      const { useChat } = await import('@/features/chat/hooks/useChat');
+      const mockSendMessage = vi.fn();
+      (useChat as any).mockReturnValue({
+        messages: [],
+        sendMessage: mockSendMessage,
+      });
+
+      render(<Room room={mockRoom} currentUser={mockCurrentUser} onLeave={mockOnLeave} />);
+
+      const messageInput = screen.getByPlaceholderText('Type a message...');
+
+      await user.type(messageInput, 'Test message{enter}');
+
+      expect(mockSendMessage).toHaveBeenCalledWith('Test message', 'test-user-id', 'Test User');
+    });
+  });
+
+  describe('Quiz Management (Host Only)', () => {
+    it('should show game status section for hosts', () => {
+      render(<Room room={mockRoom} currentUser={mockCurrentUser} onLeave={mockOnLeave} />);
+
+      expect(screen.getByText('Waiting for Quiz')).toBeInTheDocument();
+    });
+
+    it('should show game status section for all users', () => {
+      const nonHostUser = { id: 'regular-user-id', name: 'Regular User', isHost: false };
+      render(<Room room={mockRoom} currentUser={nonHostUser} onLeave={mockOnLeave} />);
+
+      // Game status is shown to all users, not just hosts
+      expect(screen.getByText('Waiting for Quiz')).toBeInTheDocument();
+    });
+
+    it('should display available quizzes for hosts', () => {
+      render(<Room room={mockRoom} currentUser={mockCurrentUser} onLeave={mockOnLeave} />);
+
+      fireEvent.click(screen.getByText('Manage Quizzes'));
+
+      expect(screen.getByText('What is the capital of Japan?')).toBeInTheDocument();
+    });
+
+    it('should show Start Quiz button for each quiz', () => {
+      render(<Room room={mockRoom} currentUser={mockCurrentUser} onLeave={mockOnLeave} />);
+
+      fireEvent.click(screen.getByText('Manage Quizzes'));
+
+      expect(screen.getByText('Start')).toBeInTheDocument();
+    });
+
+    it('should start quiz when Start Quiz button is clicked', async () => {
+      const { startQuiz } = await import('@/lib/socketClient');
+      render(<Room room={mockRoom} currentUser={mockCurrentUser} onLeave={mockOnLeave} />);
+
+      fireEvent.click(screen.getByText('Manage Quizzes'));
+      fireEvent.click(screen.getByText('Start'));
+
+      // The actual implementation passes only quiz ID
+      expect(startQuiz).toHaveBeenCalledWith('quiz-1');
+    });
+
+    it('should show Create Quiz button for hosts', () => {
+      render(<Room room={mockRoom} currentUser={mockCurrentUser} onLeave={mockOnLeave} />);
+
+      fireEvent.click(screen.getByText('Manage Quizzes'));
+
+      // Use more specific selector for the button in quiz management modal
+      const createQuizButtons = screen.getAllByText('Create Quiz');
+      expect(createQuizButtons.length).toBeGreaterThan(0);
+    });
+
+    it('should open quiz creator when Create Quiz is clicked', () => {
+      render(<Room room={mockRoom} currentUser={mockCurrentUser} onLeave={mockOnLeave} />);
+
+      fireEvent.click(screen.getByText('Manage Quizzes'));
+      
+      // Click the Create Quiz button in the modal (not the one in quiz creator)
+      const createQuizButtons = screen.getAllByText('Create Quiz');
+      fireEvent.click(createQuizButtons[0]); // Click the first one (in modal)
+
+      expect(screen.getByTestId('quiz-creator')).toBeInTheDocument();
+    });
+
+    it('should open quiz creator and handle quiz creation via socket', async () => {
+      const { addQuiz } = await import('@/lib/socketClient');
+      render(<Room room={mockRoom} currentUser={mockCurrentUser} onLeave={mockOnLeave} />);
+
+      // Open quiz management modal
+      fireEvent.click(screen.getByText('Manage Quizzes'));
+      
+      // Open quiz creator - use getAllByText to handle multiple buttons
+      const createQuizButtons = screen.getAllByText('Create Quiz');
+      fireEvent.click(createQuizButtons[0]); // Click the first one (in modal)
+      
+      // Verify quiz creator is displayed
+      const quizCreator = screen.getByTestId('quiz-creator');
+      expect(quizCreator).toBeInTheDocument();
+      
+      // Find and click the Create Quiz button within the quiz creator
+      const createQuizButton = within(quizCreator).getByText('Create Quiz');
+      
+      await act(async () => {
+        fireEvent.click(createQuizButton);
+      });
+
+      // Verify that addQuiz was called with the new quiz
+      expect(addQuiz).toHaveBeenCalledWith({
+        id: 'new-quiz',
+        type: 'text',
+        question: 'What is 2+2?',
+        answer: '4',
+      });
+
+      // Quiz creator should be closed after successful creation
+      await waitFor(() => {
+        expect(screen.queryByTestId('quiz-creator')).not.toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('Room Actions', () => {
+    it('should call leaveRoom when Leave Room button is clicked', async () => {
+      const { leaveRoom } = await import('@/lib/socketClient');
+      render(<Room room={mockRoom} currentUser={mockCurrentUser} onLeave={mockOnLeave} />);
+
+      const leaveButton = screen.getByText('Leave Room');
+      fireEvent.click(leaveButton);
+
+      expect(leaveRoom).toHaveBeenCalledWith();
+    });
+
+    it('should call onLeave callback when leaving room', () => {
+      render(<Room room={mockRoom} currentUser={mockCurrentUser} onLeave={mockOnLeave} />);
+
+      const leaveButton = screen.getByText('Leave Room');
+      fireEvent.click(leaveButton);
+
+      expect(mockOnLeave).toHaveBeenCalled();
+    });
+  });
+
+  describe('Empty States', () => {
+    it('should show appropriate message when no quizzes exist', () => {
+      const roomWithoutQuizzes = { ...mockRoom, quizzes: [] };
+      render(<Room room={roomWithoutQuizzes} currentUser={mockCurrentUser} onLeave={mockOnLeave} />);
+
+      fireEvent.click(screen.getByText('Manage Quizzes'));
+
+      expect(screen.getByText('No quizzes available')).toBeInTheDocument();
+      expect(screen.getByText('Create some quizzes to start the game!')).toBeInTheDocument();
+    });
+
+    it('should show single player message when only one user', () => {
+      const singleUserRoom = {
+        ...mockRoom,
+        users: [{ id: 'host-user-id', name: 'Host User', isHost: true }],
+      };
+      render(<Room room={singleUserRoom} currentUser={mockCurrentUser} onLeave={mockOnLeave} />);
+
+      expect(screen.getByText('1/8 players • Public Room')).toBeInTheDocument();
+    });
+  });
+
+  describe('Accessibility', () => {
+    it('should have proper button labels', () => {
+      render(<Room room={mockRoom} currentUser={mockCurrentUser} onLeave={mockOnLeave} />);
+
+      expect(screen.getByRole('button', { name: 'Manage Quizzes' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Leave Room' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Send' })).toBeInTheDocument();
+    });
+
+    it('should have proper headings structure', () => {
+      render(<Room room={mockRoom} currentUser={mockCurrentUser} onLeave={mockOnLeave} />);
+
+      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Test Room');
+      expect(screen.getByRole('heading', { level: 2, name: 'Players' })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { level: 2, name: 'Chat' })).toBeInTheDocument();
+    });
+
+    it('should have accessible form controls', () => {
+      render(<Room room={mockRoom} currentUser={mockCurrentUser} onLeave={mockOnLeave} />);
+
+      const messageInput = screen.getByPlaceholderText('Type a message...');
+      expect(messageInput).toHaveAttribute('type', 'text');
+    });
+  });
+
+  describe('Edge Cases', () => {
+    it('should handle room with maximum players', () => {
+      const fullRoom = {
+        ...mockRoom,
+        maxPlayers: 2,
+        users: [
+          { id: 'host-user-id', name: 'Host User', isHost: true },
+          { id: 'regular-user-id', name: 'Regular User', isHost: false },
+        ],
+      };
+      render(<Room room={fullRoom} currentUser={mockCurrentUser} onLeave={mockOnLeave} />);
+
+      expect(screen.getByText('2/2 players • Public Room')).toBeInTheDocument();
+    });
+
+    it('should handle quiz with different types', () => {
+      const roomWithImageQuiz = {
+        ...mockRoom,
+        quizzes: [
+          {
+            id: 'quiz-1',
+            type: 'image' as const,
+            question: 'What anime is this?',
+            answer: 'One Piece',
+            image: { type: 'url' as const, data: 'https://example.com/image.jpg' },
+          },
+        ],
+      };
+      render(<Room room={roomWithImageQuiz} currentUser={mockCurrentUser} onLeave={mockOnLeave} />);
+
+      fireEvent.click(screen.getByText('Manage Quizzes'));
+
+      expect(screen.getByText('What anime is this?')).toBeInTheDocument();
+    });
+
+    it('should handle empty message submission', () => {
+      render(<Room room={mockRoom} currentUser={mockCurrentUser} onLeave={mockOnLeave} />);
+
+      const messageInput = screen.getByPlaceholderText('Type a message...');
+      const sendButton = screen.getByText('Send');
+
+      // Verify initial state
+      expect(messageInput).toHaveValue('');
+      expect(sendButton).toBeDisabled();
+    });
+  });
+
+  describe('Error Handling', () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('should display error message when quiz start fails', async () => {
+      const { startQuiz } = await import('@/lib/socketClient');
+      vi.mocked(startQuiz).mockImplementation(() => {
+        throw new Error('Network error');
+      });
+
+      render(<Room room={mockRoom} currentUser={mockCurrentUser} onLeave={mockOnLeave} />);
+
+      // Open quiz management modal and start a quiz
+      fireEvent.click(screen.getByText('Manage Quizzes'));
+      fireEvent.click(screen.getByText('Start'));
+
+      // Error message should be displayed
+      expect(screen.getByText('Failed to start quiz. Please try again.')).toBeInTheDocument();
+    });
+
+    it('should auto-clear error message after 5 seconds', async () => {
+      const { startQuiz } = await import('@/lib/socketClient');
+      vi.mocked(startQuiz).mockImplementation(() => {
+        throw new Error('Network error');
+      });
+
+      render(<Room room={mockRoom} currentUser={mockCurrentUser} onLeave={mockOnLeave} />);
+
+      // Trigger error
+      fireEvent.click(screen.getByText('Manage Quizzes'));
+      fireEvent.click(screen.getByText('Start'));
+
+      // Error should be visible
+      expect(screen.getByText('Failed to start quiz. Please try again.')).toBeInTheDocument();
+
+      // Fast forward 5 seconds
+      act(() => {
+        vi.advanceTimersByTime(5000);
+      });
+
+      // Error should be cleared
+      expect(screen.queryByText('Failed to start quiz. Please try again.')).not.toBeInTheDocument();
+    });
+
+    it('should allow manual dismissal of error message', async () => {
+      const { startQuiz } = await import('@/lib/socketClient');
+      vi.mocked(startQuiz).mockImplementation(() => {
+        throw new Error('Network error');
+      });
+
+      render(<Room room={mockRoom} currentUser={mockCurrentUser} onLeave={mockOnLeave} />);
+
+      // Trigger error
+      fireEvent.click(screen.getByText('Manage Quizzes'));
+      fireEvent.click(screen.getByText('Start'));
+
+      // Error should be visible
+      expect(screen.getByText('Failed to start quiz. Please try again.')).toBeInTheDocument();
+
+      // Click dismiss button
+      fireEvent.click(screen.getByText('✕'));
+
+      // Error should be cleared immediately
+      expect(screen.queryByText('Failed to start quiz. Please try again.')).not.toBeInTheDocument();
+    });
+
+    it('should clear previous errors when quiz starts successfully', async () => {
+      const { startQuiz } = await import('@/lib/socketClient');
+      
+      // First, make startQuiz fail
+      vi.mocked(startQuiz).mockImplementationOnce(() => {
+        throw new Error('Network error');
+      });
+
+      render(<Room room={mockRoom} currentUser={mockCurrentUser} onLeave={mockOnLeave} />);
+
+      // Trigger error
+      fireEvent.click(screen.getByText('Manage Quizzes'));
+      fireEvent.click(screen.getByText('Start'));
+
+      // Error should be visible
+      expect(screen.getByText('Failed to start quiz. Please try again.')).toBeInTheDocument();
+
+      // Now make startQuiz succeed
+      vi.mocked(startQuiz).mockImplementationOnce(() => {
+        // Success case - no error thrown
+      });
+
+      // Try starting quiz again
+      fireEvent.click(screen.getByText('Start'));
+
+      // Error should be cleared
+      expect(screen.queryByText('Failed to start quiz. Please try again.')).not.toBeInTheDocument();
+    });
+
+    it('should not display error message initially', () => {
+      render(<Room room={mockRoom} currentUser={mockCurrentUser} onLeave={mockOnLeave} />);
+
+      // No error should be visible initially
+      expect(screen.queryByText('Failed to start quiz. Please try again.')).not.toBeInTheDocument();
+    });
+
+    it('should display error message when quiz creation fails', async () => {
+      const { addQuiz } = await import('@/lib/socketClient');
+      vi.mocked(addQuiz).mockImplementation(() => {
+        throw new Error('Network error');
+      });
+
+      render(<Room room={mockRoom} currentUser={mockCurrentUser} onLeave={mockOnLeave} />);
+
+      // Open quiz creator and create a quiz
+      fireEvent.click(screen.getByText('Manage Quizzes'));
+      const createQuizButtons = screen.getAllByText('Create Quiz');
+      fireEvent.click(createQuizButtons[0]);
+      
+      const quizCreator = screen.getByTestId('quiz-creator');
+      const createQuizButton = within(quizCreator).getByText('Create Quiz');
+      fireEvent.click(createQuizButton);
+
+      // Error message should be displayed
+      expect(screen.getByText('Failed to add quiz. Please try again.')).toBeInTheDocument();
+    });
+
+    it('should auto-clear quiz creation error after 5 seconds', async () => {
+      const { addQuiz } = await import('@/lib/socketClient');
+      vi.mocked(addQuiz).mockImplementation(() => {
+        throw new Error('Network error');
+      });
+
+      render(<Room room={mockRoom} currentUser={mockCurrentUser} onLeave={mockOnLeave} />);
+
+      // Trigger error
+      fireEvent.click(screen.getByText('Manage Quizzes'));
+      const createQuizButtons = screen.getAllByText('Create Quiz');
+      fireEvent.click(createQuizButtons[0]);
+      
+      const quizCreator = screen.getByTestId('quiz-creator');
+      const createQuizButton = within(quizCreator).getByText('Create Quiz');
+      fireEvent.click(createQuizButton);
+
+      // Error should be visible
+      expect(screen.getByText('Failed to add quiz. Please try again.')).toBeInTheDocument();
+
+      // Fast forward 5 seconds
+      act(() => {
+        vi.advanceTimersByTime(5000);
+      });
+
+      // Error should be cleared
+      expect(screen.queryByText('Failed to add quiz. Please try again.')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('Socket Quiz Synchronization', () => {
+    it('should set up socket event listeners for quiz synchronization', () => {
+      render(<Room room={mockRoom} currentUser={mockCurrentUser} onLeave={mockOnLeave} />);
+
+      // Verify that socket event listeners are set up
+      expect(mockSocket.on).toHaveBeenCalledWith('quiz:added', expect.any(Function));
+      expect(mockSocket.on).toHaveBeenCalledWith('quiz:removed', expect.any(Function));
+    });
+
+    it('should update quiz list when quiz:added event is received', () => {
+      render(<Room room={mockRoom} currentUser={mockCurrentUser} onLeave={mockOnLeave} />);
+
+      // Find the quiz:added event handler
+      const quizAddedHandler = mockSocket.on.mock.calls.find(
+        (call: any[]) => call[0] === 'quiz:added'
+      )?.[1];
+
+      expect(quizAddedHandler).toBeDefined();
+
+      // Simulate receiving a quiz:added event
+      const newQuiz = {
+        id: 'new-quiz-from-server',
+        type: 'text' as const,
+        question: 'What is 3+3?',
+        answer: '6',
+      };
+
+      act(() => {
+        quizAddedHandler({ quiz: newQuiz });
+      });
+
+      // Verify the quiz appears in the management modal
+      fireEvent.click(screen.getByText('Manage Quizzes'));
+      expect(screen.getByText('What is 3+3?')).toBeInTheDocument();
+    });
+
+    it('should remove quiz from list when quiz:removed event is received', () => {
+      render(<Room room={mockRoom} currentUser={mockCurrentUser} onLeave={mockOnLeave} />);
+
+      // Find the quiz:removed event handler
+      const quizRemovedHandler = mockSocket.on.mock.calls.find(
+        (call: any[]) => call[0] === 'quiz:removed'
+      )?.[1];
+
+      expect(quizRemovedHandler).toBeDefined();
+
+      // Simulate removing the existing quiz
+      act(() => {
+        quizRemovedHandler({ quizId: 'quiz-1' });
+      });
+
+      // Verify the quiz is no longer in the management modal
+      fireEvent.click(screen.getByText('Manage Quizzes'));
+      expect(screen.queryByText('What is the capital of Japan?')).not.toBeInTheDocument();
+      expect(screen.getByText('No quizzes available')).toBeInTheDocument();
+    });
+
+    it('should clean up socket listeners on component unmount', () => {
+      const { unmount } = render(<Room room={mockRoom} currentUser={mockCurrentUser} onLeave={mockOnLeave} />);
+
+      // Unmount the component
+      unmount();
+
+      // Verify that socket event listeners are cleaned up
+      expect(mockSocket.off).toHaveBeenCalledWith('quiz:added', expect.any(Function));
+      expect(mockSocket.off).toHaveBeenCalledWith('quiz:removed', expect.any(Function));
+    });
+  });
+}); 

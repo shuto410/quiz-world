@@ -10,7 +10,7 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { QuizGame } from '@/components/QuizGame';
+import { QuizGame } from '@/features/quiz/components/QuizGame';
 import { Button } from '@/components/ui/Button';
 import { getUserName, getUserId } from '@/lib/userStorage';
 import type { Quiz, User, Score } from '@/types';

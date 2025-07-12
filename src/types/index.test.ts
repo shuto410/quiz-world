@@ -41,6 +41,7 @@ test('Room type usage', () => {
     quizzes: [],
     hostId: 'u1',
     maxPlayers: 8,
+    createdAt: Date.now(),
   };
   expect(room.maxPlayers).toBe(8);
 }); 
