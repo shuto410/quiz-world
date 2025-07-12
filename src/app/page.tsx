@@ -14,39 +14,37 @@ import { Button } from '../components/ui/Button';
 import type { Room } from '../types';
 import { createRoom } from '../lib/socketClient';
 import { getUserName, getUserId } from '../lib/userStorage';
+import { ToastProvider, useToast } from '../contexts/ToastContext';
 
-export default function Home() {
+function HomeContent() {
   const router = useRouter();
+  const { showWarning, showError } = useToast();
 
   const handleRoomJoined = (room: Room) => {
     // Navigate to room page
     router.push(`/room/${room.id}`);
   };
 
-
-
-  const handleCreateDemoRoom = () => {
+  const handleCreateDemoRoom = async () => {
     const userName = getUserName();
     const userId = getUserId();
     
     if (!userName) {
-      alert('ユーザー名を設定してください');
+      showWarning('ユーザー名を設定してください');
       return;
     }
 
     try {
       // Create demo room with mock quiz data using Socket.io
       const demoRoomName = '🎯 デモルーム (サンプルクイズ付き)';
-      createRoom(demoRoomName, true, 8, userName, userId, true);
+      await createRoom(demoRoomName, true, 8, userName, userId, true);
       
       // Note: Navigation will be handled by RoomList component's onRoomCreated event
     } catch (error) {
       console.error('Failed to create demo room:', error);
-      alert('デモルームの作成に失敗しました');
+      showError('デモルームの作成に失敗しました');
     }
   };
-
-
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50">
@@ -72,5 +70,13 @@ export default function Home() {
         <RoomList onRoomJoined={handleRoomJoined} />
       </div>
     </div>
+  );
+}
+
+export default function Home() {
+  return (
+    <ToastProvider position="top-right">
+      <HomeContent />
+    </ToastProvider>
   );
 }

@@ -42,7 +42,12 @@ describe('Socket.io Event Types', () => {
         expect(data.isCorrect).toBe(true);
         expect(data.score).toBe(10);
       },
-      'quiz:end': () => {},
+
+      'quiz:ended': () => {},
+      'chat:message': (data) => {
+        expect(data.userId).toBeDefined();
+        expect(data.message).toBeDefined();
+      },
       'game:buzz': () => {},
       'game:answer': (data) => {
         expect(data.answer).toBe('4');
@@ -152,6 +157,10 @@ describe('Socket.io Event Types', () => {
         expect(data.scores).toHaveLength(1);
         expect(data.scores[0].userId).toBe('user1');
         expect(data.scores[0].score).toBe(10);
+      },
+      'chat:message': (data) => {
+        expect(data.userId).toBeDefined();
+        expect(data.message).toBeDefined();
       },
     };
 

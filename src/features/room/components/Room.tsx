@@ -101,13 +101,19 @@ export function Room({ room, currentUser, onLeave, className }: RoomProps) {
 
     const handleQuizEnded = () => {
       console.log('Quiz ended via socket');
-      setGameState('quiz-active');
+      setGameState('quiz-finished');
       setQuizGameState('finished');
       setBuzzedUser(null);
     };
 
     const handleBuzzIn = (data: { user: User }) => {
       console.log('User buzzed in:', data.user);
+      // Verify the user is still in the room
+      const userStillInRoom = room.users.some(u => u.id === data.user.id);
+      if (!userStillInRoom) {
+        console.warn('Buzzed user is no longer in the room');
+        return;
+      }
       setBuzzedUser(data.user);
     };
 
@@ -139,7 +145,7 @@ export function Room({ room, currentUser, onLeave, className }: RoomProps) {
       socket.off('game:answer', handleAnswerSubmitted);
       socket.off('game:score', handleScoreUpdate);
     };
-  }, []);
+  }, [room.users]);
 
   /**
    * Handle leaving the room
@@ -190,7 +196,7 @@ export function Room({ room, currentUser, onLeave, className }: RoomProps) {
     // Emit quiz end event to server
     const socket = getSocket();
     if (socket) {
-      socket.emit('quiz:end');
+      socket.emit('quiz:ended');
     }
   };
 
@@ -241,7 +247,7 @@ export function Room({ room, currentUser, onLeave, className }: RoomProps) {
 
   // Determine what to show in the game area
   const renderGameArea = () => {
-    if (gameState === 'quiz-active' && currentQuiz) {
+    if ((gameState === 'quiz-active' || gameState === 'quiz-finished') && currentQuiz) {
       return (
         <IntegratedQuizGame
           quiz={currentQuiz}

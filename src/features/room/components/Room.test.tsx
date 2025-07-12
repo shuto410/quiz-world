@@ -400,12 +400,9 @@ describe('Room Component', () => {
       expect(screen.getByText('Existing quiz?')).toBeInTheDocument();
       
       // Simulate receiving quiz:added event for the same quiz
-      const mockSocket = {
-        on: vi.fn(),
-        off: vi.fn(),
-      };
+      // Use the actual mock returned by getSocket() instead of creating a local one
       
-      // Find the handleQuizAdded callback from the mock
+      // Find the handleQuizAdded callback from the global mock
       const onCalls = mockSocket.on.mock?.calls || [];
       const quizAddedCall = onCalls.find(call => call[0] === 'quiz:added');
       
@@ -456,10 +453,7 @@ describe('Room Component', () => {
       });
       
       // Simulate the socket event for the new quiz
-      const mockSocket = {
-        on: vi.fn(),
-        off: vi.fn(),
-      };
+      // Use the actual mock returned by getSocket() instead of creating a local one
       
       const newQuiz = {
         id: 'new-quiz-from-socket',
@@ -468,7 +462,7 @@ describe('Room Component', () => {
         answer: 'Yes',
       };
       
-      // Find the handleQuizAdded callback
+      // Find the handleQuizAdded callback from the global mock
       const onCalls = mockSocket.on.mock?.calls || [];
       const quizAddedCall = onCalls.find(call => call[0] === 'quiz:added');
       
@@ -477,6 +471,9 @@ describe('Room Component', () => {
         await act(async () => {
           handleQuizAdded({ quiz: newQuiz });
         });
+        
+        // Re-open quiz management to verify both quizzes are displayed
+        fireEvent.click(screen.getByText('Manage Quizzes'));
         
         // Should have both quizzes without duplication
         await waitFor(() => {
@@ -708,8 +705,8 @@ describe('Room Component', () => {
         fireEvent.click(endQuizButton);
       });
 
-      // Verify quiz:end event was emitted
-      expect(mockSocket.emit).toHaveBeenCalledWith('quiz:end');
+      // Verify quiz:ended event was emitted
+      expect(mockSocket.emit).toHaveBeenCalledWith('quiz:ended');
     });
   });
 

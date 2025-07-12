@@ -172,8 +172,8 @@ export function IntegratedQuizGame({
                       onChange={(e) => setAnswer(e.target.value)}
                       placeholder="Type your answer..."
                       className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
-                      onKeyPress={(e) => {
-                        if (e.key === 'Enter') {
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
                           handleSubmitAnswer();
                         }
                       }}

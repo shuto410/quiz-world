@@ -27,7 +27,7 @@ export interface ClientToServerEvents {
   'quiz:start': (data: { quizId: string; timeLimit?: number }) => void;
   'quiz:answer': (data: { quizId: string; answer: string }) => void;
   'quiz:judge': (data: { userId: string; isCorrect: boolean; score?: number }) => void;
-  'quiz:end': () => void;
+  'quiz:ended': () => void;
   
   // Game events
   'game:buzz': (data: { user: User }) => void;

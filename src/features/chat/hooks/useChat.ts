@@ -4,6 +4,13 @@
 import { useState, useCallback, useEffect } from 'react';
 import { getSocket, sendChatMessage } from '@/lib/socketClient';
 
+/**
+ * Generate a unique message ID with timestamp and random entropy
+ */
+const generateMessageId = (): string => {
+  return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+};
+
 export interface ChatMessage {
   id: string;
   userId: string;
@@ -44,6 +51,17 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
     });
   }, [maxMessages]);
 
+  const addSystemMessage = useCallback((message: string) => {
+    addMessage({
+      id: generateMessageId(),
+      userId: 'system',
+      userName: 'System',
+      message,
+      timestamp: Date.now(),
+      type: 'system',
+    });
+  }, [addMessage]);
+
   const sendMessage = useCallback((message: string, userId: string, userName: string) => {
     if (!message.trim()) return;
 
@@ -52,28 +70,10 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
       sendChatMessage(message.trim(), userId, userName);
     } catch (error) {
       console.error('Failed to send chat message:', error);
-      // Fallback: add message locally if socket fails
-      addMessage({
-        id: Date.now().toString(),
-        userId,
-        userName,
-        message: message.trim(),
-        timestamp: Date.now(),
-        type: 'user',
-      });
+      // Show error to user instead of silent fallback
+      addSystemMessage('Failed to send message. Please check your connection and try again.');
     }
-  }, [addMessage]);
-
-  const addSystemMessage = useCallback((message: string) => {
-    addMessage({
-      id: Date.now().toString(),
-      userId: 'system',
-      userName: 'System',
-      message,
-      timestamp: Date.now(),
-      type: 'system',
-    });
-  }, [addMessage]);
+  }, [addSystemMessage]);
 
   const clearMessages = useCallback(() => {
     setMessages([]);
@@ -99,8 +99,14 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
     if (!socket) return;
 
     const handleChatMessage = (data: { message: string; userId: string; userName: string; timestamp: number }) => {
+      // Validate incoming data
+      if (!data.message || !data.userId || !data.userName || !data.timestamp) {
+        console.warn('Invalid chat message data received:', data);
+        return;
+      }
+
       addMessage({
-        id: `${data.userId}-${data.timestamp}`,
+        id: `${data.userId}-${data.timestamp}-${Math.random().toString(36).substr(2, 9)}`,
         userId: data.userId,
         userName: data.userName,
         message: data.message,
