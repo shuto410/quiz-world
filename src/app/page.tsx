@@ -23,9 +23,7 @@ export default function Home() {
     router.push(`/room/${room.id}`);
   };
 
-  const handleCreateQuiz = () => {
-    router.push('/quiz-creator');
-  };
+
 
   const handleCreateDemoRoom = () => {
     const userName = getUserName();
@@ -64,9 +62,6 @@ export default function Home() {
           
           {/* Quick Actions */}
           <div className="flex gap-4 justify-center mb-8 flex-wrap">
-            <Button onClick={handleCreateQuiz}>
-              Create Quiz
-            </Button>
             <Button variant="secondary" onClick={handleCreateDemoRoom}>
               🎯 Create Demo Room
             </Button>
