@@ -7,6 +7,7 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import type { Room, User } from '../types';
+import { getRandomQuizzes } from '../data/mockQuizzes';
 
 /**
  * In-memory storage for rooms (in production, this would be a database)
@@ -323,4 +324,56 @@ export function getEmptyRoomsInfo(): Array<{ roomId: string; emptyDuration: numb
 export function resetRoomState(): void {
   rooms.clear();
   emptyRoomTimestamps.clear();
+}
+
+/**
+ * Create a demo room with mock quiz data (for development)
+ * @param hostName - Name of the host user
+ * @param hostId - Host user ID
+ * @returns The created demo room
+ */
+export function createDemoRoom(hostName: string = 'デモホスト', hostId?: string): Room {
+  const roomId = uuidv4();
+  const demoHostId = hostId || uuidv4();
+  
+  const host: User = {
+    id: demoHostId,
+    name: hostName,
+    isHost: true,
+  };
+
+  const room: Room = {
+    id: roomId,
+    name: '🎯 デモルーム (サンプルクイズ付き)',
+    isPublic: true,
+    users: [host],
+    quizzes: getRandomQuizzes(5), // 5個のランダムなクイズを追加
+    hostId: demoHostId,
+    maxPlayers: 8,
+    createdAt: Date.now(),
+  };
+
+  rooms.set(roomId, room);
+  console.log(`Demo room created: ${roomId} with ${room.quizzes.length} quizzes`);
+  return room;
+}
+
+/**
+ * Initialize demo data for development environment
+ * Creates sample rooms with mock quiz data
+ */
+export function initializeDemoData(): void {
+  // Only initialize in development environment
+  if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+    // Check if demo room already exists
+    const existingDemoRoom = Array.from(rooms.values()).find(room => 
+      room.name.includes('デモルーム')
+    );
+    
+    if (!existingDemoRoom) {
+      // Create demo room with various quiz types
+      createDemoRoom();
+      console.log('Demo room initialized for development');
+    }
+  }
 } 

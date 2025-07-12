@@ -42,6 +42,11 @@ describe('Socket.io Event Types', () => {
         expect(data.isCorrect).toBe(true);
         expect(data.score).toBe(10);
       },
+      'quiz:end': () => {},
+      'game:buzz': () => {},
+      'game:answer': (data) => {
+        expect(data.answer).toBe('4');
+      },
     };
 
     // Test room:create event
@@ -135,6 +140,18 @@ describe('Socket.io Event Types', () => {
       'room:notFound': () => {},
       'error': (data) => {
         expect(data.message).toBe('Error message');
+      },
+      'game:buzz': (data) => {
+        expect(data.user.id).toBe('user1');
+      },
+      'game:answer': (data) => {
+        expect(data.user.id).toBe('user1');
+        expect(data.answer).toBe('4');
+      },
+      'game:score': (data) => {
+        expect(data.scores).toHaveLength(1);
+        expect(data.scores[0].userId).toBe('user1');
+        expect(data.scores[0].score).toBe(10);
       },
     };
 

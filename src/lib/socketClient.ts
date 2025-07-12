@@ -235,14 +235,15 @@ export function disconnect(): void {
  * @param maxPlayers - Maximum number of players
  * @param userName - User name (host)
  * @param userId - User ID (host)
+ * @param isDemo - Whether this is a demo room with mock data
  */
-export function createRoom(name: string, isPublic: boolean, maxPlayers: number = 8, userName?: string, userId?: string): void {
+export function createRoom(name: string, isPublic: boolean, maxPlayers: number = 8, userName?: string, userId?: string, isDemo: boolean = false): void {
   const currentSocket = getSocket();
   if (!currentSocket?.connected) {
     throw new Error('Socket not connected');
   }
-  console.log('Creating room with:', { name, isPublic, maxPlayers, userName, userId });
-  currentSocket.emit('room:create', { name, isPublic, maxPlayers, userName, userId });
+  console.log('Creating room with:', { name, isPublic, maxPlayers, userName, userId, isDemo });
+  currentSocket.emit('room:create', { name, isPublic, maxPlayers, userName, userId, isDemo });
 }
 
 /**

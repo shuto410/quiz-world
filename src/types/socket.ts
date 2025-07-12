@@ -12,7 +12,7 @@ import type { Room, User, Quiz } from './index';
  */
 export interface ClientToServerEvents {
   // Room management
-  'room:create': (data: { name: string; isPublic: boolean; maxPlayers?: number; userName?: string; userId?: string }) => void;
+  'room:create': (data: { name: string; isPublic: boolean; maxPlayers?: number; userName?: string; userId?: string; isDemo?: boolean }) => void;
   'room:join': (data: { roomId: string; userId: string; userName: string }) => void;
   'room:leave': () => void;
   'room:list': () => void;
