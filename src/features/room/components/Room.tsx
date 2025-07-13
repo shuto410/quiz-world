@@ -50,7 +50,7 @@ export function Room({ room, currentUser, onLeave, className }: RoomProps) {
   const [currentQuiz, setCurrentQuiz] = useState<Quiz | null>(null);
   const [quizGameState, setQuizGameState] = useState<'waiting' | 'active' | 'answered' | 'finished'>('waiting');
   const [scores, setScores] = useState<Score[]>([]);
-  const [buzzedUser, setBuzzedUser] = useState<User | null>(null);
+  const [buzzedUsers, setBuzzedUsers] = useState<User[]>([]);
 
   const isHost = currentUser.isHost;
   const currentUserName = getUserName() || currentUser.name;
@@ -96,14 +96,14 @@ export function Room({ room, currentUser, onLeave, className }: RoomProps) {
       setCurrentQuiz(data.quiz);
       setGameState('quiz-active');
       setQuizGameState('active');
-      setBuzzedUser(null);
+      setBuzzedUsers([]);
     };
 
     const handleQuizEnded = () => {
       console.log('Quiz ended via socket');
       setGameState('quiz-finished');
       setQuizGameState('finished');
-      setBuzzedUser(null);
+      setBuzzedUsers([]);
     };
 
     const handleBuzzIn = (data: { user: User }) => {
@@ -114,7 +114,7 @@ export function Room({ room, currentUser, onLeave, className }: RoomProps) {
         console.warn('Buzzed user is no longer in the room');
         return;
       }
-      setBuzzedUser(data.user);
+      setBuzzedUsers(prev => prev.find(u => u.id === data.user.id) ? prev : [...prev, data.user]);
     };
 
     const handleAnswerSubmitted = (data: { user: User, answer: string }) => {
@@ -192,7 +192,7 @@ export function Room({ room, currentUser, onLeave, className }: RoomProps) {
     setGameState('lobby');
     setQuizGameState('waiting');
     setCurrentQuiz(null);
-    setBuzzedUser(null);
+    setBuzzedUsers([]);
     // Emit quiz end event to server
     const socket = getSocket();
     if (socket) {
@@ -207,7 +207,7 @@ export function Room({ room, currentUser, onLeave, className }: RoomProps) {
     setGameState('lobby');
     setQuizGameState('waiting');
     setCurrentQuiz(null);
-    setBuzzedUser(null);
+    setBuzzedUsers([]);
   };
 
   /**
@@ -256,7 +256,7 @@ export function Room({ room, currentUser, onLeave, className }: RoomProps) {
           isHost={isHost}
           gameState={quizGameState}
           scores={scores}
-          buzzedUser={buzzedUser}
+          buzzedUsers={buzzedUsers}
           onEndQuiz={handleEndQuiz}
           onNextQuiz={handleNextQuiz}
         />

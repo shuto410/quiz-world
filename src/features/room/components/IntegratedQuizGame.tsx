@@ -21,7 +21,7 @@ interface IntegratedQuizGameProps {
   isHost: boolean;
   gameState: 'waiting' | 'active' | 'answered' | 'finished';
   scores: Score[];
-  buzzedUser: User | null;
+  buzzedUsers: User[];
   onEndQuiz: () => void;
   onNextQuiz: () => void;
 }
@@ -36,7 +36,7 @@ export function IntegratedQuizGame({
   isHost,
   gameState,
   scores,
-  buzzedUser,
+  buzzedUsers,
   onEndQuiz,
   onNextQuiz,
 }: IntegratedQuizGameProps) {
@@ -46,7 +46,7 @@ export function IntegratedQuizGame({
 
   const handleBuzzIn = () => {
     const socket = getSocket();
-    if (socket && !buzzedUser) {
+    if (socket && !buzzedUsers.some(u => u.id === currentUser.id)) {
       socket.emit('game:buzz', { user: currentUser });
     }
   };
@@ -141,7 +141,7 @@ export function IntegratedQuizGame({
           </div>
 
           {/* Buzz In Section */}
-          {!buzzedUser && gameState === 'active' && (
+          {buzzedUsers.length === 0 && gameState === 'active' && (
             <div className="text-center mb-6">
               <Button
                 size="lg"
@@ -154,16 +154,22 @@ export function IntegratedQuizGame({
             </div>
           )}
 
-          {/* Buzzed User Display */}
-          {buzzedUser && (
+          {/* Buzzed Users Display */}
+          {buzzedUsers.length > 0 && (
             <div className="text-center mb-6">
               <div className="text-2xl mb-2">⚡</div>
-              <p className="text-lg font-medium text-gray-800">
-                <strong>{buzzedUser.name}</strong> buzzed in!
-              </p>
-              
-              {/* Answer Input for Buzzed User */}
-              {buzzedUser.id === currentUser.id && !hasAnswered && (
+              <div className="flex flex-col items-center gap-2">
+                {buzzedUsers.map((user, idx) => (
+                  <div key={user.id} className="flex items-center gap-2">
+                    <span className="font-medium">{idx + 1}.</span>
+                    <span className="font-medium text-gray-800">{user.name}</span>
+                    <span className="text-sm text-gray-500">buzzed in!</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Answer Input for First Buzzed User Only */}
+              {buzzedUsers[0].id === currentUser.id && !hasAnswered && (
                 <div className="mt-4 max-w-md mx-auto">
                   <div className="flex gap-2">
                     <input

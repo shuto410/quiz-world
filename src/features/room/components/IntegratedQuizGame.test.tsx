@@ -56,7 +56,7 @@ describe('IntegratedQuizGame', () => {
     isHost: false,
     gameState: 'waiting' as const,
     scores: mockScores,
-    buzzedUser: null,
+    buzzedUsers: [],
     onEndQuiz: vi.fn(),
     onNextQuiz: vi.fn(),
   };
@@ -85,7 +85,7 @@ describe('IntegratedQuizGame', () => {
         <IntegratedQuizGame 
           {...defaultProps} 
           gameState="active" 
-          buzzedUser={mockUsers[1]}
+          buzzedUsers={[mockUsers[1]]}
         />
       );
       
@@ -97,7 +97,7 @@ describe('IntegratedQuizGame', () => {
         <IntegratedQuizGame 
           {...defaultProps} 
           gameState="active" 
-          buzzedUser={mockUsers[1]}
+          buzzedUsers={[mockUsers[1]]}
         />
       );
       
@@ -110,7 +110,7 @@ describe('IntegratedQuizGame', () => {
         <IntegratedQuizGame 
           {...defaultProps} 
           gameState="active" 
-          buzzedUser={mockCurrentUser}
+          buzzedUsers={[mockCurrentUser]}
         />
       );
       
@@ -123,7 +123,7 @@ describe('IntegratedQuizGame', () => {
         <IntegratedQuizGame 
           {...defaultProps} 
           gameState="active" 
-          buzzedUser={mockUsers[1]}
+          buzzedUsers={[mockUsers[1]]}
         />
       );
       
@@ -136,7 +136,7 @@ describe('IntegratedQuizGame', () => {
           {...defaultProps} 
           isHost={true}
           gameState="active"
-          buzzedUser={mockCurrentUser}
+          buzzedUsers={[mockCurrentUser]}
         />
       );
       
@@ -154,7 +154,7 @@ describe('IntegratedQuizGame', () => {
           {...defaultProps} 
           isHost={true}
           gameState="active"
-          buzzedUser={mockCurrentUser}
+          buzzedUsers={[mockCurrentUser]}
         />
       );
       
@@ -204,7 +204,7 @@ describe('IntegratedQuizGame', () => {
           {...defaultProps} 
           isHost={true}
           gameState="active"
-          buzzedUser={mockCurrentUser}
+          buzzedUsers={[mockCurrentUser]}
         />
       );
       
@@ -234,7 +234,7 @@ describe('IntegratedQuizGame', () => {
         <IntegratedQuizGame 
           {...defaultProps} 
           gameState="active" 
-          buzzedUser={mockUsers[1]}
+          buzzedUsers={[mockUsers[1]]}
         />
       );
       
@@ -247,7 +247,7 @@ describe('IntegratedQuizGame', () => {
         <IntegratedQuizGame 
           {...defaultProps} 
           gameState="active" 
-          buzzedUser={mockCurrentUser}
+          buzzedUsers={[mockCurrentUser]}
         />
       );
       
@@ -266,7 +266,7 @@ describe('IntegratedQuizGame', () => {
         <IntegratedQuizGame 
           {...defaultProps} 
           gameState="active" 
-          buzzedUser={mockCurrentUser}
+          buzzedUsers={[mockCurrentUser]}
         />
       );
       
@@ -281,7 +281,7 @@ describe('IntegratedQuizGame', () => {
         <IntegratedQuizGame 
           {...defaultProps} 
           gameState="active" 
-          buzzedUser={mockCurrentUser}
+          buzzedUsers={[mockCurrentUser]}
         />
       );
       
@@ -300,7 +300,7 @@ describe('IntegratedQuizGame', () => {
         <IntegratedQuizGame 
           {...defaultProps} 
           gameState="active" 
-          buzzedUser={mockCurrentUser}
+          buzzedUsers={[mockCurrentUser]}
         />
       );
       
@@ -316,7 +316,7 @@ describe('IntegratedQuizGame', () => {
         <IntegratedQuizGame 
           {...defaultProps} 
           gameState="active" 
-          buzzedUser={mockCurrentUser}
+          buzzedUsers={[mockCurrentUser]}
         />
       );
       
@@ -329,7 +329,7 @@ describe('IntegratedQuizGame', () => {
         <IntegratedQuizGame 
           {...defaultProps} 
           gameState="active" 
-          buzzedUser={mockCurrentUser}
+          buzzedUsers={[mockCurrentUser]}
         />
       );
       
@@ -363,7 +363,7 @@ describe('IntegratedQuizGame', () => {
           onNextQuiz={onNextQuiz}
           isHost={true}
           gameState="active"
-          buzzedUser={mockCurrentUser}
+          buzzedUsers={[mockCurrentUser]}
         />
       );
       
@@ -441,7 +441,7 @@ describe('IntegratedQuizGame', () => {
         <IntegratedQuizGame 
           {...defaultProps} 
           gameState="active" 
-          buzzedUser={mockCurrentUser}
+          buzzedUsers={[mockCurrentUser]}
         />
       );
       
@@ -461,7 +461,7 @@ describe('IntegratedQuizGame', () => {
           {...defaultProps} 
           isHost={false}
           gameState="active"
-          buzzedUser={mockCurrentUser}
+          buzzedUsers={[mockCurrentUser]}
         />
       );
       
@@ -484,7 +484,7 @@ describe('IntegratedQuizGame', () => {
         <IntegratedQuizGame 
           {...defaultProps} 
           gameState="active" 
-          buzzedUser={mockCurrentUser}
+          buzzedUsers={[mockCurrentUser]}
         />
       );
       
@@ -502,7 +502,7 @@ describe('IntegratedQuizGame', () => {
           {...defaultProps} 
           isHost={true}
           gameState="active"
-          buzzedUser={mockCurrentUser}
+          buzzedUsers={[mockCurrentUser]}
         />
       );
       
@@ -524,7 +524,7 @@ describe('IntegratedQuizGame', () => {
         <IntegratedQuizGame 
           {...defaultProps} 
           gameState="active" 
-          buzzedUser={mockCurrentUser}
+          buzzedUsers={[mockCurrentUser]}
         />
       );
       
@@ -543,7 +543,7 @@ describe('IntegratedQuizGame', () => {
           {...defaultProps} 
           quiz={newQuiz}
           gameState="active" 
-          buzzedUser={null}
+          buzzedUsers={[]}
         />
       );
       
