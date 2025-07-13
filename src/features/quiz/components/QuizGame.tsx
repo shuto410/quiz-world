@@ -11,7 +11,7 @@ import { Card, CardHeader, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import type { Quiz, User, Score } from '@/types';
-import { submitAnswer } from '@/lib/socketClient';
+import { submitAnswer, getSocket } from '@/lib/socketClient';
 import { useQuizTimer } from '../hooks/useQuizTimer';
 
 /**
@@ -375,8 +375,10 @@ export function QuizGame({
    */
   const handleBuzzIn = () => {
     if (canBuzz) {
-      // TODO: Implement buzzer functionality
-      console.log('Buzzer pressed');
+      const socket = getSocket();
+      if (socket) {
+        socket.emit('game:buzz', { user: currentUser });
+      }
     }
   };
 

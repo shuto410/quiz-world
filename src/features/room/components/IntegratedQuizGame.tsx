@@ -22,6 +22,7 @@ interface IntegratedQuizGameProps {
   gameState: 'waiting' | 'active' | 'answered' | 'finished';
   scores: Score[];
   buzzedUser: User | null;
+  buzzedUsers: User[];
   onEndQuiz: () => void;
   onNextQuiz: () => void;
 }
@@ -37,6 +38,7 @@ export function IntegratedQuizGame({
   gameState,
   scores,
   buzzedUser,
+  buzzedUsers,
   onEndQuiz,
   onNextQuiz,
 }: IntegratedQuizGameProps) {
@@ -151,6 +153,42 @@ export function IntegratedQuizGame({
               >
                 🔔 Buzz In
               </Button>
+            </div>
+          )}
+
+          {/* Buzzed Users Display */}
+          {buzzedUsers.length > 0 && gameState === 'active' && (
+            <div className="mb-6">
+              <h4 className="text-lg font-medium text-gray-800 mb-3 text-center">
+                🔔 Buzzed In Order
+              </h4>
+              <div className="space-y-2 max-w-md mx-auto">
+                {buzzedUsers.map((user, index) => (
+                  <div
+                    key={user.id}
+                    className={`flex items-center justify-between p-3 rounded-lg ${
+                      user.id === buzzedUser?.id
+                        ? 'bg-yellow-100 border-2 border-yellow-300'
+                        : 'bg-gray-50 border border-gray-200'
+                    }`}
+                  >
+                    <div className="flex items-center">
+                      <span className="text-lg font-bold text-gray-600 mr-3">
+                        #{index + 1}
+                      </span>
+                      <span className="font-medium text-gray-800">
+                        {user.name}
+                      </span>
+                      {user.id === buzzedUser?.id && (
+                        <span className="ml-2 text-yellow-600">🎯 Answering</span>
+                      )}
+                    </div>
+                    <div className="text-sm text-gray-500">
+                      {index === 0 ? '1st' : index === 1 ? '2nd' : index === 2 ? '3rd' : `${index + 1}th`}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 

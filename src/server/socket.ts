@@ -82,6 +82,9 @@ function handleConnection(socket: Socket<ClientToServerEvents, ServerToClientEve
   socket.on('quiz:answer', (data: { quizId: string; answer: string }) => handleQuizAnswer(socket, data));
   socket.on('quiz:judge', (data: { userId: string; isCorrect: boolean; score?: number }) => handleQuizJudge(socket, data));
   
+  // Game events
+  socket.on('game:buzz', (data: { user: User }) => handleGameBuzz(socket, data));
+  
   // Chat events
   socket.on('chat:message', (data: { message: string; userId: string; userName: string }) => handleChatMessage(socket, data));
 
@@ -555,6 +558,43 @@ function handleQuizJudge(socket: Socket<ClientToServerEvents, ServerToClientEven
     console.log(`Quiz judged for user ${data.userId} in room: ${roomId}`);
   } catch {
     socket.emit('error', { message: 'Failed to judge answer' });
+  }
+}
+
+/**
+ * Handle game buzz event
+ * @param socket - Socket instance
+ * @param data - Buzz event data
+ */
+function handleGameBuzz(socket: Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>, data: { user: User }) {
+  try {
+    const { roomId } = socket.data;
+    
+    if (!roomId) {
+      socket.emit('error', { message: 'Not in a room' });
+      return;
+    }
+    
+    const room = getRoom(roomId);
+    if (!room) {
+      socket.emit('error', { message: 'Room not found' });
+      return;
+    }
+    
+    // Verify user is in the room
+    const user = getUser(roomId, data.user.id);
+    if (!user) {
+      socket.emit('error', { message: 'User not found in room' });
+      return;
+    }
+    
+    // Broadcast buzz event to all users in the room
+    io.to(roomId).emit('game:buzz', { user: data.user });
+    
+    console.log(`User ${data.user.name} (${data.user.id}) buzzed in room ${roomId}`);
+  } catch (error) {
+    console.error('Error handling game buzz:', error);
+    socket.emit('error', { message: 'Failed to process buzz' });
   }
 }
 

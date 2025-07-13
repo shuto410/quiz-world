@@ -51,6 +51,7 @@ export function Room({ room, currentUser, onLeave, className }: RoomProps) {
   const [quizGameState, setQuizGameState] = useState<'waiting' | 'active' | 'answered' | 'finished'>('waiting');
   const [scores, setScores] = useState<Score[]>([]);
   const [buzzedUser, setBuzzedUser] = useState<User | null>(null);
+  const [buzzedUsers, setBuzzedUsers] = useState<User[]>([]);
 
   const isHost = currentUser.isHost;
   const currentUserName = getUserName() || currentUser.name;
@@ -97,6 +98,7 @@ export function Room({ room, currentUser, onLeave, className }: RoomProps) {
       setGameState('quiz-active');
       setQuizGameState('active');
       setBuzzedUser(null);
+      setBuzzedUsers([]);
     };
 
     const handleQuizEnded = () => {
@@ -104,6 +106,7 @@ export function Room({ room, currentUser, onLeave, className }: RoomProps) {
       setGameState('quiz-finished');
       setQuizGameState('finished');
       setBuzzedUser(null);
+      setBuzzedUsers([]);
     };
 
     const handleBuzzIn = (data: { user: User }) => {
@@ -114,7 +117,20 @@ export function Room({ room, currentUser, onLeave, className }: RoomProps) {
         console.warn('Buzzed user is no longer in the room');
         return;
       }
-      setBuzzedUser(data.user);
+      
+      // Add to buzzed users list if not already there
+      setBuzzedUsers(prev => {
+        const alreadyBuzzed = prev.some((u: User) => u.id === data.user.id);
+        if (!alreadyBuzzed) {
+          return [...prev, data.user];
+        }
+        return prev;
+      });
+      
+      // Set as current buzzed user if no one is currently answering
+      if (!buzzedUser) {
+        setBuzzedUser(data.user);
+      }
     };
 
     const handleAnswerSubmitted = (data: { user: User, answer: string }) => {
@@ -193,6 +209,7 @@ export function Room({ room, currentUser, onLeave, className }: RoomProps) {
     setQuizGameState('waiting');
     setCurrentQuiz(null);
     setBuzzedUser(null);
+    setBuzzedUsers([]);
     // Emit quiz end event to server
     const socket = getSocket();
     if (socket) {
@@ -208,6 +225,7 @@ export function Room({ room, currentUser, onLeave, className }: RoomProps) {
     setQuizGameState('waiting');
     setCurrentQuiz(null);
     setBuzzedUser(null);
+    setBuzzedUsers([]);
   };
 
   /**
@@ -249,17 +267,18 @@ export function Room({ room, currentUser, onLeave, className }: RoomProps) {
   const renderGameArea = () => {
     if ((gameState === 'quiz-active' || gameState === 'quiz-finished') && currentQuiz) {
       return (
-        <IntegratedQuizGame
-          quiz={currentQuiz}
-          currentUser={currentUser}
-          users={room.users}
-          isHost={isHost}
-          gameState={quizGameState}
-          scores={scores}
-          buzzedUser={buzzedUser}
-          onEndQuiz={handleEndQuiz}
-          onNextQuiz={handleNextQuiz}
-        />
+                    <IntegratedQuizGame
+              quiz={currentQuiz}
+              currentUser={currentUser}
+              users={room.users}
+              isHost={isHost}
+              gameState={quizGameState}
+              scores={scores}
+              buzzedUser={buzzedUser}
+              buzzedUsers={buzzedUsers}
+              onEndQuiz={handleEndQuiz}
+              onNextQuiz={handleNextQuiz}
+            />
       );
     }
     
