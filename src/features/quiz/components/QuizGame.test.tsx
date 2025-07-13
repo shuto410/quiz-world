@@ -11,8 +11,14 @@ import * as useQuizTimer from '../hooks/useQuizTimer';
 import type { Quiz, User, Score } from '../../../types';
 
 // Mock socket client
+const mockSocketEmit = vi.fn();
+const mockSocket = {
+  emit: mockSocketEmit,
+};
+
 vi.mock('../../../lib/socketClient', () => ({
   submitAnswer: vi.fn(),
+  getSocket: vi.fn(() => mockSocket),
 }));
 
 // Mock useQuizTimer hook
@@ -232,8 +238,8 @@ describe('QuizGame Component', () => {
     const buzzer = screen.getByText('🔔 BUZZ IN!');
     await user.click(buzzer);
     
-    // Since buzzer functionality is TODO, we just check it renders
-    expect(buzzer).toBeInTheDocument();
+    // Check that socket.emit was called with correct parameters
+    expect(mockSocketEmit).toHaveBeenCalledWith('game:buzz', { user: mockCurrentUser });
   });
 
   test('shows answer input for image quiz', () => {

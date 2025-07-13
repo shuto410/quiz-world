@@ -161,7 +161,7 @@ export function Room({ room, currentUser, onLeave, className }: RoomProps) {
       socket.off('game:answer', handleAnswerSubmitted);
       socket.off('game:score', handleScoreUpdate);
     };
-  }, [room.users]);
+  }, [room.users, buzzedUser]);
 
   /**
    * Handle leaving the room
