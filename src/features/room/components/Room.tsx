@@ -5,9 +5,10 @@
  * - Integrates quiz game functionality within room layout
  */
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
+import { Card, CardContent } from '@/components/ui/Card';
 import { QuizCreator } from '@/features/quiz/components/QuizCreator';
 import { RoomHeader } from './RoomHeader';
 import { PlayerList } from './PlayerList';
@@ -15,9 +16,8 @@ import { Chat } from './Chat';
 import { GameStatus } from './GameStatus';
 import { IntegratedQuizGame } from './IntegratedQuizGame';
 import { QuizManagement } from './QuizManagement';
-import type { Room, User, Quiz, Score } from '@/types';
-import { leaveRoom, transferHost, startQuiz, addQuiz, getSocket } from '@/lib/socketClient';
-import { getUserName, getUserId } from '@/lib/userStorage';
+import type { Room, User } from '@/types';
+import { useRoomGame } from '../hooks/useRoomGame';
 
 /**
  * Room component interface
@@ -30,258 +30,73 @@ interface RoomProps {
 }
 
 /**
- * Game state type
- */
-type GameState = 'lobby' | 'quiz-active' | 'quiz-answered' | 'quiz-finished';
-
-/**
  * Main Room component
  */
 export function Room({ room, currentUser, onLeave, className }: RoomProps) {
-  const [showQuizModal, setShowQuizModal] = useState(false);
-  const [showHostModal, setShowHostModal] = useState(false);
-  const [showQuizCreator, setShowQuizCreator] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [roomQuizzes, setRoomQuizzes] = useState(room.quizzes);
-  const [error, setError] = useState<string | null>(null);
-  
-  // Game state management
-  const [gameState, setGameState] = useState<GameState>('lobby');
-  const [currentQuiz, setCurrentQuiz] = useState<Quiz | null>(null);
-  const [quizGameState, setQuizGameState] = useState<'waiting' | 'active' | 'answered' | 'finished'>('waiting');
-  const [scores, setScores] = useState<Score[]>([]);
-  const [buzzedUser, setBuzzedUser] = useState<User | null>(null);
-  const [buzzedUsers, setBuzzedUsers] = useState<User[]>([]);
-
-  const isHost = currentUser.isHost;
-  const currentUserName = getUserName() || currentUser.name;
-  const currentUserId = getUserId();
-
-  /**
-   * Synchronize roomQuizzes with room.quizzes when room changes
-   */
-  useEffect(() => {
-    setRoomQuizzes(room.quizzes);
-  }, [room.quizzes]);
-
-  /**
-   * Set up socket event listeners for quiz synchronization and game events
-   */
-  useEffect(() => {
-    const socket = getSocket();
-    if (!socket) return;
-
-    // Listen for quiz added event from server
-    const handleQuizAdded = (data: { quiz: Quiz }) => {
-      console.log('Quiz added via socket:', data.quiz);
-      setRoomQuizzes(prev => {
-        // Check if quiz already exists to prevent duplicates
-        const existingQuizIndex = prev.findIndex(quiz => quiz.id === data.quiz.id);
-        if (existingQuizIndex !== -1) {
-          console.log('Quiz already exists, not adding duplicate:', data.quiz.id);
-          return prev;
-        }
-        return [...prev, data.quiz];
-      });
-    };
-
-    // Listen for quiz removed event from server
-    const handleQuizRemoved = (data: { quizId: string }) => {
-      console.log('Quiz removed via socket:', data.quizId);
-      setRoomQuizzes(prev => prev.filter(quiz => quiz.id !== data.quizId));
-    };
-
-    // Listen for quiz game events
-    const handleQuizStarted = (data: { quiz: Quiz }) => {
-      console.log('Quiz started via socket:', data.quiz);
-      setCurrentQuiz(data.quiz);
-      setGameState('quiz-active');
-      setQuizGameState('active');
-      setBuzzedUser(null);
-      setBuzzedUsers([]);
-    };
-
-    const handleQuizEnded = () => {
-      console.log('Quiz ended via socket');
-      setGameState('quiz-finished');
-      setQuizGameState('finished');
-      setBuzzedUser(null);
-      setBuzzedUsers([]);
-    };
-
-    const handleBuzzIn = (data: { user: User }) => {
-      console.log('User buzzed in:', data.user);
-      // Verify the user is still in the room
-      const userStillInRoom = room.users.some(u => u.id === data.user.id);
-      if (!userStillInRoom) {
-        console.warn('Buzzed user is no longer in the room');
-        return;
-      }
-      
-      // Add to buzzed users list if not already there
-      setBuzzedUsers(prev => {
-        const alreadyBuzzed = prev.some((u: User) => u.id === data.user.id);
-        if (!alreadyBuzzed) {
-          return [...prev, data.user];
-        }
-        return prev;
-      });
-      
-      // Set as current buzzed user if no one is currently answering
-      if (!buzzedUser) {
-        setBuzzedUser(data.user);
-      }
-    };
-
-    const handleAnswerSubmitted = (data: { user: User, answer: string }) => {
-      console.log('Answer submitted:', data.user, data.answer);
-      setQuizGameState('answered');
-    };
-
-    const handleScoreUpdate = (data: { scores: Score[] }) => {
-      console.log('Score updated:', data.scores);
-      setScores(data.scores);
-    };
-
-    socket.on('quiz:added', handleQuizAdded);
-    socket.on('quiz:removed', handleQuizRemoved);
-    socket.on('quiz:started', handleQuizStarted);
-    socket.on('quiz:ended', handleQuizEnded);
-    socket.on('game:buzz', handleBuzzIn);
-    socket.on('game:answer', handleAnswerSubmitted);
-    socket.on('game:score', handleScoreUpdate);
-
-    // Cleanup listeners on unmount
-    return () => {
-      socket.off('quiz:added', handleQuizAdded);
-      socket.off('quiz:removed', handleQuizRemoved);
-      socket.off('quiz:started', handleQuizStarted);
-      socket.off('quiz:ended', handleQuizEnded);
-      socket.off('game:buzz', handleBuzzIn);
-      socket.off('game:answer', handleAnswerSubmitted);
-      socket.off('game:score', handleScoreUpdate);
-    };
-  }, [room.users, buzzedUser]);
+  const {
+    showQuizModal, setShowQuizModal,
+    showQuizCreator, setShowQuizCreator,
+    roomQuizzes,
+    error, setError,
+    gameState,
+    currentQuizIndex,
+    currentQuiz,
+    quizGameState,
+    scores,
+    buzzedUser,
+    buzzedUsers,
+    answer, setAnswer,
+    hasAnswered,
+    showAnswer,
+    recentJudgments,
+    isHost, currentUserName, currentUserId,
+    handleLeaveRoom,
+    handleStartQuiz,
+    handleEndQuiz,
+    handleNextQuiz,
+    handleOpenQuizCreator,
+    handleQuizCreated,
+    handleBuzzInUser,
+    handleSubmitAnswer,
+    handleShowAnswer,
+    handleJudgeAnswer,
+  } = useRoomGame(room, currentUser, onLeave);
 
   /**
-   * Handle leaving the room
+   * Determine what to show in the game area
    */
-  const handleLeaveRoom = () => {
-    leaveRoom();
-    onLeave?.();
-  };
-
-  /**
-   * Transfer host to another user
-   */
-  const handleTransferHost = () => {
-    if (!selectedUser) return;
-    
-    transferHost(selectedUser.id);
-    setShowHostModal(false);
-    setSelectedUser(null);
-  };
-
-  /**
-   * Start a quiz
-   */
-  const handleStartQuiz = (quiz: Quiz) => {
-    try {
-      startQuiz(quiz.id);
-      setShowQuizModal(false);
-      setError(null); // Clear any previous errors
-    } catch (error) {
-      console.error('Failed to start quiz:', error);
-      setError('Failed to start quiz. Please try again.');
-      
-      // Auto-clear error after 5 seconds
-      setTimeout(() => {
-        setError(null);
-      }, 5000);
-    }
-  };
-
-  /**
-   * End the current quiz
-   */
-  const handleEndQuiz = () => {
-    setGameState('lobby');
-    setQuizGameState('waiting');
-    setCurrentQuiz(null);
-    setBuzzedUser(null);
-    setBuzzedUsers([]);
-    // Emit quiz end event to server
-    const socket = getSocket();
-    if (socket) {
-      socket.emit('quiz:ended');
-    }
-  };
-
-  /**
-   * Handle next quiz (for now, just return to lobby)
-   */
-  const handleNextQuiz = () => {
-    setGameState('lobby');
-    setQuizGameState('waiting');
-    setCurrentQuiz(null);
-    setBuzzedUser(null);
-    setBuzzedUsers([]);
-  };
-
-  /**
-   * Handle making user host
-   */
-  const handleMakeHost = (user: User) => {
-    setSelectedUser(user);
-    setShowHostModal(true);
-  };
-
-  /**
-   * Open quiz creator
-   */
-  const handleOpenQuizCreator = () => {
-    setShowQuizModal(false);
-    setShowQuizCreator(true);
-  };
-
-  /**
-   * Handle quiz created
-   */
-  const handleQuizCreated = async (quiz: Quiz) => {
-    try {
-      console.log('Quiz created:', quiz);
-      await addQuiz(quiz); // Send to server, which will broadcast to all clients
-      setShowQuizCreator(false);
-    } catch (error) {
-      console.error('Failed to add quiz:', error);
-      setError('Failed to add quiz. Please try again.');
-      
-      // Auto-clear error after 5 seconds
-      setTimeout(() => {
-        setError(null);
-      }, 5000);
-    }
-  };
-
-  // Determine what to show in the game area
   const renderGameArea = () => {
-    if ((gameState === 'quiz-active' || gameState === 'quiz-finished') && currentQuiz) {
+    if (gameState === 'quiz-active' && currentQuiz) {
       return (
-                    <IntegratedQuizGame
-              quiz={currentQuiz}
-              currentUser={currentUser}
-              users={room.users}
-              isHost={isHost}
-              gameState={quizGameState}
-              scores={scores}
-              buzzedUser={buzzedUser}
-              buzzedUsers={buzzedUsers}
-              onEndQuiz={handleEndQuiz}
-              onNextQuiz={handleNextQuiz}
-            />
+        <IntegratedQuizGame
+          quiz={currentQuiz}
+          users={room.users}
+          isHost={isHost}
+          gameState={quizGameState}
+          scores={scores}
+          showAnswer={showAnswer}
+          onEndQuiz={handleEndQuiz}
+          onNextQuiz={handleNextQuiz}
+          isLastQuiz={currentQuizIndex === roomQuizzes.length - 1}
+        />
       );
     }
-    
+    if (gameState === 'quiz-finished') {
+      // 全問終了時のスコア表示
+      return (
+        <IntegratedQuizGame
+          quiz={roomQuizzes[roomQuizzes.length - 1]}
+          users={room.users}
+          isHost={isHost}
+          gameState={'finished'}
+          scores={scores}
+          showAnswer={showAnswer}
+          onEndQuiz={handleEndQuiz}
+          onNextQuiz={handleNextQuiz}
+          isLastQuiz={true}
+        />
+      );
+    }
     return (
       <GameStatus
         isHost={isHost}
@@ -317,14 +132,18 @@ export function Room({ room, currentUser, onLeave, className }: RoomProps) {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Left Sidebar - User List + Chat */}
-        <div className="lg:col-span-1 space-y-4">
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+        {/* Left Sidebar - User List + Chat (expanded to 2/5 width) */}
+        <div className="lg:col-span-2 space-y-4">
           <PlayerList
             users={room.users}
             currentUserId={currentUserId}
-            isHost={isHost}
-            onMakeHost={handleMakeHost}
+            scores={scores}
+            buzzedUsers={buzzedUsers}
+            buzzedUser={buzzedUser}
+            answer={answer}
+            hasAnswered={hasAnswered}
+            recentJudgments={recentJudgments}
           />
           
           {/* Chat - in sidebar */}
@@ -335,11 +154,142 @@ export function Room({ room, currentUser, onLeave, className }: RoomProps) {
           />
         </div>
 
-        {/* Game Area - takes up 3/4 of the width */}
+        {/* Game Area - takes up 3/5 of the width */}
         <div className="lg:col-span-3">
           {renderGameArea()}
         </div>
       </div>
+
+      {/* Buzz and Answer Section - outside of quiz game */}
+      {(gameState === 'quiz-active') && currentQuiz && (
+        <div className="mt-1 lg:ml-[calc(40%+1.5rem)]">
+          <Card variant="gradient">
+            <CardContent>
+              <div className="py-2">
+                {/* Buzz Button - Only for non-host users */}
+                {!buzzedUser && quizGameState === 'active' && !isHost && (
+                  <div className="text-center mb-2">
+                    <Button
+                      size="md"
+                      variant="success"
+                      onClick={handleBuzzInUser}
+                      className="animate-pulse text-lg px-6 py-2 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 transform hover:scale-105 transition-all"
+                    >
+                      🔔 Buzz In
+                    </Button>
+                  </div>
+                )}
+
+                {/* Answer Input for Buzzed User (Non-host only) */}
+                {buzzedUser && buzzedUser.id === currentUser.id && !hasAnswered && !isHost && (
+                  <div className="mb-3">
+                    <div className="text-center mb-2">
+                      <span className="text-lg">⚡</span>
+                      <span className="text-sm font-medium text-gray-800 ml-2">
+                        Type your answer:
+                      </span>
+                    </div>
+                    <div className="max-w-sm mx-auto">
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={answer}
+                          onChange={(e) => setAnswer(e.target.value)}
+                          placeholder="Your answer..."
+                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent text-sm"
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && !e.shiftKey) {
+                              handleSubmitAnswer();
+                            }
+                          }}
+                          autoFocus
+                        />
+                        <Button 
+                          variant="primary" 
+                          onClick={handleSubmitAnswer} 
+                          disabled={!answer.trim()}
+                          className="px-4 py-2 text-sm"
+                        >
+                          Submit
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Waiting for Answer */}
+                {buzzedUser && buzzedUser.id !== currentUser.id && (
+                  <div className="text-center mb-3">
+                    <span className="text-lg">⏳</span>
+                    <span className="text-sm font-medium text-gray-800 ml-2">
+                      <strong>{buzzedUser.name}</strong> is answering...
+                    </span>
+                  </div>
+                )}
+
+                {/* Answer Judging Section - Host only */}
+                {isHost && (hasAnswered || quizGameState === 'answered') && !showAnswer && (
+                  <div className="mb-3">
+                    <div className="text-center mb-2">
+                      <span className="text-lg">⚖️</span>
+                      <span className="text-sm font-medium text-gray-800 ml-2">
+                        Judge {buzzedUser ? buzzedUser.name : 'player'}&apos;s answer:
+                      </span>
+                    </div>
+                    {/* Display the participant's answer */}
+                    <div className="text-center mb-3">
+                      <div className="inline-block bg-gray-100 border border-gray-300 rounded-lg px-4 py-2">
+                        <span className="text-lg font-medium text-gray-800">
+                          &quot;{answer || 'Loading answer...'}&quot;
+                        </span>
+                      </div>
+                    </div>
+                    <div className="max-w-sm mx-auto">
+                      <div className="flex gap-2 justify-center">
+                        <Button
+                          size="sm"
+                          variant="success"
+                          onClick={() => handleJudgeAnswer(true)}
+                          className="px-4 py-2 text-sm"
+                        >
+                          ✓ Correct
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="danger"
+                          onClick={() => handleJudgeAnswer(false)}
+                          className="px-4 py-2 text-sm"
+                        >
+                          ✗ Incorrect
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Show Answer Button for Host */}
+                {isHost && hasAnswered && !showAnswer && (
+                  <div className="text-center mb-3">
+                    <Button onClick={handleShowAnswer} variant="secondary" className="text-sm py-2">
+                      Show Answer
+                    </Button>
+                  </div>
+                )}
+
+                {/* Answer Reveal */}
+                {showAnswer && (
+                  <div className="text-center mb-3">
+                    <span className="text-lg">💡</span>
+                    <span className="text-sm font-medium text-gray-800 ml-2">
+                      Answer: <strong>{currentQuiz.answer}</strong>
+                    </span>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Quiz Management Modal */}
       <Modal
@@ -355,27 +305,7 @@ export function Room({ room, currentUser, onLeave, className }: RoomProps) {
         />
       </Modal>
 
-      {/* Host Transfer Modal */}
-      <Modal
-        isOpen={showHostModal}
-        onClose={() => setShowHostModal(false)}
-        title="Transfer Host"
-        size="sm"
-      >
-        <div className="space-y-4">
-          <p className="text-gray-600">
-            Transfer host role to <strong>{selectedUser?.name}</strong>?
-          </p>
-          <div className="flex gap-3 pt-4">
-            <Button variant="ghost" onClick={() => setShowHostModal(false)}>
-              Cancel
-            </Button>
-            <Button variant="danger" onClick={handleTransferHost}>
-              Transfer Host
-            </Button>
-          </div>
-        </div>
-      </Modal>
+
 
       {/* Quiz Creator */}
       <QuizCreator

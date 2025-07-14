@@ -84,6 +84,15 @@ function handleConnection(socket: Socket<ClientToServerEvents, ServerToClientEve
   
   // Game events
   socket.on('game:buzz', (data: { user: User }) => handleGameBuzz(socket, data));
+  socket.on('game:answer', (data: { user: User; answer: string }) => handleGameAnswer(socket, data));
+
+  // Quiz answer reveal sync
+  socket.on('quiz:revealAnswer', () => {
+    const roomId = socket.data.roomId;
+    if (roomId) {
+      io.to(roomId).emit('quiz:revealAnswer');
+    }
+  });
   
   // Chat events
   socket.on('chat:message', (data: { message: string; userId: string; userName: string }) => handleChatMessage(socket, data));
@@ -595,6 +604,43 @@ function handleGameBuzz(socket: Socket<ClientToServerEvents, ServerToClientEvent
   } catch (error) {
     console.error('Error handling game buzz:', error);
     socket.emit('error', { message: 'Failed to process buzz' });
+  }
+}
+
+/**
+ * Handle game answer event
+ * @param socket - Socket instance
+ * @param data - Answer event data
+ */
+function handleGameAnswer(socket: Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>, data: { user: User; answer: string }) {
+  try {
+    const { roomId } = socket.data;
+    
+    if (!roomId) {
+      socket.emit('error', { message: 'Not in a room' });
+      return;
+    }
+    
+    const room = getRoom(roomId);
+    if (!room) {
+      socket.emit('error', { message: 'Room not found' });
+      return;
+    }
+    
+    // Verify user is in the room
+    const user = getUser(roomId, data.user.id);
+    if (!user) {
+      socket.emit('error', { message: 'User not found in room' });
+      return;
+    }
+    
+    // Broadcast answer event to all users in the room
+    io.to(roomId).emit('game:answer', { user: data.user, answer: data.answer });
+    
+    console.log(`User ${data.user.name} (${data.user.id}) answered "${data.answer}" in room ${roomId}`);
+  } catch (error) {
+    console.error('Error handling game answer:', error);
+    socket.emit('error', { message: 'Failed to process answer' });
   }
 }
 

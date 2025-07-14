@@ -28,6 +28,7 @@ export interface ClientToServerEvents {
   'quiz:answer': (data: { quizId: string; answer: string }) => void;
   'quiz:judge': (data: { userId: string; isCorrect: boolean; score?: number }) => void;
   'quiz:ended': () => void;
+  'quiz:revealAnswer': () => void;
   
   // Game events
   'game:buzz': (data: { user: User }) => void;
@@ -60,6 +61,7 @@ export interface ServerToClientEvents {
   'quiz:answered': (data: { userId: string; answer: string }) => void;
   'quiz:judged': (data: { userId: string; isCorrect: boolean; score: number }) => void;
   'quiz:ended': (data: { results: Array<{ userId: string; score: number }> }) => void;
+  'quiz:revealAnswer': () => void;
   
   // Game events
   'game:buzz': (data: { user: User }) => void;

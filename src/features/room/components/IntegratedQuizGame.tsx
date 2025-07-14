@@ -5,10 +5,9 @@
  * - Provides host controls and game state management
  */
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { getSocket } from '@/lib/socketClient';
 import type { Quiz, User, Score } from '@/types';
 
 /**
@@ -16,15 +15,14 @@ import type { Quiz, User, Score } from '@/types';
  */
 interface IntegratedQuizGameProps {
   quiz: Quiz;
-  currentUser: User;
   users: User[];
   isHost: boolean;
   gameState: 'waiting' | 'active' | 'answered' | 'finished';
   scores: Score[];
-  buzzedUser: User | null;
-  buzzedUsers: User[];
+  showAnswer: boolean;
   onEndQuiz: () => void;
   onNextQuiz: () => void;
+  isLastQuiz: boolean; // 追加
 }
 
 /**
@@ -32,46 +30,21 @@ interface IntegratedQuizGameProps {
  */
 export function IntegratedQuizGame({
   quiz,
-  currentUser,
   users,
   isHost,
   gameState,
   scores,
-  buzzedUser,
-  buzzedUsers,
+  showAnswer,
   onEndQuiz,
   onNextQuiz,
+  isLastQuiz,
 }: IntegratedQuizGameProps) {
-  const [answer, setAnswer] = useState('');
-  const [hasAnswered, setHasAnswered] = useState(false);
-  const [showAnswer, setShowAnswer] = useState(false);
-
-  const handleBuzzIn = () => {
-    const socket = getSocket();
-    if (socket && !buzzedUser) {
-      socket.emit('game:buzz', { user: currentUser });
-    }
-  };
-
-  const handleSubmitAnswer = () => {
-    if (answer.trim()) {
-      const socket = getSocket();
-      if (socket) {
-        socket.emit('game:answer', { user: currentUser, answer: answer.trim() });
-        setHasAnswered(true);
-      }
-    }
-  };
-
-  const handleShowAnswer = () => {
-    setShowAnswer(true);
-  };
 
   const handleBackToLobby = () => {
     onEndQuiz();
   };
 
-  if (gameState === 'finished') {
+  if (gameState === 'finished' && isLastQuiz) {
     return (
       <Card variant="gradient">
         <CardContent>
@@ -112,14 +85,9 @@ export function IntegratedQuizGame({
             )}
             
             <div className="flex gap-3 justify-center">
-              <Button onClick={handleBackToLobby}>
+              <Button onClick={onEndQuiz}>
                 Back to Lobby
               </Button>
-              {isHost && (
-                <Button variant="success" onClick={onNextQuiz}>
-                  Next Quiz
-                </Button>
-              )}
             </div>
           </div>
         </CardContent>
@@ -142,108 +110,17 @@ export function IntegratedQuizGame({
             </p>
           </div>
 
-          {/* Buzz In Section */}
-          {!buzzedUser && gameState === 'active' && (
-            <div className="text-center mb-6">
-              <Button
-                size="lg"
-                variant="success"
-                onClick={handleBuzzIn}
-                className="animate-pulse"
-              >
-                🔔 Buzz In
-              </Button>
-            </div>
-          )}
+          {/* Buzzed Users Display - Now integrated into PlayerList */}
 
-          {/* Buzzed Users Display */}
-          {buzzedUsers.length > 0 && gameState === 'active' && (
-            <div className="mb-6">
-              <h4 className="text-lg font-medium text-gray-800 mb-3 text-center">
-                🔔 Buzzed In Order
-              </h4>
-              <div className="space-y-2 max-w-md mx-auto">
-                {buzzedUsers.map((user, index) => (
-                  <div
-                    key={user.id}
-                    className={`flex items-center justify-between p-3 rounded-lg ${
-                      user.id === buzzedUser?.id
-                        ? 'bg-yellow-100 border-2 border-yellow-300'
-                        : 'bg-gray-50 border border-gray-200'
-                    }`}
-                  >
-                    <div className="flex items-center">
-                      <span className="text-lg font-bold text-gray-600 mr-3">
-                        #{index + 1}
-                      </span>
-                      <span className="font-medium text-gray-800">
-                        {user.name}
-                      </span>
-                      {user.id === buzzedUser?.id && (
-                        <span className="ml-2 text-yellow-600">🎯 Answering</span>
-                      )}
-                    </div>
-                    <div className="text-sm text-gray-500">
-                      {index === 0 ? '1st' : index === 1 ? '2nd' : index === 2 ? '3rd' : `${index + 1}th`}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Buzzed User Display */}
-          {buzzedUser && (
-            <div className="text-center mb-6">
-              <div className="text-2xl mb-2">⚡</div>
-              <p className="text-lg font-medium text-gray-800">
-                <strong>{buzzedUser.name}</strong> buzzed in!
-              </p>
-              
-              {/* Answer Input for Buzzed User */}
-              {buzzedUser.id === currentUser.id && !hasAnswered && (
-                <div className="mt-4 max-w-md mx-auto">
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={answer}
-                      onChange={(e) => setAnswer(e.target.value)}
-                      placeholder="Type your answer..."
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && !e.shiftKey) {
-                          handleSubmitAnswer();
-                        }
-                      }}
-                      autoFocus
-                    />
-                    <Button onClick={handleSubmitAnswer} disabled={!answer.trim()}>
-                      Submit
-                    </Button>
-                  </div>
-                </div>
-              )}
-
-              {/* Show Answer Button for Host */}
-              {isHost && hasAnswered && !showAnswer && (
-                <div className="mt-4">
-                  <Button onClick={handleShowAnswer}>
-                    Show Answer
-                  </Button>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Answer Reveal */}
-          {showAnswer && (
-            <div className="text-center mb-6">
-              <div className="text-2xl mb-2">💡</div>
-              <p className="text-lg font-medium text-gray-800">
-                Correct Answer: <strong>{quiz.answer}</strong>
-              </p>
-            </div>
-          )}
+        {/* Answer Reveal */}
+        {showAnswer && (
+          <div className="text-center mb-6">
+            <div className="text-2xl mb-2">💡</div>
+            <p className="text-lg font-medium text-gray-800">
+              Correct Answer: <strong>{quiz.answer}</strong>
+            </p>
+          </div>
+        )}
 
           {/* Game Controls for Host */}
           {isHost && (

@@ -14,7 +14,7 @@ import type { Quiz } from '@/types';
  */
 interface QuizManagementProps {
   quizzes: Quiz[];
-  onStartQuiz: (quiz: Quiz) => void;
+  onStartQuiz: () => void; // 引数なしに修正
   onCreateQuiz: () => void;
 }
 
@@ -23,13 +23,12 @@ interface QuizManagementProps {
  */
 interface QuizItemProps {
   quiz: Quiz;
-  onStart: () => void;
 }
 
 /**
  * Individual quiz item component
  */
-function QuizItem({ quiz, onStart }: QuizItemProps) {
+function QuizItem({ quiz }: QuizItemProps) {
   return (
     <div className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
       <div>
@@ -38,13 +37,6 @@ function QuizItem({ quiz, onStart }: QuizItemProps) {
           Type: {quiz.type} • Answer: {quiz.answer}
         </p>
       </div>
-      <Button
-        variant="success"
-        size="sm"
-        onClick={onStart}
-      >
-        Start
-      </Button>
     </div>
   );
 }
@@ -72,8 +64,12 @@ export function QuizManagement({ quizzes, onStartQuiz, onCreateQuiz }: QuizManag
 
   return (
     <div className="space-y-3">
+      {/* Start Quizボタンを1つだけ表示し、クリックでonStartQuiz()を呼ぶ */}
+      <Button data-testid="start-quiz-btn" onClick={() => onStartQuiz()}>
+        Start Quiz
+      </Button>
       {quizzes.map((quiz) => (
-        <QuizItem key={quiz.id} quiz={quiz} onStart={() => onStartQuiz(quiz)} />
+        <QuizItem key={quiz.id} quiz={quiz} />
       ))}
       <Button onClick={onCreateQuiz}>
         Create Quiz
