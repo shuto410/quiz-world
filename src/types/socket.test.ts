@@ -52,6 +52,7 @@ describe('Socket.io Event Types', () => {
       'game:answer': (data) => {
         expect(data.answer).toBe('4');
       },
+      'quiz:revealAnswer': () => {},
     };
 
     // Test room:create event
@@ -158,6 +159,7 @@ describe('Socket.io Event Types', () => {
         expect(data.scores[0].userId).toBe('user1');
         expect(data.scores[0].score).toBe(10);
       },
+      'quiz:revealAnswer': () => {},
       'chat:message': (data) => {
         expect(data.userId).toBeDefined();
         expect(data.message).toBeDefined();

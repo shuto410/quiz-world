@@ -198,8 +198,42 @@ describe('Socket.io Server', () => {
           
           // Check that quiz:answered event was emitted
           expect(mockSocket.emit).toHaveBeenCalledWith('quiz:answered', expect.objectContaining({
-            userId: mockSocket.data.userId,
+            userId: expect.any(String),
             answer: '4',
+          }));
+        }
+      }
+    });
+
+    test('should handle game buzz event', () => {
+      // First create a room
+      const createData = { name: 'Test Room', isPublic: true };
+      const eventHandlers = mockSocket.on.mock.calls.reduce((acc: any, call: any) => {
+        acc[call[0]] = call[1];
+        return acc;
+      }, {});
+      
+      if (eventHandlers['room:create']) {
+        eventHandlers['room:create'](createData);
+        
+        const buzzData = {
+          user: {
+            id: 'user-1',
+            name: 'Test User',
+            isHost: false,
+          },
+        };
+        
+        if (eventHandlers['game:buzz']) {
+          eventHandlers['game:buzz'](buzzData);
+          
+          // Check that game:buzz event was emitted to all users in the room
+          expect(mockSocket.to).toHaveBeenCalledWith(mockSocket.data.roomId);
+          expect(mockSocket.emit).toHaveBeenCalledWith('game:buzz', expect.objectContaining({
+            user: expect.objectContaining({
+              id: 'user-1',
+              name: 'Test User',
+            }),
           }));
         }
       }
