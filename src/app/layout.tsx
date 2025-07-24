@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { DebugUser } from "@/components/DebugUser";
 
 export const metadata: Metadata = {
   title: "Quiz World - Real-time Multiplayer Quiz Game",
@@ -15,6 +16,7 @@ export default function RootLayout({
     <html lang="en">
       <body className="antialiased font-sans">
         {children}
+        <DebugUser />
       </body>
     </html>
   );

@@ -19,6 +19,7 @@ export interface UserData {
   lastUsed: number;
 }
 
+
 /**
  * Storage configuration
  */
@@ -54,7 +55,7 @@ function getUserFromCookie(): UserData | null {
     const decoded = decodeURIComponent(value);
     return JSON.parse(decoded);
   } catch (error) {
-    console.warn('Failed to read user from cookie:', error);
+    // Failed to read user from cookie
     return null;
   }
 }
@@ -75,7 +76,7 @@ function setUserInCookie(userData: UserData): void {
     
     document.cookie = `${STORAGE_CONFIG.COOKIE_NAME}=${encoded}; expires=${expires.toUTCString()}; path=/; SameSite=Lax`;
   } catch (error) {
-    console.warn('Failed to set user in cookie:', error);
+    // Failed to set user in cookie
   }
 }
 
@@ -92,7 +93,7 @@ function getUserFromLocalStorage(): UserData | null {
     
     return JSON.parse(stored);
   } catch (error) {
-    console.warn('Failed to read user from localStorage:', error);
+    // Failed to read user from localStorage
     return null;
   }
 }
@@ -107,7 +108,7 @@ function setUserInLocalStorage(userData: UserData): void {
     
     window.localStorage.setItem(STORAGE_CONFIG.LOCAL_STORAGE_KEY, JSON.stringify(userData));
   } catch (error) {
-    console.warn('Failed to set user in localStorage:', error);
+    // Failed to set user in localStorage
   }
 }
 
@@ -124,7 +125,7 @@ function getUserFromSessionStorage(): UserData | null {
     
     return JSON.parse(stored);
   } catch (error) {
-    console.warn('Failed to read user from sessionStorage:', error);
+    // Failed to read user from sessionStorage
     return null;
   }
 }
@@ -139,31 +140,62 @@ function setUserInSessionStorage(userData: UserData): void {
     
     window.sessionStorage.setItem(STORAGE_CONFIG.SESSION_STORAGE_KEY, JSON.stringify(userData));
   } catch (error) {
-    console.warn('Failed to set user in sessionStorage:', error);
+    // Failed to set user in sessionStorage
   }
 }
 
 /**
+ * Get debug user data from URL parameters
+ * Format: ?debug_user=name&debug_id=id
+ * Priority: URL parameters override all other storage
+ */
+function getDebugUserFromURL(): UserData | null {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  try {
+    const urlParams = new URLSearchParams(window.location.search);
+    const debugUser = urlParams.get('debug_user');
+    const debugId = urlParams.get('debug_id');
+
+    if (debugUser) {
+      return {
+        id: debugId || `debug_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        name: debugUser,
+        lastUsed: Date.now(),
+      };
+    }
+  } catch (error) {
+    // Ignore URL parsing errors
+  }
+
+  return null;
+}
+
+/**
  * Get user data with fallback mechanism
+ * Priority: URL debug params → localStorage → sessionStorage → cookie → null
  * @returns User data or null if not found
  */
 export function getUserData(): UserData | null {
-  console.log('=== getUserData Debug ===');
-  
+  // Check for debug user in URL first (highest priority)
+  const debugData = getDebugUserFromURL();
+  if (debugData) {
+    return debugData;
+  }
+
   // Return cached data if available and valid
   if (cacheInitialized && userDataCache && userDataCache.id) {
-    console.log('Returning cached user data:', userDataCache);
     return userDataCache;
   }
   
   // Try to get data from localStorage
   let userData = getUserFromLocalStorage();
-  console.log('User data from localStorage:', userData);
   
   if (userData) {
     // Check if user data has ID, if not, it's old format
     if (!userData.id) {
-      console.log('Converting old format localStorage data to new format');
       userData = {
         id: generateUserId(),
         name: userData.name || '',
@@ -175,18 +207,15 @@ export function getUserData(): UserData | null {
     
     userDataCache = userData;
     cacheInitialized = true;
-    console.log('Using localStorage data:', userData);
     return userData;
   }
   
   // Try to get data from sessionStorage
   userData = getUserFromSessionStorage();
-  console.log('User data from sessionStorage:', userData);
   
   if (userData) {
     // Check if user data has ID, if not, it's old format
     if (!userData.id) {
-      console.log('Converting old format sessionStorage data to new format');
       userData = {
         id: generateUserId(),
         name: userData.name || '',
@@ -198,18 +227,15 @@ export function getUserData(): UserData | null {
     
     userDataCache = userData;
     cacheInitialized = true;
-    console.log('Using sessionStorage data:', userData);
     return userData;
   }
   
   // Try to get data from cookie
   userData = getUserFromCookie();
-  console.log('User data from cookie:', userData);
   
   if (userData) {
     // Check if user data has ID, if not, it's old format
     if (!userData.id) {
-      console.log('Converting old format cookie data to new format');
       userData = {
         id: generateUserId(),
         name: userData.name || '',
@@ -221,12 +247,8 @@ export function getUserData(): UserData | null {
     
     userDataCache = userData;
     cacheInitialized = true;
-    console.log('Using cookie data:', userData);
     return userData;
   }
-  
-  console.log('No user data found in any storage');
-  console.log('=== End getUserData Debug ===');
   
   cacheInitialized = true;
   return null;
@@ -254,23 +276,16 @@ function generateUserId(): string {
  * @returns User ID string
  */
 export function getUserId(): string {
-  console.log('=== getUserId Debug ===');
-  console.log('Cache initialized:', cacheInitialized);
-  console.log('User data cache:', userDataCache);
-  
   // Return cached ID if available and valid
   if (cacheInitialized && userDataCache && userDataCache.id) {
-    console.log('Returning cached user ID:', userDataCache.id);
     return userDataCache.id;
   }
   
   let userData = getUserData();
-  console.log('User data from storage:', userData);
   
   // If no user data exists or user data doesn't have ID, generate new user with ID
   if (!userData || !userData.id) {
     const newId = generateUserId();
-    console.log('Generating new user ID:', newId);
     
     // If we have existing user data without ID, preserve the name
     const existingName = userData?.name || '';
@@ -296,8 +311,6 @@ export function getUserId(): string {
       lastUsed: Date.now(),
     };
     
-    console.log('Updating existing user data:', updatedUserData);
-    
     // Update cache
     userDataCache = updatedUserData;
     
@@ -307,8 +320,6 @@ export function getUserId(): string {
     setUserInCookie(updatedUserData);
   }
   
-  console.log('Final user ID to return:', userData.id);
-  console.log('=== End getUserId Debug ===');
   return userData.id;
 }
 
@@ -335,7 +346,7 @@ export function setUserWithId(name: string): void {
     };
   }
   
-  // Update cache
+  // Update cache immediately and mark as initialized
   userDataCache = userData;
   cacheInitialized = true;
   
@@ -377,8 +388,9 @@ export function clearUserData(): void {
     if (typeof document !== 'undefined') {
       document.cookie = `${STORAGE_CONFIG.COOKIE_NAME}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
     }
+    
   } catch (error) {
-    console.warn('Failed to clear user data:', error);
+    // Failed to clear user data
   }
 }
 
@@ -388,6 +400,34 @@ export function clearUserData(): void {
 export function resetCache(): void {
   userDataCache = null;
   cacheInitialized = false;
+}
+
+/**
+ * Create a debug URL with user parameters
+ * @param userName - Debug user name
+ * @param userId - Optional debug user ID
+ * @param path - Optional path (defaults to current path)
+ * @returns URL with debug parameters
+ */
+export function createDebugUserUrl(userName: string, userId?: string, path?: string): string {
+  if (typeof window === 'undefined') {
+    return '';
+  }
+
+  const url = new URL(window.location.origin + (path || window.location.pathname));
+  url.searchParams.set('debug_user', userName);
+  if (userId) {
+    url.searchParams.set('debug_id', userId);
+  }
+  return url.toString();
+}
+
+/**
+ * Check if current page is using debug user parameters
+ * @returns true if debug parameters are present
+ */
+export function isDebugUser(): boolean {
+  return getDebugUserFromURL() !== null;
 }
 
 /**
@@ -440,4 +480,6 @@ export function getStorageAvailability(): Record<StorageType, boolean> {
     sessionStorage: typeof window !== 'undefined' && !!window.sessionStorage,
     cookie: typeof document !== 'undefined' && !!document.cookie,
   };
-} 
+}
+
+ 
