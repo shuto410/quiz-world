@@ -286,7 +286,6 @@ export function RoomList({ onRoomJoined, className }: RoomListProps) {
 
   // Memoize callback functions to prevent infinite re-renders
   const handleRoomCreated = useCallback((data: { room: Room }) => {
-    console.log('Room created:', data.room.id);
     setShowCreateModal(false);
     
     // Store room data for the room page
@@ -299,8 +298,6 @@ export function RoomList({ onRoomJoined, className }: RoomListProps) {
   }, [router]);
 
   const handleRoomJoined = useCallback((data: { room: Room; user: User }) => {
-    console.log('Room joined:', data.room.id);
-    
     // Close the join modal
     setShowJoinModal(false);
     setSelectedRoom(null);
@@ -334,12 +331,10 @@ export function RoomList({ onRoomJoined, className }: RoomListProps) {
     sortOrder: 'asc',
   });
 
-  // Load saved user name on mount
+  // Load saved user name
   useEffect(() => {
-    const savedUserName = getUserName();
-    if (savedUserName) {
-      setUserNameState(savedUserName);
-    }
+    const savedUserName = getUserName() || '';
+    setUserNameState(savedUserName);
   }, []);
 
   // Handle room creation

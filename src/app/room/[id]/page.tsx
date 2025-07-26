@@ -9,11 +9,11 @@
 
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Room } from '@/features/room/components/Room';
 import type { Room as RoomType, User } from '@/types';
-import { getUserName, getUserId } from '@/lib/userStorage';
+import { getUserId, getUserName } from '@/lib/userStorage';
 import { getSocket, isConnected, joinRoom, leaveRoom } from '@/lib/socketClient';
 
 /**
@@ -32,16 +32,8 @@ export default function RoomPage() {
   const roomId = resolvedParams.id as string;
   const socketRef = useRef<ReturnType<typeof getSocket> | null>(null);
 
-  // Initialize socket and check if already in room
-  useEffect(() => {
-    // Reset refs when component mounts
-    hasLeftRef.current = false;
-    
-    const userName = getUserName();
-    if (!userName) {
-      router.push('/');
-      return;
-    }
+  // Separate function to handle room initialization with confirmed user data
+  const initializeRoomWithUser = useCallback((userName: string) => {
     if (!isConnected()) {
       setError('Not connected to server. Please refresh the page.');
       setLoading(false);
@@ -72,7 +64,6 @@ export default function RoomPage() {
       try {
         const roomData = JSON.parse(storedRoomData);
         if (roomData.id === roomId) {
-          console.log('Using stored room data for fresh room creation:', { roomId: roomData.id, hostName: roomData.users[0]?.name });
           setRoom(roomData);
           setCurrentUser(roomData.users[0]);
           setLoading(false);
@@ -82,16 +73,13 @@ export default function RoomPage() {
           sessionStorage.removeItem('createdRoom');
         }
       } catch (error) {
-        console.error('Error parsing stored room data:', error);
+        // Error parsing stored room data
         sessionStorage.removeItem('createdRoom');
       }
     }
 
     // room:joined handler
     const handleRoomJoined = (data: { room: RoomType; user: User }) => {
-      if (data.room && data.user) {
-        console.log('Received room:joined event:', { roomId: data.room.id, userId: data.user.id, userName: data.user.name, isHost: data.user.isHost });
-      }
       setRoom(data.room);
       setCurrentUser(data.user);
       setLoading(false);
@@ -129,7 +117,6 @@ export default function RoomPage() {
 
     // room:left handler
     const handleRoomLeft = () => {
-      console.log('Room left successfully');
       hasLeftRef.current = false; // Reset hasLeftRef when successfully left
       
       // Navigate to home page after successfully leaving room
@@ -147,30 +134,15 @@ export default function RoomPage() {
     // Quiz events are now handled by the Room component itself
     // No need to navigate to separate quiz-game page
 
-    // If user is already host (from room creation), don't call joinRoom
-    // The server should send room:joined event automatically for room creation
-    console.log('=== Room Page Debug ===');
-    console.log('isHost from URL:', isHostValue);
-    console.log('hasJoinedRef.current:', hasJoinedRef.current);
-    console.log('userId:', userId);
-    console.log('userName:', userName);
-    console.log('roomId:', roomId);
-    console.log('storedRoomData exists:', !!storedRoomData);
-    
     // Only skip joinRoom if we have stored room data (fresh room creation)
     if (isHostValue && storedRoomData) {
-      console.log('User is host with stored room data - waiting for room:joined event from room creation');
       // Don't call joinRoom for fresh room creation - they should receive room:joined from room creation
     } else if (!hasJoinedRef.current) {
-      console.log('Calling joinRoom...');
       joinRoom(roomId, userId, userName);
-    } else {
-      console.log('Skipping joinRoom - already joined');
     }
-    console.log('=== End Debug ===');
 
-    // Clean up on unmount
-    return () => {
+    // Clean up socket listeners
+    const cleanup = () => {
       socket.off('room:joined', handleRoomJoined);
       socket.off('room:alreadyJoined', handleAlreadyJoined);
       socket.off('room:left', handleRoomLeft);
@@ -187,12 +159,33 @@ export default function RoomPage() {
         leaveRoom();
       }
     };
-  }, [roomId, router]); // Remove room?.users from dependencies to prevent re-renders
+    
+    // Set up cleanup for this specific socket instance
+    return cleanup;
+  }, [roomId]);
+  
+  // Initialize socket and check if already in room
+  useEffect(() => {
+    // Reset refs when component mounts
+    hasLeftRef.current = false;
+    
+    // Get user name and initialize room
+    const userName = getUserName();
+    
+    if (!userName) {
+      router.push('/');
+      return;
+    }
+    
+    // Initialize room cleanup
+    const cleanup = initializeRoomWithUser(userName);
+    
+    return cleanup;
+  }, [roomId, router, initializeRoomWithUser]);
 
   // Handle room leave
   const handleRoomLeave = () => {
     if (hasLeftRef.current) {
-      console.log('Already left room, skipping duplicate leaveRoom call');
       return;
     }
     hasLeftRef.current = true;
