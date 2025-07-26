@@ -14,7 +14,7 @@ import type { Room, User } from '@/types';
 import { useSocketConnection } from '../../room/hooks/useSocketConnection';
 import { useRoomList } from '../hooks/useRoomList';
 import { joinRoom, createRoom } from '@/lib/socketClient';
-import { getUserName, setUserName, getUserId } from '@/lib/userStorage';
+import { getStoredUserName, storeUserName, getStoredUserId } from '@/lib/userStorage';
 
 /**
  * Room card component
@@ -322,7 +322,7 @@ export function RoomList({ onRoomJoined, className }: RoomListProps) {
   });
 
   // Get current user ID for filtering
-  const currentUserId = getUserId();
+  const currentUserId = getStoredUserId();
   
   const { rooms, loading, error, refresh } = useRoomList(isConnected, {
     autoFetch: true,
@@ -333,15 +333,15 @@ export function RoomList({ onRoomJoined, className }: RoomListProps) {
 
   // Load saved user name
   useEffect(() => {
-    const savedUserName = getUserName() || '';
+    const savedUserName = getStoredUserName() || '';
     setUserNameState(savedUserName);
   }, []);
 
   // Handle room creation
   const handleCreateRoom = (name: string, isPublic: boolean, maxPlayers: number, userName: string) => {
     setUserNameState(userName);
-    setUserName(userName);
-    const userId = getUserId();
+    storeUserName(userName);
+    const userId = getStoredUserId();
     createRoom(name, isPublic, maxPlayers, userName, userId);
   };
 
@@ -350,8 +350,8 @@ export function RoomList({ onRoomJoined, className }: RoomListProps) {
     if (!selectedRoom) return;
     
     setUserNameState(userName);
-    setUserName(userName);
-    const userId = getUserId();
+    storeUserName(userName);
+    const userId = getStoredUserId();
     
     joinRoom(selectedRoom.id, userId, userName);
     // Modal will be closed in handleRoomJoined on success

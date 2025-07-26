@@ -72,8 +72,8 @@ describe('useRoomGame', () => {
     // モック関数の設定
     vi.mocked(socketClient.getSocket).mockReturnValue(mockSocket);
     vi.mocked(socketClient.startQuiz).mockResolvedValue(undefined);
-    vi.mocked(userStorage.getUserName).mockReturnValue('Host User');
-    vi.mocked(userStorage.getUserId).mockReturnValue('user-1');
+    vi.mocked(userStorage.getStoredUserName).mockReturnValue('Host User');
+    vi.mocked(userStorage.getStoredUserId).mockReturnValue('user-1');
   });
 
   afterEach(() => {

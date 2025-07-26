@@ -13,7 +13,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Room } from '@/features/room/components/Room';
 import type { Room as RoomType, User } from '@/types';
-import { getUserId, getUserName } from '@/lib/userStorage';
+import { getStoredUserId, getStoredUserName } from '@/lib/userStorage';
 import { getSocket, isConnected, joinRoom, leaveRoom } from '@/lib/socketClient';
 
 /**
@@ -47,7 +47,7 @@ export default function RoomPage() {
       return;
     }
 
-    const userId = getUserId();
+    const userId = getStoredUserId();
 
     // Get isHost value from URL params (fallback for initial load)
     const isHostValue = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('host') === 'true' : false;
@@ -170,7 +170,7 @@ export default function RoomPage() {
     hasLeftRef.current = false;
     
     // Get user name and initialize room
-    const userName = getUserName();
+    const userName = getStoredUserName();
     
     if (!userName) {
       router.push('/');

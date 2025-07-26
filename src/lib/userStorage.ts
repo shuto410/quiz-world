@@ -178,7 +178,7 @@ function getDebugUserFromURL(): UserData | null {
  * Priority: URL debug params → localStorage → sessionStorage → cookie → null
  * @returns User data or null if not found
  */
-export function getUserData(): UserData | null {
+export function getStoredUserData(): UserData | null {
   // Check for debug user in URL first (highest priority)
   const debugData = getDebugUserFromURL();
   if (debugData) {
@@ -258,8 +258,8 @@ export function getUserData(): UserData | null {
  * Get user name with fallback mechanism
  * @returns User name or null if not found
  */
-export function getUserName(): string | null {
-  const userData = getUserData();
+export function getStoredUserName(): string | null {
+  const userData = getStoredUserData();
   return userData?.name || null;
 }
 
@@ -275,13 +275,13 @@ function generateUserId(): string {
  * Get user ID with automatic generation if needed
  * @returns User ID string
  */
-export function getUserId(): string {
+export function getStoredUserId(): string {
   // Return cached ID if available and valid
   if (cacheInitialized && userDataCache && userDataCache.id) {
     return userDataCache.id;
   }
   
-  let userData = getUserData();
+  let userData = getStoredUserData();
   
   // If no user data exists or user data doesn't have ID, generate new user with ID
   if (!userData || !userData.id) {
@@ -327,8 +327,8 @@ export function getUserId(): string {
  * Set user data with ID and name
  * @param name - User name to store
  */
-export function setUserWithId(name: string): void {
-  let userData = getUserData();
+export function storeUserWithId(name: string): void {
+  let userData = getStoredUserData();
   
   // If no user data exists, generate new ID
   if (!userData) {
@@ -361,14 +361,14 @@ export function setUserWithId(name: string): void {
  * Stores in all available storage types for redundancy
  * @param name - User name to store
  */
-export function setUserName(name: string): void {
-  setUserWithId(name);
+export function storeUserName(name: string): void {
+  storeUserWithId(name);
 }
 
 /**
  * Clear user data from all storage types
  */
-export function clearUserData(): void {
+export function clearStoredUserData(): void {
   try {
     // Clear cache
     userDataCache = null;
@@ -435,7 +435,7 @@ export function isDebugUser(): boolean {
  * @returns True if user data exists, false otherwise
  */
 export function hasUserData(): boolean {
-  return getUserData() !== null;
+  return getStoredUserData() !== null;
 }
 
 /**
@@ -454,7 +454,7 @@ export function getStorageType(): StorageType | null {
  * @param targetStorage - Target storage type
  */
 export function migrateUserData(targetStorage: StorageType): void {
-  const userData = getUserData();
+  const userData = getStoredUserData();
   if (!userData) return;
   
   switch (targetStorage) {

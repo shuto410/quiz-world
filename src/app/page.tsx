@@ -13,7 +13,7 @@ import { RoomList } from '../features/room-list/components/RoomList';
 import { Button } from '../components/ui/Button';
 import type { Room } from '../types';
 import { createRoom } from '../lib/socketClient';
-import { getUserName, getUserId } from '../lib/userStorage';
+import { getStoredUserName, getStoredUserId } from '../lib/userStorage';
 import { ToastProvider, useToast } from '../contexts/ToastContext';
 
 function HomeContent() {
@@ -26,8 +26,8 @@ function HomeContent() {
   };
 
   const handleCreateDemoRoom = async () => {
-    const userName = getUserName();
-    const userId = getUserId();
+    const userName = getStoredUserName();
+    const userId = getStoredUserId();
     
     if (!userName) {
       showWarning('ユーザー名を設定してください');

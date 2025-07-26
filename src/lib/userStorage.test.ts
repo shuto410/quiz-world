@@ -1,11 +1,11 @@
 import { describe, test, expect, beforeEach, vi } from 'vitest';
 import {
-  getUserData,
-  getUserName,
-  getUserId,
-  setUserName,
-  setUserWithId,
-  clearUserData,
+  getStoredUserData,
+  getStoredUserName,
+  getStoredUserId,
+  storeUserName,
+  storeUserWithId,
+  clearStoredUserData,
   hasUserData,
   resetCache,
   getStorageAvailability,
@@ -19,12 +19,12 @@ describe('User Storage', () => {
     resetCache();
     
     // Clear all storage
-    clearUserData();
+    clearStoredUserData();
   });
 
   describe('getUserData', () => {
     test('should return null when no user data exists', () => {
-      const userData = getUserData();
+      const userData = getStoredUserData();
       expect(userData).toBeNull();
     });
 
@@ -32,7 +32,7 @@ describe('User Storage', () => {
       const testData = { id: 'test-id', name: 'Alice', lastUsed: Date.now() };
       localStorage.setItem('quiz_world_user', JSON.stringify(testData));
       
-      const userData = getUserData();
+      const userData = getStoredUserData();
       expect(userData).toEqual(testData);
     });
 
@@ -40,7 +40,7 @@ describe('User Storage', () => {
       const testData = { id: 'test-id', name: 'Bob', lastUsed: Date.now() };
       sessionStorage.setItem('quiz_world_user', JSON.stringify(testData));
       
-      const userData = getUserData();
+      const userData = getStoredUserData();
       expect(userData).toEqual(testData);
     });
 
@@ -51,7 +51,7 @@ describe('User Storage', () => {
       localStorage.setItem('quiz_world_user', JSON.stringify(localData));
       sessionStorage.setItem('quiz_world_user', JSON.stringify(sessionData));
       
-      const userData = getUserData();
+      const userData = getStoredUserData();
       expect(userData).toEqual(localData);
     });
   });
@@ -61,25 +61,25 @@ describe('User Storage', () => {
       const testData = { id: 'test-id', name: 'Alice', lastUsed: Date.now() };
       localStorage.setItem('quiz_world_user', JSON.stringify(testData));
       
-      const userName = getUserName();
+      const userName = getStoredUserName();
       expect(userName).toBe('Alice');
     });
 
     test('should return null when no user data exists', () => {
-      const userName = getUserName();
+      const userName = getStoredUserName();
       expect(userName).toBeNull();
     });
 
     test('should store and retrieve user name from localStorage', () => {
-      setUserName('Alice');
-      const userName = getUserName();
+      storeUserName('Alice');
+      const userName = getStoredUserName();
       expect(userName).toBe('Alice');
     });
   });
 
   describe('setUserName', () => {
     test('should store user data in localStorage', () => {
-      setUserName('Alice');
+      storeUserName('Alice');
       
       const stored = localStorage.getItem('quiz_world_user');
       expect(stored).toBeTruthy();
@@ -92,10 +92,10 @@ describe('User Storage', () => {
 
     test('should include lastUsed timestamp', () => {
       const beforeTime = Date.now();
-      setUserName('Alice');
+      storeUserName('Alice');
       const afterTime = Date.now();
       
-      const userData = getUserData();
+      const userData = getStoredUserData();
       expect(userData?.lastUsed).toBeGreaterThanOrEqual(beforeTime);
       expect(userData?.lastUsed).toBeLessThanOrEqual(afterTime);
     });
@@ -103,10 +103,10 @@ describe('User Storage', () => {
 
   describe('clearUserData', () => {
     test('should clear data from all storage types', () => {
-      setUserName('Alice');
+      storeUserName('Alice');
       expect(hasUserData()).toBe(true);
       
-      clearUserData();
+      clearStoredUserData();
       expect(hasUserData()).toBe(false);
     });
   });
@@ -126,23 +126,23 @@ describe('User Storage', () => {
 
   describe('getUserId', () => {
     test('should generate user ID automatically when none exists', () => {
-      const userId = getUserId();
+      const userId = getStoredUserId();
       expect(userId).toMatch(/^user_\d+_[a-z0-9]+$/);
     });
 
     test('should return same user ID on subsequent calls', () => {
-      const userId1 = getUserId();
-      const userId2 = getUserId();
+      const userId1 = getStoredUserId();
+      const userId2 = getStoredUserId();
       expect(userId1).toBe(userId2);
     });
 
     test('should set user ID with name', () => {
-      setUserWithId('Test User');
+      storeUserWithId('Test User');
       
-      const userId = getUserId();
+      const userId = getStoredUserId();
       expect(userId).toMatch(/^user_\d+_[a-z0-9]+$/);
       
-      const userData = getUserData();
+      const userData = getStoredUserData();
       expect(userData?.name).toBe('Test User');
     });
   });
@@ -224,7 +224,7 @@ describe('User Storage', () => {
       localStorage.setItem('quiz_world_user', JSON.stringify(oldData));
       
       // Get user data - should convert to new format
-      const userData = getUserData();
+      const userData = getStoredUserData();
       
       expect(userData).toBeTruthy();
       expect(userData!.id).toBeTruthy();
@@ -239,7 +239,7 @@ describe('User Storage', () => {
       sessionStorage.setItem('quiz_world_user', JSON.stringify(oldData));
       
       // Get user data - should convert to new format
-      const userData = getUserData();
+      const userData = getStoredUserData();
       
       expect(userData).toBeTruthy();
       expect(userData!.id).toBeTruthy();
@@ -254,7 +254,7 @@ describe('User Storage', () => {
       localStorage.setItem('quiz_world_user', JSON.stringify(oldData));
       
       // Get user data - should convert to new format
-      const userData = getUserData();
+      const userData = getStoredUserData();
       
       expect(userData).toBeTruthy();
       expect(userData!.id).toBeTruthy();
@@ -269,7 +269,7 @@ describe('User Storage', () => {
       localStorage.setItem('quiz_world_user', 'invalid-json');
       
       // Should not throw error and return null
-      const userData = getUserData();
+      const userData = getStoredUserData();
       expect(userData).toBeNull();
     });
 
@@ -278,7 +278,7 @@ describe('User Storage', () => {
       sessionStorage.setItem('quiz_world_user', 'invalid-json');
       
       // Should not throw error and return null
-      const userData = getUserData();
+      const userData = getStoredUserData();
       expect(userData).toBeNull();
     });
 
@@ -290,7 +290,7 @@ describe('User Storage', () => {
       });
       
       // Should not throw error
-      expect(() => clearUserData()).not.toThrow();
+      expect(() => clearStoredUserData()).not.toThrow();
       
       // Restore original method
       localStorage.removeItem = originalRemoveItem;
@@ -304,13 +304,13 @@ describe('User Storage', () => {
       localStorage.setItem('quiz_world_user', JSON.stringify(userData));
       
       // Get user ID - should generate new ID and preserve name
-      const userId = getUserId();
+      const userId = getStoredUserId();
       
       expect(userId).toBeTruthy();
       expect(userId).toMatch(/^user_\d+_[a-z0-9]+$/);
       
       // Check that name is preserved
-      const updatedUserData = getUserData();
+      const updatedUserData = getStoredUserData();
       expect(updatedUserData!.name).toBe('Alice');
       expect(updatedUserData!.id).toBe(userId);
     });
@@ -324,13 +324,13 @@ describe('User Storage', () => {
       resetCache();
       
       const beforeTime = Date.now();
-      const userId = getUserId();
+      const userId = getStoredUserId();
       const afterTime = Date.now();
       
       expect(userId).toBe('existing-id');
       
       // Check that lastUsed is updated
-      const updatedData = getUserData();
+      const updatedData = getStoredUserData();
       expect(updatedData!.lastUsed).toBeGreaterThanOrEqual(beforeTime);
       expect(updatedData!.lastUsed).toBeLessThanOrEqual(afterTime);
     });
@@ -341,20 +341,20 @@ describe('User Storage', () => {
       localStorage.setItem('quiz_world_user', JSON.stringify(existingData));
       
       // Update user with new name
-      setUserWithId('Bob');
+      storeUserWithId('Bob');
       
       // Check that ID is preserved and name is updated
-      const userData = getUserData();
+      const userData = getStoredUserData();
       expect(userData!.id).toBe('existing-id');
       expect(userData!.name).toBe('Bob');
     });
 
     test('should handle setUserWithId when no user data exists', () => {
       // Set user name when no data exists
-      setUserWithId('Charlie');
+      storeUserWithId('Charlie');
       
       // Check that new user data is created
-      const userData = getUserData();
+      const userData = getStoredUserData();
       expect(userData).toBeTruthy();
       expect(userData!.id).toMatch(/^user_\d+_[a-z0-9]+$/);
       expect(userData!.name).toBe('Charlie');
@@ -368,13 +368,13 @@ describe('User Storage', () => {
       localStorage.setItem('quiz_world_user', JSON.stringify(testData));
       
       // First call - should read from storage
-      const userData1 = getUserData();
+      const userData1 = getStoredUserData();
       
       // Remove from storage to test cache
       localStorage.removeItem('quiz_world_user');
       
       // Second call - should return cached data
-      const userData2 = getUserData();
+      const userData2 = getStoredUserData();
       
       expect(userData2).toEqual(userData1);
     });
@@ -385,14 +385,14 @@ describe('User Storage', () => {
       localStorage.setItem('quiz_world_user', JSON.stringify(testData));
       
       // Load data into cache
-      getUserData();
+      getStoredUserData();
       
       // Clear storage and reset cache
       localStorage.removeItem('quiz_world_user');
       resetCache();
       
       // Should return null since cache is cleared and storage is empty
-      const userData = getUserData();
+      const userData = getStoredUserData();
       expect(userData).toBeNull();
     });
   });

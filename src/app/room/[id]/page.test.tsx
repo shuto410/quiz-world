@@ -33,8 +33,8 @@ vi.mock('@/lib/socketClient', () => ({
 
 // Mock user storage
 vi.mock('@/lib/userStorage', () => ({
-  getUserName: vi.fn(),
-  getUserId: vi.fn(),
+  getStoredUserName: vi.fn(),
+  getStoredUserId: vi.fn(),
 }));
 
 // Mock Room component
@@ -69,7 +69,7 @@ describe('RoomPage', () => {
 
   it('should not call joinRoom when user is already host in the room with stored room data', async () => {
     const { joinRoom, getSocket, isConnected } = await import('@/lib/socketClient');
-    const { getUserName, getUserId } = await import('@/lib/userStorage');
+    const { getStoredUserName, getStoredUserId  } = await import('@/lib/userStorage');
     
     // Mock window.location.search for host parameter
     Object.defineProperty(window, 'location', {
@@ -110,8 +110,8 @@ describe('RoomPage', () => {
     // Mock that user is connected and has data
     (isConnected as unknown as ReturnType<typeof vi.fn>).mockReturnValue(true);
     (getSocket as unknown as ReturnType<typeof vi.fn>).mockReturnValue(mockSocket);
-    (getUserName as unknown as ReturnType<typeof vi.fn>).mockReturnValue('Test User');
-    (getUserId as unknown as ReturnType<typeof vi.fn>).mockReturnValue('test-user-id');
+    (getStoredUserName as unknown as ReturnType<typeof vi.fn>).mockReturnValue('Test User');
+    (getStoredUserId as unknown as ReturnType<typeof vi.fn>).mockReturnValue('test-user-id');
 
     // Mock room:joined event with user as host
     let roomJoinedHandler: ((data: Record<string, unknown>) => void) | undefined;
@@ -159,7 +159,7 @@ describe('RoomPage', () => {
 
   it('should call joinRoom when user is host but no stored room data', async () => {
     const { joinRoom, getSocket, isConnected } = await import('@/lib/socketClient');
-    const { getUserName, getUserId } = await import('@/lib/userStorage');
+    const { getStoredUserName, getStoredUserId } = await import('@/lib/userStorage');
     
     // Mock window.location.search for host parameter
     Object.defineProperty(window, 'location', {
@@ -187,8 +187,8 @@ describe('RoomPage', () => {
     // Mock that user is connected and has data
     (isConnected as unknown as ReturnType<typeof vi.fn>).mockReturnValue(true);
     (getSocket as unknown as ReturnType<typeof vi.fn>).mockReturnValue(mockSocket);
-    (getUserName as unknown as ReturnType<typeof vi.fn>).mockReturnValue('Test User');
-    (getUserId as unknown as ReturnType<typeof vi.fn>).mockReturnValue('test-user-id');
+    (getStoredUserName as unknown as ReturnType<typeof vi.fn>).mockReturnValue('Test User');
+    (getStoredUserId as unknown as ReturnType<typeof vi.fn>).mockReturnValue('test-user-id');
 
     // Mock room:joined event with user as host
     let roomJoinedHandler: ((data: Record<string, unknown>) => void) | undefined;
@@ -236,7 +236,7 @@ describe('RoomPage', () => {
 
   it('should call joinRoom when user is not in the room yet', async () => {
     const { joinRoom, getSocket, isConnected } = await import('@/lib/socketClient');
-    const { getUserName, getUserId } = await import('@/lib/userStorage');
+    const { getStoredUserName, getStoredUserId } = await import('@/lib/userStorage');
     
     // Mock window.location.search for no host parameter
     Object.defineProperty(window, 'location', {
@@ -249,8 +249,8 @@ describe('RoomPage', () => {
     // Mock that user is connected and has data
     (isConnected as unknown as ReturnType<typeof vi.fn>).mockReturnValue(true);
     (getSocket as unknown as ReturnType<typeof vi.fn>).mockReturnValue(mockSocket);
-    (getUserName as unknown as ReturnType<typeof vi.fn>).mockReturnValue('Test User');
-    (getUserId as unknown as ReturnType<typeof vi.fn>).mockReturnValue('test-user-id');
+    (getStoredUserName as unknown as ReturnType<typeof vi.fn>).mockReturnValue('Test User');
+    (getStoredUserId as unknown as ReturnType<typeof vi.fn>).mockReturnValue('test-user-id');
 
     // Mock room:joined event with user as new participant
     let roomJoinedHandler: ((data: Record<string, unknown>) => void) | undefined;
@@ -302,8 +302,8 @@ describe('RoomPage', () => {
   });
 
   it('should redirect to home if user name is not set', async () => {
-    const { getUserName } = await import('@/lib/userStorage');
-    (getUserName as unknown as ReturnType<typeof vi.fn>).mockReturnValue('');
+    const { getStoredUserName } = await import('@/lib/userStorage');
+    (getStoredUserName as unknown as ReturnType<typeof vi.fn>).mockReturnValue('');
 
     render(<RoomPage />);
 
@@ -312,10 +312,10 @@ describe('RoomPage', () => {
 
   it('should show error if not connected to server', async () => {
     const { isConnected } = await import('@/lib/socketClient');
-    const { getUserName } = await import('@/lib/userStorage');
+    const { getStoredUserName } = await import('@/lib/userStorage');
     
     (isConnected as unknown as ReturnType<typeof vi.fn>).mockReturnValue(false);
-    (getUserName as unknown as ReturnType<typeof vi.fn>).mockReturnValue('Test User');
+    (getStoredUserName as unknown as ReturnType<typeof vi.fn>).mockReturnValue('Test User');
 
     render(<RoomPage />);
 
@@ -324,12 +324,12 @@ describe('RoomPage', () => {
 
   it('should handle room:userJoined event', async () => {
     const { getSocket, isConnected  } = await import('@/lib/socketClient');
-    const { getUserName, getUserId } = await import('@/lib/userStorage');
+    const { getStoredUserName, getStoredUserId } = await import('@/lib/userStorage');
     
     (isConnected as unknown as ReturnType<typeof vi.fn>).mockReturnValue(true);
     (getSocket as unknown as ReturnType<typeof vi.fn>).mockReturnValue(mockSocket);
-    (getUserName as unknown as ReturnType<typeof vi.fn>).mockReturnValue('Test User');
-    (getUserId as unknown as ReturnType<typeof vi.fn>).mockReturnValue('test-user-id');
+    (getStoredUserName as unknown as ReturnType<typeof vi.fn>).mockReturnValue('Test User');
+    (getStoredUserId as unknown as ReturnType<typeof vi.fn>).mockReturnValue('test-user-id');
 
     let roomJoinedHandler: ((data: Record<string, unknown>) => void) | undefined;
     let userJoinedHandler: ((data: Record<string, unknown>) => void) | undefined;
@@ -373,12 +373,12 @@ describe('RoomPage', () => {
 
   it('should handle room:userLeft event', async () => {
     const { getSocket, isConnected } = await import('@/lib/socketClient');
-    const { getUserName, getUserId } = await import('@/lib/userStorage');
+    const { getStoredUserName, getStoredUserId } = await import('@/lib/userStorage');
     
     (isConnected as unknown as ReturnType<typeof vi.fn>).mockReturnValue(true);
     (getSocket as unknown as ReturnType<typeof vi.fn>).mockReturnValue(mockSocket);
-    (getUserName as unknown as ReturnType<typeof vi.fn>).mockReturnValue('Test User');
-    (getUserId as unknown as ReturnType<typeof vi.fn>).mockReturnValue('test-user-id');
+    (getStoredUserName as unknown as ReturnType<typeof vi.fn>).mockReturnValue('Test User');
+    (getStoredUserId as unknown as ReturnType<typeof vi.fn>).mockReturnValue('test-user-id');
 
     let roomJoinedHandler: ((data: Record<string, unknown>) => void) | undefined;
     let userLeftHandler: ((data: Record<string, unknown>) => void) | undefined;
@@ -423,12 +423,12 @@ describe('RoomPage', () => {
 
   it('should handle room:updated event', async () => {
     const { getSocket, isConnected } = await import('@/lib/socketClient');
-    const { getUserName, getUserId } = await import('@/lib/userStorage');
+    const { getStoredUserName, getStoredUserId } = await import('@/lib/userStorage');
     
     (isConnected as unknown as ReturnType<typeof vi.fn>).mockReturnValue(true);
     (getSocket as unknown as ReturnType<typeof vi.fn>).mockReturnValue(mockSocket);
-    (getUserName as unknown as ReturnType<typeof vi.fn>).mockReturnValue('Test User');
-    (getUserId as unknown as ReturnType<typeof vi.fn>).mockReturnValue('test-user-id');
+    (getStoredUserName as unknown as ReturnType<typeof vi.fn>).mockReturnValue('Test User');
+    (getStoredUserId as unknown as ReturnType<typeof vi.fn>).mockReturnValue('test-user-id');
 
     let roomJoinedHandler: ((data: Record<string, unknown>) => void) | undefined;
     let roomUpdatedHandler: ((data: Record<string, unknown>) => void) | undefined;
@@ -480,12 +480,12 @@ describe('RoomPage', () => {
 
   it('should handle room:notFound event', async () => {
     const { getSocket, isConnected } = await import('@/lib/socketClient');
-    const { getUserName, getUserId } = await import('@/lib/userStorage');
+    const { getStoredUserName, getStoredUserId } = await import('@/lib/userStorage');
     
     (isConnected as unknown as ReturnType<typeof vi.fn>).mockReturnValue(true);
     (getSocket as unknown as ReturnType<typeof vi.fn>).mockReturnValue(mockSocket);
-    (getUserName as unknown as ReturnType<typeof vi.fn>).mockReturnValue('Test User');
-    (getUserId as unknown as ReturnType<typeof vi.fn>).mockReturnValue('test-user-id');
+    (getStoredUserName as unknown as ReturnType<typeof vi.fn>).mockReturnValue('Test User');
+    (getStoredUserId as unknown as ReturnType<typeof vi.fn>).mockReturnValue('test-user-id');
 
     let roomNotFoundHandler: (() => void) | undefined;
     mockSocket.on.mockImplementation((event: string, handler: () => void) => {
@@ -508,12 +508,12 @@ describe('RoomPage', () => {
 
   it('should handle room:alreadyJoined event', async () => {
     const { getSocket, isConnected } = await import('@/lib/socketClient');
-    const { getUserName, getUserId } = await import('@/lib/userStorage');
+    const { getStoredUserName, getStoredUserId } = await import('@/lib/userStorage');
     
     (isConnected as unknown as ReturnType<typeof vi.fn>).mockReturnValue(true);
     (getSocket as unknown as ReturnType<typeof vi.fn>).mockReturnValue(mockSocket);
-    (getUserName as unknown as ReturnType<typeof vi.fn>).mockReturnValue('Test User');
-    (getUserId as unknown as ReturnType<typeof vi.fn>).mockReturnValue('test-user-id');
+    (getStoredUserName as unknown as ReturnType<typeof vi.fn>).mockReturnValue('Test User');
+    (getStoredUserId as unknown as ReturnType<typeof vi.fn>).mockReturnValue('test-user-id');
 
     let alreadyJoinedHandler: ((data: Record<string, unknown>) => void) | undefined;
     mockSocket.on.mockImplementation((event: string, handler: (data: Record<string, unknown>) => void) => {
@@ -547,12 +547,12 @@ describe('RoomPage', () => {
 
   it('should handle quiz events in integrated Room component', async () => {
     const { getSocket, isConnected } = await import('@/lib/socketClient');
-    const { getUserName, getUserId } = await import('@/lib/userStorage');
+    const { getStoredUserName, getStoredUserId: getStoredUserId } = await import('@/lib/userStorage');
     
     (isConnected as unknown as ReturnType<typeof vi.fn>).mockReturnValue(true);
     (getSocket as unknown as ReturnType<typeof vi.fn>).mockReturnValue(mockSocket);
-    (getUserName as unknown as ReturnType<typeof vi.fn>).mockReturnValue('Test User');
-    (getUserId as unknown as ReturnType<typeof vi.fn>).mockReturnValue('test-user-id');
+    (getStoredUserName as unknown as ReturnType<typeof vi.fn>).mockReturnValue('Test User');
+    (getStoredUserId as unknown as ReturnType<typeof vi.fn>).mockReturnValue('test-user-id');
 
     let roomJoinedHandler: ((data: Record<string, unknown>) => void) | undefined;
     mockSocket.on.mockImplementation((event: string, handler: (data: Record<string, unknown>) => void) => {
@@ -588,12 +588,12 @@ describe('RoomPage', () => {
 
   it('should show loading state initially', async () => {
     const { getSocket, isConnected } = await import('@/lib/socketClient');
-    const { getUserName, getUserId } = await import('@/lib/userStorage');
+    const { getStoredUserName, getStoredUserId: getStoredUserId } = await import('@/lib/userStorage');
     
     (isConnected as unknown as ReturnType<typeof vi.fn>).mockReturnValue(true);
     (getSocket as unknown as ReturnType<typeof vi.fn>).mockReturnValue(mockSocket);
-    (getUserName as unknown as ReturnType<typeof vi.fn>).mockReturnValue('Test User');
-    (getUserId as unknown as ReturnType<typeof vi.fn>).mockReturnValue('test-user-id');
+    (getStoredUserName as unknown as ReturnType<typeof vi.fn>).mockReturnValue('Test User');
+    (getStoredUserId as unknown as ReturnType<typeof vi.fn>).mockReturnValue('test-user-id');
 
     render(<RoomPage />);
 
@@ -602,11 +602,11 @@ describe('RoomPage', () => {
 
   it('should show error state when socket is not initialized', async () => {
     const { getSocket, isConnected } = await import('@/lib/socketClient');
-    const { getUserName } = await import('@/lib/userStorage');
+    const { getStoredUserName } = await import('@/lib/userStorage');
     
     (isConnected as unknown as ReturnType<typeof vi.fn>).mockReturnValue(true);
     (getSocket as unknown as ReturnType<typeof vi.fn>).mockReturnValue(null);
-    (getUserName as unknown as ReturnType<typeof vi.fn>).mockReturnValue('Test User');
+    (getStoredUserName as unknown as ReturnType<typeof vi.fn>).mockReturnValue('Test User');
 
     render(<RoomPage />);
 
@@ -618,12 +618,12 @@ describe('RoomPage', () => {
 
   it('should show room not found state when room is null', async () => {
     const { getSocket, isConnected } = await import('@/lib/socketClient');
-    const { getUserName, getUserId } = await import('@/lib/userStorage');
+    const { getStoredUserName, getStoredUserId } = await import('@/lib/userStorage');
     
     (isConnected as unknown as ReturnType<typeof vi.fn>).mockReturnValue(true);
     (getSocket as unknown as ReturnType<typeof vi.fn>).mockReturnValue(mockSocket);
-    (getUserName as unknown as ReturnType<typeof vi.fn>).mockReturnValue('Test User');
-    (getUserId as unknown as ReturnType<typeof vi.fn>).mockReturnValue('test-user-id');
+    (getStoredUserName as unknown as ReturnType<typeof vi.fn>).mockReturnValue('Test User');
+    (getStoredUserId as unknown as ReturnType<typeof vi.fn>).mockReturnValue('test-user-id');
 
     let roomJoinedHandler: ((data: Record<string, unknown>) => void) | undefined;
     mockSocket.on.mockImplementation((event: string, handler: (data: Record<string, unknown>) => void) => {

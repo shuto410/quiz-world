@@ -19,7 +19,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { createDebugUserUrl, isDebugUser, getUserName, getUserId } from '@/lib/userStorage';
+import { createDebugUserUrl, isDebugUser, getStoredUserName, getStoredUserId } from '@/lib/userStorage';
 
 const DEBUG_USERS = [
   { name: 'Alice', id: 'debug_alice' },
@@ -42,8 +42,8 @@ export function DebugUser() {
   // Prevent hydration mismatch by only rendering after client mount
   useEffect(() => {
     setMounted(true);
-    setCurrentUser(getUserName() || 'Anonymous');
-    setCurrentId(getUserId());
+    setCurrentUser(getStoredUserName() || 'Anonymous');
+    setCurrentId(getStoredUserId());
     setIsDebug(isDebugUser());
   }, []);
   

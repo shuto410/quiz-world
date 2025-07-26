@@ -32,8 +32,8 @@ vi.mock('@/lib/socketClient', () => ({
 }));
 
 vi.mock('@/lib/userStorage', () => ({
-  getUserName: vi.fn(() => 'Test User'),
-  getUserId: vi.fn(() => 'test-user-id'),
+  getStoredUserName: vi.fn(() => 'Test User'),
+  getStoredUserId: vi.fn(() => 'test-user-id'),
 }));
 
 vi.mock('@/features/chat/hooks/useChat', () => ({

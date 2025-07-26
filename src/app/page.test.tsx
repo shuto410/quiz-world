@@ -10,8 +10,8 @@ vi.mock('../lib/socketClient', () => ({
 }));
 
 vi.mock('../lib/userStorage', () => ({
-  getUserName: vi.fn(),
-  getUserId: vi.fn(),
+  getStoredUserName: vi.fn(),
+  getStoredUserId: vi.fn(),
 }));
 
 vi.mock('../features/room-list/components/RoomList', () => ({
@@ -44,8 +44,8 @@ afterEach(() => {
 
 describe('Home Page', () => {
   test('should render home page with title and components', () => {
-    vi.mocked(userStorage.getUserName).mockReturnValue('Test User');
-    vi.mocked(userStorage.getUserId).mockReturnValue('test-user-id');
+    vi.mocked(userStorage.getStoredUserName).mockReturnValue('Test User');
+    vi.mocked(userStorage.getStoredUserId).mockReturnValue('test-user-id');
 
     render(<Home />);
 
@@ -56,8 +56,8 @@ describe('Home Page', () => {
   });
 
   test('should show warning toast when user has no name and tries to create demo room', async () => {
-    vi.mocked(userStorage.getUserName).mockReturnValue('');
-    vi.mocked(userStorage.getUserId).mockReturnValue('test-user-id');
+    vi.mocked(userStorage.getStoredUserName).mockReturnValue('');
+    vi.mocked(userStorage.getStoredUserId).mockReturnValue('test-user-id');
 
     render(<Home />);
 
@@ -77,8 +77,8 @@ describe('Home Page', () => {
   });
 
   test('should show warning toast when user has null name and tries to create demo room', async () => {
-    vi.mocked(userStorage.getUserName).mockReturnValue(null);
-    vi.mocked(userStorage.getUserId).mockReturnValue('test-user-id');
+    vi.mocked(userStorage.getStoredUserName).mockReturnValue(null);
+    vi.mocked(userStorage.getStoredUserId).mockReturnValue('test-user-id');
 
     render(<Home />);
 
@@ -98,8 +98,8 @@ describe('Home Page', () => {
   });
 
   test('should successfully create demo room when user has valid name', async () => {
-    vi.mocked(userStorage.getUserName).mockReturnValue('Test User');
-    vi.mocked(userStorage.getUserId).mockReturnValue('test-user-id');
+    vi.mocked(userStorage.getStoredUserName).mockReturnValue('Test User');
+    vi.mocked(userStorage.getStoredUserId).mockReturnValue('test-user-id');
     vi.mocked(socketClient.createRoom).mockResolvedValue(undefined);
 
     render(<Home />);
@@ -127,8 +127,8 @@ describe('Home Page', () => {
   });
 
   test('should show error toast when demo room creation fails', async () => {
-    vi.mocked(userStorage.getUserName).mockReturnValue('Test User');
-    vi.mocked(userStorage.getUserId).mockReturnValue('test-user-id');
+    vi.mocked(userStorage.getStoredUserName).mockReturnValue('Test User');
+    vi.mocked(userStorage.getStoredUserId).mockReturnValue('test-user-id');
     vi.mocked(socketClient.createRoom).mockRejectedValue(new Error('Network error'));
 
     render(<Home />);
@@ -158,8 +158,8 @@ describe('Home Page', () => {
   });
 
   test('should handle toast close button click', async () => {
-    vi.mocked(userStorage.getUserName).mockReturnValue('');
-    vi.mocked(userStorage.getUserId).mockReturnValue('test-user-id');
+    vi.mocked(userStorage.getStoredUserName).mockReturnValue('');
+    vi.mocked(userStorage.getStoredUserId).mockReturnValue('test-user-id');
 
     render(<Home />);
 
@@ -189,8 +189,8 @@ describe('Home Page', () => {
 
   test('should handle room joining navigation', async () => {
     const mockPush = vi.fn();
-    vi.mocked(userStorage.getUserName).mockReturnValue('Test User');
-    vi.mocked(userStorage.getUserId).mockReturnValue('test-user-id');
+    vi.mocked(userStorage.getStoredUserName).mockReturnValue('Test User');
+    vi.mocked(userStorage.getStoredUserId).mockReturnValue('test-user-id');
 
     render(<Home />);
 
@@ -209,8 +209,8 @@ describe('Home Page', () => {
   });
 
   test('should have proper accessibility structure', () => {
-    vi.mocked(userStorage.getUserName).mockReturnValue('Test User');
-    vi.mocked(userStorage.getUserId).mockReturnValue('test-user-id');
+    vi.mocked(userStorage.getStoredUserName).mockReturnValue('Test User');
+    vi.mocked(userStorage.getStoredUserId).mockReturnValue('test-user-id');
 
     render(<Home />);
 

@@ -25,7 +25,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { Room, User, Quiz, Score } from '@/types';
 import { leaveRoom, addQuiz, getSocket, startQuiz } from '@/lib/socketClient';
-import { getUserName, getUserId } from '@/lib/userStorage';
+import { getStoredUserName, getStoredUserId } from '@/lib/userStorage';
 
 export function useRoomGame(room: Room, currentUser: User, onLeave?: () => void) {
   // State
@@ -52,8 +52,8 @@ export function useRoomGame(room: Room, currentUser: User, onLeave?: () => void)
   answerRef.current = answer;
 
   const isHost = currentUser.isHost;
-  const currentUserName = getUserName() || currentUser.name;
-  const currentUserId = getUserId();
+  const currentUserName = getStoredUserName() || currentUser.name;
+  const currentUserId = getStoredUserId();
 
   // roomQuizzes同期
   useEffect(() => {

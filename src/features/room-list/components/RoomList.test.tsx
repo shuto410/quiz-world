@@ -28,9 +28,9 @@ vi.mock('../../../lib/socketClient', () => ({
 
 // Mock user storage
 vi.mock('../../../lib/userStorage', () => ({
-  getUserName: vi.fn(),
-  setUserName: vi.fn(),
-  getUserId: vi.fn(),
+  getStoredUserName: vi.fn(),
+  storeUserName: vi.fn(),
+  getStoredUserId: vi.fn(),
 }));
 
 // Mock hooks
@@ -88,8 +88,8 @@ describe('RoomList Component', () => {
     vi.clearAllMocks();
     vi.mocked(useSocketConnection.useSocketConnection).mockReturnValue(defaultSocketConnection);
     vi.mocked(useRoomList.useRoomList).mockReturnValue(defaultRoomList);
-    vi.mocked(userStorage.getUserName).mockReturnValue('Test User');
-    vi.mocked(userStorage.getUserId).mockReturnValue('test-user-id');
+    vi.mocked(userStorage.getStoredUserName).mockReturnValue('Test User');
+    vi.mocked(userStorage.getStoredUserId).mockReturnValue('test-user-id');
   });
 
   afterEach(() => {
@@ -217,7 +217,7 @@ describe('RoomList Component', () => {
       'Player 1',
       'test-user-id'
     );
-    expect(userStorage.setUserName).toHaveBeenCalledWith('Player 1');
+    expect(userStorage.storeUserName).toHaveBeenCalledWith('Player 1');
   });
 
   test('cannot create room with empty name', async () => {
@@ -264,7 +264,7 @@ describe('RoomList Component', () => {
     await user.click(modalJoinButton);
     
     expect(mockJoinRoom).toHaveBeenCalledWith('room-1', 'test-user-id', 'New Player');
-    expect(userStorage.setUserName).toHaveBeenCalledWith('New Player');
+    expect(userStorage.storeUserName).toHaveBeenCalledWith('New Player');
   });
 
   test('handles room created event', () => {
@@ -347,7 +347,7 @@ describe('RoomList Component', () => {
   });
 
   test('loads saved username on mount', () => {
-    vi.mocked(userStorage.getUserName).mockReturnValue('Saved User');
+    vi.mocked(userStorage.getStoredUserName).mockReturnValue('Saved User');
     
     render(<RoomList onRoomJoined={mockOnRoomJoined} />);
     
