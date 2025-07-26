@@ -72,7 +72,7 @@ export default function RoomPage() {
           // Clear stored data after using it
           sessionStorage.removeItem('createdRoom');
         }
-      } catch (error) {
+      } catch {
         // Error parsing stored room data
         sessionStorage.removeItem('createdRoom');
       }
@@ -162,7 +162,7 @@ export default function RoomPage() {
     
     // Set up cleanup for this specific socket instance
     return cleanup;
-  }, [roomId]);
+  }, [roomId, router]);
   
   // Initialize socket and check if already in room
   useEffect(() => {

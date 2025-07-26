@@ -54,7 +54,7 @@ function getUserFromCookie(): UserData | null {
     const value = userCookie.split('=')[1];
     const decoded = decodeURIComponent(value);
     return JSON.parse(decoded);
-  } catch (error) {
+  } catch {
     // Failed to read user from cookie
     return null;
   }
@@ -75,7 +75,7 @@ function setUserInCookie(userData: UserData): void {
     const encoded = encodeURIComponent(value);
     
     document.cookie = `${STORAGE_CONFIG.COOKIE_NAME}=${encoded}; expires=${expires.toUTCString()}; path=/; SameSite=Lax`;
-  } catch (error) {
+  } catch {
     // Failed to set user in cookie
   }
 }
@@ -92,7 +92,7 @@ function getUserFromLocalStorage(): UserData | null {
     if (!stored) return null;
     
     return JSON.parse(stored);
-  } catch (error) {
+  } catch {
     // Failed to read user from localStorage
     return null;
   }
@@ -107,7 +107,7 @@ function setUserInLocalStorage(userData: UserData): void {
     if (typeof window === 'undefined' || !window.localStorage) return;
     
     window.localStorage.setItem(STORAGE_CONFIG.LOCAL_STORAGE_KEY, JSON.stringify(userData));
-  } catch (error) {
+  } catch {
     // Failed to set user in localStorage
   }
 }
@@ -124,7 +124,7 @@ function getUserFromSessionStorage(): UserData | null {
     if (!stored) return null;
     
     return JSON.parse(stored);
-  } catch (error) {
+  } catch {
     // Failed to read user from sessionStorage
     return null;
   }
@@ -139,7 +139,7 @@ function setUserInSessionStorage(userData: UserData): void {
     if (typeof window === 'undefined' || !window.sessionStorage) return;
     
     window.sessionStorage.setItem(STORAGE_CONFIG.SESSION_STORAGE_KEY, JSON.stringify(userData));
-  } catch (error) {
+  } catch {
     // Failed to set user in sessionStorage
   }
 }
@@ -166,7 +166,7 @@ function getDebugUserFromURL(): UserData | null {
         lastUsed: Date.now(),
       };
     }
-  } catch (error) {
+  } catch {
     // Ignore URL parsing errors
   }
 
@@ -389,7 +389,7 @@ export function clearUserData(): void {
       document.cookie = `${STORAGE_CONFIG.COOKIE_NAME}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
     }
     
-  } catch (error) {
+  } catch {
     // Failed to clear user data
   }
 }

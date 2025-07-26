@@ -52,6 +52,10 @@ describe('Socket.io Event Types', () => {
       'game:answer': (data) => {
         expect(data.answer).toBe('4');
       },
+      'game:startFreeMode': (data) => {
+        expect(data.quiz.type).toBe('free');
+      },
+      'game:freeModeReset': () => {},
       'quiz:revealAnswer': () => {},
     };
 
@@ -159,6 +163,10 @@ describe('Socket.io Event Types', () => {
         expect(data.scores[0].userId).toBe('user1');
         expect(data.scores[0].score).toBe(10);
       },
+      'game:freeModeStarted': (data) => {
+        expect(data.quiz.type).toBe('free');
+      },
+      'game:freeModeReset': () => {},
       'quiz:revealAnswer': () => {},
       'chat:message': (data) => {
         expect(data.userId).toBeDefined();

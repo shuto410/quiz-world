@@ -39,11 +39,6 @@ export function DebugUser() {
   const [currentId, setCurrentId] = useState<string | null>(null);
   const [isDebug, setIsDebug] = useState(false);
   
-  // Only show in development
-  if (process.env.NODE_ENV === 'production') {
-    return null;
-  }
-
   // Prevent hydration mismatch by only rendering after client mount
   useEffect(() => {
     setMounted(true);
@@ -51,6 +46,11 @@ export function DebugUser() {
     setCurrentId(getUserId());
     setIsDebug(isDebugUser());
   }, []);
+  
+  // Only show in development
+  if (process.env.NODE_ENV === 'production') {
+    return null;
+  }
 
   // Don't render until mounted on client
   if (!mounted) {
