@@ -33,6 +33,8 @@ export interface ClientToServerEvents {
   // Game events
   'game:buzz': (data: { user: User }) => void;
   'game:answer': (data: { user: User; answer: string }) => void;
+  'game:startFreeMode': (data: { quiz: Quiz }) => void;
+  'game:freeModeReset': () => void;
   
   // Chat events
   'chat:message': (data: { message: string; userId: string; userName: string }) => void;
@@ -67,6 +69,8 @@ export interface ServerToClientEvents {
   'game:buzz': (data: { user: User }) => void;
   'game:answer': (data: { user: User; answer: string }) => void;
   'game:score': (data: { scores: Array<{ userId: string; score: number }> }) => void;
+  'game:freeModeStarted': (data: { quiz: Quiz }) => void;
+  'game:freeModeReset': () => void;
   
   // Chat events
   'chat:message': (data: { message: string; userId: string; userName: string; timestamp: number }) => void;

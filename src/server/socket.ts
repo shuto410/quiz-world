@@ -85,6 +85,8 @@ function handleConnection(socket: Socket<ClientToServerEvents, ServerToClientEve
   // Game events
   socket.on('game:buzz', (data: { user: User }) => handleGameBuzz(socket, data));
   socket.on('game:answer', (data: { user: User; answer: string }) => handleGameAnswer(socket, data));
+  socket.on('game:startFreeMode', (data: { quiz: Quiz }) => handleGameStartFreeMode(socket, data));
+  socket.on('game:freeModeReset', () => handleGameFreeModeReset(socket));
 
   // Quiz answer reveal sync
   socket.on('quiz:revealAnswer', () => {
@@ -641,6 +643,80 @@ function handleGameAnswer(socket: Socket<ClientToServerEvents, ServerToClientEve
   } catch (error) {
     console.error('Error handling game answer:', error);
     socket.emit('error', { message: 'Failed to process answer' });
+  }
+}
+
+/**
+ * Handle free mode start event
+ * @param socket - Socket instance
+ * @param data - Free mode start data
+ */
+function handleGameStartFreeMode(socket: Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>, data: { quiz: Quiz }) {
+  try {
+    const { roomId } = socket.data;
+    
+    if (!roomId) {
+      socket.emit('error', { message: 'Not in a room' });
+      return;
+    }
+    
+    const room = getRoom(roomId);
+    if (!room) {
+      socket.emit('error', { message: 'Room not found' });
+      return;
+    }
+    
+    const user = getUser(roomId, socket.data.userId!);
+    if (!user || !user.isHost) {
+      socket.emit('error', { message: 'Only host can start Free Mode' });
+      return;
+    }
+    
+    // Update room's quiz list with the free mode quiz
+    room.quizzes = [data.quiz];
+    
+    // Broadcast free mode started event to all users in the room
+    io.to(roomId).emit('game:freeModeStarted', { quiz: data.quiz });
+    
+    console.log(`Free Mode started by ${user.name} in room ${roomId}`);
+  } catch (error) {
+    console.error('Error handling free mode start:', error);
+    socket.emit('error', { message: 'Failed to start Free Mode' });
+  }
+}
+
+/**
+ * Handle Free Mode reset for next round
+ * @param socket - Socket instance
+ */
+function handleGameFreeModeReset(socket: Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>) {
+  try {
+    const { roomId } = socket.data;
+    
+    if (!roomId) {
+      socket.emit('error', { message: 'Not in a room' });
+      return;
+    }
+    
+    const room = getRoom(roomId);
+    if (!room) {
+      socket.emit('error', { message: 'Room not found' });
+      return;
+    }
+    
+    const user = getUser(roomId, socket.data.userId!);
+    if (!user || !user.isHost) {
+      socket.emit('error', { message: 'Only host can reset Free Mode' });
+      return;
+    }
+    
+    // Broadcast free mode reset event to all users in the room
+    io.to(roomId).emit('game:freeModeReset');
+    
+    console.log(`Free Mode reset by ${user.name} in room ${roomId}`);
+  } catch (error) {
+    console.error('Error handling free mode reset:', error);
+    socket.emit('error', { message: 'Failed to reset Free Mode' });
   }
 }
 

@@ -20,7 +20,7 @@ export type ButtonVariant =
 /**
  * Button size types
  */
-export type ButtonSize = 'sm' | 'md' | 'lg';
+export type ButtonSize = 'sm' | 'md' | 'lg' | 'xl';
 
 /**
  * Button props interface
@@ -95,6 +95,7 @@ export function Button({
     sm: 'px-3 py-1.5 text-sm',
     md: 'px-4 py-2 text-base',
     lg: 'px-6 py-3 text-lg',
+    xl: 'px-8 py-4 text-xl',
   };
 
   const classes = cn(

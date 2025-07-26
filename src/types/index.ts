@@ -29,17 +29,17 @@ export type ImageResource =
   | { type: 'url'; data: string };
 
 /**
- * Represents a quiz question (text or image)
+ * Represents a quiz question (text, image, or free)
  * @property id - Unique identifier for the quiz
- * @property type - 'text' or 'image'
- * @property question - The question text
+ * @property type - 'text', 'image', or 'free'
+ * @property question - The question text (optional for free mode)
  * @property image - Image resource (for image quiz)
- * @property answer - The correct answer (for reference)
+ * @property answer - The correct answer (for reference, optional for free mode)
  * @property choices - Optional choices (for future extension)
  */
 export type Quiz = {
   id: string;
-  type: 'text' | 'image';
+  type: 'text' | 'image' | 'free';
   question: string;
   image?: ImageResource;
   answer: string;

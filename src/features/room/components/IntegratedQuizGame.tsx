@@ -8,6 +8,7 @@
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { FreeModeGame } from '@/features/quiz/components/FreeModeGame';
 import type { Quiz, User, Score } from '@/types';
 
 /**
@@ -22,7 +23,12 @@ interface IntegratedQuizGameProps {
   showAnswer: boolean;
   onEndQuiz: () => void;
   onNextQuiz: () => void;
-  isLastQuiz: boolean; // 追加
+  isLastQuiz: boolean;
+  // Free Mode specific props
+  buzzedUser?: User | null;
+  onBuzzIn?: () => void;
+  onJudgeAnswer?: (isCorrect: boolean) => void;
+  hasAnswered?: boolean;
 }
 
 /**
@@ -38,11 +44,32 @@ export function IntegratedQuizGame({
   onEndQuiz,
   onNextQuiz,
   isLastQuiz,
+  buzzedUser,
+  onBuzzIn,
+  onJudgeAnswer,
+  hasAnswered,
 }: IntegratedQuizGameProps) {
 
   const handleBackToLobby = () => {
     onEndQuiz();
   };
+
+  // Handle Free Mode
+  if (quiz.type === 'free') {
+    return (
+      <FreeModeGame
+        users={users}
+        isHost={isHost}
+        buzzedUser={buzzedUser || null}
+        onBuzzIn={onBuzzIn || (() => {})}
+        onJudgeCorrect={() => onJudgeAnswer?.(true)}
+        onJudgeIncorrect={() => onJudgeAnswer?.(false)}
+        onNextRound={onNextQuiz}
+        hasAnswered={hasAnswered || false}
+        showAnswer={showAnswer}
+      />
+    );
+  }
 
   if (gameState === 'finished' && isLastQuiz) {
     return (

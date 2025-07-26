@@ -153,6 +153,32 @@ export function useRoomGame(room: Room, currentUser: User, onLeave?: () => void)
 
     const handleRevealAnswer = () => setShowAnswer(true);
 
+    const handleFreeModeStarted = (data: { quiz: Quiz }) => {
+      setRoomQuizzes([data.quiz]);
+      setCurrentQuizIndex(0);
+      setCurrentQuiz(data.quiz);
+      setGameState('quiz-active');
+      setQuizGameState('active');
+      
+      // Reset game state for all participants
+      setScores(room.users.map(user => ({ userId: user.id, score: 0 })));
+      setBuzzedUsers([]);
+      handleResetAnswerForm();
+      setRecentJudgments([]);
+    };
+
+    const handleFreeModeReset = () => {
+      // Reset buzz and answer state for participants
+      setBuzzedUsers([]);
+      setAnswer('');
+      setHasAnswered(false);
+      setShowAnswer(false);
+      setQuizGameState('active');
+      handleResetAnswerForm();
+      
+      console.log('Free Mode reset received from host');
+    };
+
     return {
       handleQuizAdded,
       handleQuizRemoved,
@@ -163,6 +189,8 @@ export function useRoomGame(room: Room, currentUser: User, onLeave?: () => void)
       handleScoreUpdate,
       handleQuizJudged,
       handleRevealAnswer,
+      handleFreeModeStarted,
+      handleFreeModeReset,
     };
   }, [room.users, roomQuizzes, handleResetAnswerForm]);
 
@@ -183,6 +211,8 @@ export function useRoomGame(room: Room, currentUser: User, onLeave?: () => void)
     socket.on('game:score', handlers.handleScoreUpdate);
     socket.on('quiz:judged', handlers.handleQuizJudged);
     socket.on('quiz:revealAnswer', handlers.handleRevealAnswer);
+    socket.on('game:freeModeStarted', handlers.handleFreeModeStarted);
+    socket.on('game:freeModeReset', handlers.handleFreeModeReset);
 
     // クリーンアップ
     return () => {
@@ -195,6 +225,8 @@ export function useRoomGame(room: Room, currentUser: User, onLeave?: () => void)
       socket.off('game:score', handlers.handleScoreUpdate);
       socket.off('quiz:judged', handlers.handleQuizJudged);
       socket.off('quiz:revealAnswer', handlers.handleRevealAnswer);
+      socket.off('game:freeModeStarted', handlers.handleFreeModeStarted);
+      socket.off('game:freeModeReset', handlers.handleFreeModeReset);
     };
   }, [createSocketEventHandlers]);
 
@@ -237,6 +269,32 @@ export function useRoomGame(room: Room, currentUser: User, onLeave?: () => void)
       setQuizGameState('finished');
       setCurrentQuiz(null);
       setBuzzedUsers([]);
+    }
+  };
+
+  /**
+   * Handle Free Mode next round
+   * Resets state for the next question in Free Mode without changing quiz
+   */
+  const handleFreeModeNextRound = () => {
+    // Reset buzz and answer state for Free Mode next round
+    setBuzzedUsers([]);
+    setAnswer('');
+    setHasAnswered(false);
+    setShowAnswer(false);
+    setQuizGameState('active'); // Keep quiz active for next round
+    
+    // Emit socket event to sync with all participants
+    const socket = getSocket();
+    if (socket && isHost) {
+      try {
+        socket.emit('game:freeModeReset');
+        console.log('Free Mode reset for next round - synced to participants');
+      } catch (error) {
+        console.error('Failed to emit game:freeModeReset:', error);
+      }
+    } else {
+      console.log('Free Mode reset for next round (participant)');
     }
   };
   const handleOpenQuizCreator = () => {
@@ -335,6 +393,49 @@ export function useRoomGame(room: Room, currentUser: User, onLeave?: () => void)
     }
   };
 
+  /**
+   * Handle starting Free Mode directly (without quiz creation)
+   * Creates a temporary free mode quiz and starts it locally, then syncs with all participants
+   */
+  const handleStartFreeMode = () => {
+    const freeModeQuiz: Quiz = {
+      id: `free-${Date.now()}`,
+      type: 'free',
+      question: 'Free Mode Quiz',
+      answer: 'N/A',
+    };
+    
+    try {
+      // Start Free Mode locally for immediate feedback
+      setRoomQuizzes([freeModeQuiz]);
+      setCurrentQuizIndex(0);
+      setCurrentQuiz(freeModeQuiz);
+      setGameState('quiz-active');
+      setQuizGameState('active');
+      
+      // Reset game state for all participants
+      setScores(room.users.map(user => ({ userId: user.id, score: 0 })));
+      setBuzzedUsers([]);
+      setAnswer('');
+      setHasAnswered(false);
+      setShowAnswer(false);
+      setRecentJudgments([]);
+      
+      // Emit socket event to sync with all participants
+      const socket = getSocket();
+      if (socket) {
+        socket.emit('game:startFreeMode', { quiz: freeModeQuiz });
+        console.log('Free Mode started locally and synced to participants');
+      }
+      
+      setError(null);
+    } catch (error) {
+      console.error('Failed to start Free Mode:', error);
+      setError('Failed to start Free Mode. Please try again.');
+      setTimeout(() => setError(null), 5000);
+    }
+  };
+
   return {
     // state
     showQuizModal, setShowQuizModal,
@@ -358,11 +459,13 @@ export function useRoomGame(room: Room, currentUser: User, onLeave?: () => void)
     handleStartQuiz,
     handleEndQuiz,
     handleNextQuiz,
+    handleFreeModeNextRound,
     handleOpenQuizCreator,
     handleQuizCreated,
     handleBuzzInUser,
     handleSubmitAnswer,
     handleShowAnswer,
     handleJudgeAnswer,
+    handleStartFreeMode,
   };
 } 

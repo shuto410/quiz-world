@@ -16,12 +16,13 @@ interface GameStatusProps {
   isHost: boolean;
   hasQuizzes: boolean;
   onManageQuizzes: () => void;
+  onStartFreeMode: () => void;
 }
 
 /**
  * Game status component - shows waiting state or embedded quiz
  */
-export function GameStatus({ isHost, hasQuizzes, onManageQuizzes }: GameStatusProps) {
+export function GameStatus({ isHost, hasQuizzes, onManageQuizzes, onStartFreeMode }: GameStatusProps) {
   return (
     <Card variant="gradient">
       <CardContent>
@@ -36,10 +37,24 @@ export function GameStatus({ isHost, hasQuizzes, onManageQuizzes }: GameStatusPr
               : 'The host will start a quiz soon.'
             }
           </p>
-          {isHost && hasQuizzes && (
-            <Button onClick={onManageQuizzes}>
-              Start Quiz
-            </Button>
+          {isHost && (
+            <div className="space-y-3">
+              {hasQuizzes && (
+                <Button onClick={onManageQuizzes}>
+                  Start Quiz
+                </Button>
+              )}
+              <div className="flex gap-3 justify-center">
+                {!hasQuizzes && (
+                  <Button variant="ghost" onClick={onManageQuizzes}>
+                    Create Quiz
+                  </Button>
+                )}
+                <Button variant="secondary" onClick={onStartFreeMode}>
+                  🎙️ Start Free Mode
+                </Button>
+              </div>
+            </div>
           )}
         </div>
       </CardContent>

@@ -54,12 +54,14 @@ export function Room({ room, currentUser, onLeave, className }: RoomProps) {
     handleStartQuiz,
     handleEndQuiz,
     handleNextQuiz,
+    handleFreeModeNextRound,
     handleOpenQuizCreator,
     handleQuizCreated,
     handleBuzzInUser,
     handleSubmitAnswer,
     handleShowAnswer,
     handleJudgeAnswer,
+    handleStartFreeMode,
   } = useRoomGame(room, currentUser, onLeave);
 
   /**
@@ -76,8 +78,12 @@ export function Room({ room, currentUser, onLeave, className }: RoomProps) {
           scores={scores}
           showAnswer={showAnswer}
           onEndQuiz={handleEndQuiz}
-          onNextQuiz={handleNextQuiz}
+          onNextQuiz={currentQuiz?.type === 'free' ? handleFreeModeNextRound : handleNextQuiz}
           isLastQuiz={currentQuizIndex === roomQuizzes.length - 1}
+          buzzedUser={buzzedUser}
+          onBuzzIn={handleBuzzInUser}
+          onJudgeAnswer={handleJudgeAnswer}
+          hasAnswered={hasAnswered}
         />
       );
     }
@@ -92,7 +98,7 @@ export function Room({ room, currentUser, onLeave, className }: RoomProps) {
           scores={scores}
           showAnswer={showAnswer}
           onEndQuiz={handleEndQuiz}
-          onNextQuiz={handleNextQuiz}
+          onNextQuiz={roomQuizzes[roomQuizzes.length - 1]?.type === 'free' ? handleFreeModeNextRound : handleNextQuiz}
           isLastQuiz={true}
         />
       );
@@ -102,6 +108,7 @@ export function Room({ room, currentUser, onLeave, className }: RoomProps) {
         isHost={isHost}
         hasQuizzes={roomQuizzes.length > 0}
         onManageQuizzes={() => setShowQuizModal(true)}
+        onStartFreeMode={handleStartFreeMode}
       />
     );
   };
@@ -160,8 +167,8 @@ export function Room({ room, currentUser, onLeave, className }: RoomProps) {
         </div>
       </div>
 
-      {/* Buzz and Answer Section - outside of quiz game */}
-      {(gameState === 'quiz-active') && currentQuiz && (
+      {/* Buzz and Answer Section - outside of quiz game (Skip for Free Mode) */}
+      {(gameState === 'quiz-active') && currentQuiz && currentQuiz.type !== 'free' && (
         <div className="mt-1 lg:ml-[calc(40%+1.5rem)]">
           <Card variant="gradient">
             <CardContent>
