@@ -470,7 +470,16 @@ type SocketErrorEvent = {
 - ack を使う: `tournament:host-join`、`tournament:join`、`participant:rename`、`host:claim`
 - ack を使わない: `tournament:leave`、`game:buzz`、`answer:submit`、`judge:submit`、`tournament:finish`、`room:close`
 
+失敗形式は4イベントで共通にする。成功形式だけイベントごとに定義する。
+
 ```ts
+/** Shared failure shape for every acknowledged event. */
+type AckFailure = {
+  ok: false;
+  code: SocketErrorCode;
+  message: string;
+};
+
 type JoinSuccess = {
   ok: true;
   role: "host" | "participant";
@@ -478,13 +487,23 @@ type JoinSuccess = {
   isReconnect: boolean;
 };
 
-type JoinFailure = {
-  ok: false;
-  code: SocketErrorCode;
-  message: string;
+type JoinResponse = JoinSuccess | AckFailure;
+
+/** Echoes the normalised name the server actually stored. */
+type RenameSuccess = {
+  ok: true;
+  displayName: string;
 };
 
-type JoinResponse = JoinSuccess | JoinFailure;
+type RenameResponse = RenameSuccess | AckFailure;
+
+/** hostId is the new host, which is always the caller. */
+type HostClaimSuccess = {
+  ok: true;
+  hostId: string;
+};
+
+type HostClaimResponse = HostClaimSuccess | AckFailure;
 ```
 
 参加失敗時の ack に `RoomState` を含めない。参加を拒否した相手に参加者名やスコアを渡さないため。既存参加者の無効操作に対しては `error` を返した後、最新の `room:state` を再配信する。
@@ -597,7 +616,7 @@ type CreateTournamentRequest = {
 export type TournamentStatus = "active" | "closed";
 
 /**
- * Persisted tournament settings. hostTokenHash is never returned to clients.
+ * Tournament settings as exposed to clients. Carries no credentials.
  */
 export type Tournament = {
   id: string;
@@ -607,6 +626,15 @@ export type Tournament = {
   status: TournamentStatus;
   createdAt: number;
   updatedAt: number;
+};
+
+/**
+ * Persisted shape. Must never leave the server: convert to Tournament first.
+ * hostAccountId is reserved for the phase 2 Cognito integration and is always unset in the MVP.
+ */
+export type TournamentRecord = Tournament & {
+  hostTokenHash: string;
+  hostAccountId?: string;
 };
 
 /** hostToken is returned only once, at creation time. */
