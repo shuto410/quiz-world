@@ -153,6 +153,8 @@ infra           # AWS CDK (TypeScript)
 ```
 
 - ドメインモデルは `packages/shared/src/types` に集約する
+- `packages/shared` はビルドせず、`exports` からTypeScriptソースを直接公開する。利用側のバンドラと tsx がそのまま解決する
+- モジュール解決は `bundler` にする。相対importに `.js` 拡張子を付けずに書けるが、Nodeで直接実行はできない。本番のサーバーイメージは esbuild でバンドルするか tsx 経由で起動する（ステップ21で確定させる）
 - 各ワークスペースで Vitest を設定し、TDDで進める
 - 全ファイル冒頭に英語で仕様コメントを書く
 - 型には英語のjsdocコメントで用途を記述する
@@ -815,7 +817,8 @@ AWSにデプロイせずに全機能を動作確認できるようにする。
 
 必要な環境変数
 
-- `PORT`: Socketサーバーのポート
+- `PORT`: Socketサーバーのポート（既定 3001）
+- `LOG_LEVEL`: `debug` / `info` / `warn` / `error`（既定 `info`）
 - `DYNAMODB_ENDPOINT`: ローカル時のみ設定する
 - `TOURNAMENTS_TABLE`, `ROOM_SNAPSHOTS_TABLE`
 - `PUBLIC_BASE_URL`: 招待URL生成に使う

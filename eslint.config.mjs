@@ -17,6 +17,16 @@ import js from '@eslint/js';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
+/**
+ * Room state must travel through `broadcastRoomState()`, which is the only place that knows
+ * to convert the state before it reaches participants. A raw emit would leak an unjudged
+ * answer to everyone in the room.
+ */
+const noRawRoomStateEmit = {
+  selector: 'CallExpression[callee.property.name="emit"][arguments.0.value="room:state"]',
+  message: 'Send room state through broadcastRoomState(); participants need the converted view.',
+};
+
 /** Selectors that make a module non-deterministic or non-atomic. */
 const impureSyntax = [
   {
@@ -65,9 +75,20 @@ export default tseslint.config(
     },
     rules: {
       '@typescript-eslint/no-explicit-any': 'error',
+      // Destructuring a key out in order to drop it is how a field is withheld from a
+      // payload, so the discarded binding is intentional rather than forgotten.
+      '@typescript-eslint/no-unused-vars': ['error', { ignoreRestSiblings: true }],
       '@typescript-eslint/no-non-null-assertion': 'error',
       '@typescript-eslint/consistent-type-imports': 'error',
       'no-console': ['warn', { allow: ['warn', 'error'] }],
+    },
+  },
+
+  {
+    files: ['apps/server/src/**/*.ts'],
+    ignores: ['apps/server/src/socket/broadcast.ts'],
+    rules: {
+      'no-restricted-syntax': ['error', noRawRoomStateEmit],
     },
   },
 
@@ -96,7 +117,7 @@ export default tseslint.config(
           ],
         },
       ],
-      'no-restricted-syntax': ['error', ...impureSyntax],
+      'no-restricted-syntax': ['error', ...impureSyntax, noRawRoomStateEmit],
       'no-console': 'error',
     },
   },

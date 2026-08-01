@@ -43,13 +43,15 @@ MVP では以下を実装しない。「あると便利だから」で追加し�
 
 規約は可能な範囲で機械的に強制してある。Lint やテストが落ちたら、ルールを緩めるのではなく実装を直す。
 
-| ガードレール                                                                        | 実装場所                                           |
-| ----------------------------------------------------------------------------------- | -------------------------------------------------- |
-| `any` と非null断言の禁止                                                            | `eslint.config.mjs`                                |
-| `strict` + `noUncheckedIndexedAccess`                                               | `tsconfig.base.json`                               |
-| ドメイン層での I/O ライブラリ import 禁止                                           | `eslint.config.mjs`（`apps/server/src/domain/**`） |
-| ドメイン層での `await` / `async` / タイマー禁止                                     | 同上                                               |
-| ドメイン層での `Date.now()` / `new Date()` / `Math.random()` 禁止（引数で受け取る） | 同上                                               |
+| ガードレール                                                                        | 実装場所                                                |
+| ----------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| `any` と非null断言の禁止                                                            | `eslint.config.mjs`                                     |
+| `strict` + `noUncheckedIndexedAccess`                                               | `tsconfig.base.json`                                    |
+| ドメイン層での I/O ライブラリ import 禁止                                           | `eslint.config.mjs`（`apps/server/src/domain/**`）      |
+| ドメイン層での `await` / `async` / タイマー禁止                                     | 同上                                                    |
+| ドメイン層での `Date.now()` / `new Date()` / `Math.random()` 禁止（引数で受け取る） | 同上                                                    |
+| 状態配信を `broadcastRoomState()` 経由に限定（生の `room:state` emit を禁止）       | `eslint.config.mjs`（`apps/server/src/**`）             |
+| 状態の読み書きの間に `await` を挟めない構造                                         | `RoomRegistry` の `update()` が同期関数しか受け取らない |
 
 ## リポジトリ構成
 

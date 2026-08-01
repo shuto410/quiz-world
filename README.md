@@ -30,7 +30,18 @@ docs/design.md  # 設計の唯一の正
 AGENTS.md       # 開発規約と不変条件
 ```
 
-ワークスペースは実装ステップの進行に合わせて追加していく。現時点では `packages/shared` のみが存在する。
+ワークスペースは実装ステップの進行に合わせて追加していく。現時点では `packages/shared` と `apps/server` が存在する。
+
+`apps/server` の内部構成は責務で分かれている。
+
+```
+src/domain/     # 状態遷移の純粋関数。I/O、await、時刻取得を禁止（ESLint で強制）
+src/rooms/      # RoomRegistry。ルーム状態への唯一のアクセス経路
+src/socket/     # Socket.io の配信。broadcastRoomState() が状態配信の唯一の経路
+src/app.ts      # Express アプリ
+src/server.ts   # HTTP と Socket.io の組み立て
+src/index.ts    # プロセスの入口。環境変数の読み取りと終了処理のみ
+```
 
 ## セットアップ
 
@@ -41,10 +52,20 @@ npm install
 npm run check
 ```
 
+Socket サーバーを起動する。
+
+```bash
+npm run dev:server
+curl http://localhost:3001/health   # => {"status":"ok"}
+```
+
+`PORT` と `LOG_LEVEL` で挙動を変えられる。既定値は `3001` と `info`。
+
 ## コマンド
 
 | コマンド                | 内容                                                 |
 | ----------------------- | ---------------------------------------------------- |
+| `npm run dev:server`    | Socket サーバーを watch モードで起動                 |
 | `npm run check`         | 型チェック + Lint + フォーマット確認 + テスト        |
 | `npm run typecheck`     | 全ワークスペースの型チェック                         |
 | `npm run lint`          | ESLint（`npm run lint:fix` で自動修正）              |

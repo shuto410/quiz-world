@@ -19,7 +19,14 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'html'],
       include: ['{apps,packages}/*/src/**/*.{ts,tsx}'],
-      exclude: ['**/*.test.{ts,tsx}', '**/*.d.ts'],
+      exclude: [
+        '**/*.test.{ts,tsx}',
+        '**/*.d.ts',
+        // Test-only fixtures and process entry points, which wire modules together rather
+        // than holding logic of their own.
+        '**/testing/**',
+        'apps/server/src/index.ts',
+      ],
     },
   },
 });
