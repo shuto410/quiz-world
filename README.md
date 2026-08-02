@@ -81,6 +81,13 @@ curl -X POST http://localhost:3001/api/tournaments \
 
 `hostToken` が返るのはこの1回だけで、サーバーは SHA-256 ハッシュしか保存しない。設定できる環境変数は [`.env.example`](./.env.example) にまとめてある。
 
+招待コードから大会名を引く。
+
+```bash
+curl http://localhost:3001/api/tournaments/by-invite-code/ECUQEFWQ | jq
+# => { "tournamentId": "...", "name": "社内クイズ大会", "status": "active", "canJoin": true }
+```
+
 保存されたレコードを確認する（要 AWS CLI。`brew install awscli`）。
 
 ```bash

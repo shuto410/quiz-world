@@ -5,9 +5,9 @@
  * things a client actually observes: the status code, the body, and the fact that malformed
  * input is answered rather than crashing the process.
  *
- * The use case behind `POST /api/tournaments` is tested separately in
- * `tournaments/createTournament.test.ts`. What is left here is the translation: which outcome
- * becomes which status, and what happens when something throws.
+ * The use cases behind the tournament routes are tested separately. What is left here is the
+ * translation: which outcome becomes which status, that the wire format carries no secrets,
+ * and what happens when something throws.
  */
 
 import type { Server } from 'node:http';
@@ -22,7 +22,8 @@ import type {
 import { afterEach, describe, expect, it } from 'vitest';
 import { createApp, errorHandler, type AppDependencies } from './app';
 import { createLogger } from './logger';
-import { createTestAppDependencies, TEST_INVITE_CODE } from './testing/appDependencies';
+import { createTestAppDependencies, TEST_INVITE_CODE, TEST_NOW } from './testing/appDependencies';
+import { createInMemoryTournamentRepository } from './testing/inMemoryTournamentRepository';
 
 let running: Server | undefined;
 
@@ -143,6 +144,106 @@ describe('POST /api/tournaments', () => {
     );
 
     expect(response.status).toBe(400);
+  });
+});
+
+describe('GET /api/tournaments/by-invite-code/:code', () => {
+  const seeded = createInMemoryTournamentRepository([
+    {
+      id: 'tournament-1',
+      name: '社内クイズ大会',
+      maxParticipants: 20,
+      inviteCode: 'AB23CD45',
+      status: 'active',
+      createdAt: TEST_NOW,
+      updatedAt: TEST_NOW,
+      hostTokenHash: 'f'.repeat(64),
+    },
+    {
+      id: 'tournament-2',
+      name: '終了した大会',
+      maxParticipants: 10,
+      inviteCode: 'EF67GH89',
+      status: 'closed',
+      createdAt: TEST_NOW,
+      updatedAt: TEST_NOW,
+      hostTokenHash: 'a'.repeat(64),
+    },
+  ]);
+
+  it('answers 200 with the name and canJoin for an active tournament', async () => {
+    const baseUrl = await startWith({ repository: seeded });
+
+    const response = await fetch(`${baseUrl}/api/tournaments/by-invite-code/AB23CD45`);
+    const body: unknown = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body).toEqual({
+      tournamentId: 'tournament-1',
+      name: '社内クイズ大会',
+      status: 'active',
+      canJoin: true,
+    });
+  });
+
+  it('answers 200 with canJoin false for a closed tournament', async () => {
+    const baseUrl = await startWith({ repository: seeded });
+
+    const response = await fetch(`${baseUrl}/api/tournaments/by-invite-code/EF67GH89`);
+    const body: unknown = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body).toEqual({
+      tournamentId: 'tournament-2',
+      name: '終了した大会',
+      status: 'closed',
+      canJoin: false,
+    });
+  });
+
+  it('never puts the host token hash on the wire', async () => {
+    const baseUrl = await startWith({ repository: seeded });
+
+    const response = await fetch(`${baseUrl}/api/tournaments/by-invite-code/AB23CD45`);
+    const text = await response.text();
+
+    expect(text).not.toContain('hostTokenHash');
+    expect(text).not.toContain('f'.repeat(64));
+  });
+
+  it('accepts a lower-case code in the path', async () => {
+    const baseUrl = await startWith({ repository: seeded });
+
+    const response = await fetch(`${baseUrl}/api/tournaments/by-invite-code/ab23cd45`);
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ tournamentId: 'tournament-1' });
+  });
+
+  it('answers 400 for a malformed code', async () => {
+    const baseUrl = await startWith({ repository: seeded });
+
+    const response = await fetch(`${baseUrl}/api/tournaments/by-invite-code/TOO-SHORT`);
+    const body: unknown = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body).toEqual({
+      code: 'VALIDATION_ERROR',
+      message: '招待コードは8文字の英数字です',
+    });
+  });
+
+  it('answers 404 for a well-formed code that matches nothing', async () => {
+    const baseUrl = await startWith({ repository: seeded });
+
+    const response = await fetch(`${baseUrl}/api/tournaments/by-invite-code/ZZ99ZZ99`);
+    const body: unknown = await response.json();
+
+    expect(response.status).toBe(404);
+    expect(body).toEqual({
+      code: 'TOURNAMENT_NOT_FOUND',
+      message: '大会が見つかりません',
+    });
   });
 });
 
