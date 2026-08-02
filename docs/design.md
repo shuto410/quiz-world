@@ -832,7 +832,7 @@ AWSにデプロイせずに全機能を動作確認できるようにする。
 
 - `npm run db:up` で DynamoDB Local を起動する（Docker Compose）
 - サーバー起動時にテーブルの存在を確認し、なければ自動作成する。ただし `DYNAMODB_ENDPOINT` が設定されているときだけ。AWS上ではテーブルはCDKの `PersistentStack` が持ち、タスクロールに作成権限を与えない。設定漏れのタスクが本番にテーブルを作ってしまう経路を塞ぐ
-- Vite の dev server で `/api` と `/socket.io` をローカルサーバーへプロキシする。本番のCloudFront構成と同じパス構造になる
+- Vite の dev server で `/api`・`/health`・`/socket.io` をローカルサーバーへプロキシする。`/api` と `/socket.io` は本番のCloudFront構成と同じパス構造。`/health` は ALB ヘルスと同じパスをブラウザから確認するためのローカル用
 - `npm run dev` でDocker Compose、Viteサーバー、Socketサーバーをまとめて起動する
 - `npm run db:reset` でローカルDynamoDBのデータをリセットする（ボリュームごと作り直す）。テーブルも消えるのでサーバーの再起動が要る。テーブル作成を起動時の1回に限っているのは、リクエストのたびに存在確認する作りにすると、本番でも同じ経路が動きうるため
 - 中身の確認は `npm run db:tables` / `npm run db:scan`（要 AWS CLI）か、`npm run db:admin`（ブラウザ GUI）を使う。いずれも Local 向けのエンドポイントとダミー認証をスクリプトが渡す
@@ -972,9 +972,9 @@ AWSにデプロイせずに全機能を動作確認できるようにする。
 - 確認: `curl` で大会名と `canJoin` が返ること
 
 **ステップ7: フロント土台**
-- 成果物: Vite + React 構成、ルーティング、Socketクライアント、Vite の `/api` `/socket.io` プロキシ、共通UIコンポーネント（Button、Input、Toast）
-- レビュー観点: ルーティング設計、Socketクライアントの再接続設定
-- 確認: 空の画面が表示され、`/api/health` にプロキシが通ること
+- 成果物: Vite + React 構成、ルーティング、Socketクライアント、Vite の `/api` `/health` `/socket.io` プロキシ、共通UIコンポーネント（Button、Input、Toast）
+- レビュー観点: ルーティング設計（特に招待URLの `/join`）、Socketクライアントの再接続設定
+- 確認: 空の画面が表示され、Vite 経由で `/health` にプロキシが通ること（ALBヘルスと同じパス。`/api/health` は作らない）
 
 **ステップ8: 参加フローを通す**
 - 成果物: 参加/退出の状態遷移ロジック（純粋関数 + テスト）、`tournament:join` `tournament:host-join` `tournament:leave` ハンドラ、大会作成画面、招待コード入力画面、名前入力画面、参加者一覧表示

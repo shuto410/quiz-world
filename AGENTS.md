@@ -88,6 +88,7 @@ docs/design.md  # 設計の唯一の正
 | コマンド                | 内容                                                                    |
 | ----------------------- | ----------------------------------------------------------------------- |
 | `npm run check`         | 型チェック + Lint + フォーマット確認 + テスト。**各ステップの完了条件** |
+| `npm run dev`           | DynamoDB Local + Socket サーバー + Vite をまとめて起動                  |
 | `npm run db:up`         | DynamoDB Local を起動。手で動かすときだけ必要（テストには不要）         |
 | `npm run db:scan`       | Local の大会テーブルを Scan（要 AWS CLI）                               |
 | `npm run db:admin`      | Local をブラウザで見る GUI                                              |

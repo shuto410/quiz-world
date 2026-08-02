@@ -30,7 +30,7 @@ docs/design.md  # 設計の唯一の正
 AGENTS.md       # 開発規約と不変条件
 ```
 
-ワークスペースは実装ステップの進行に合わせて追加していく。現時点では `packages/shared` と `apps/server` が存在する。
+ワークスペースは実装ステップの進行に合わせて追加していく。現時点では `packages/shared`、`apps/server`、`apps/web` が存在する。
 
 `apps/server` の内部構成は責務で分かれている。
 
@@ -55,12 +55,22 @@ npm install
 npm run check
 ```
 
-開発時は DynamoDB Local と Socket サーバーを起動する。Docker が必要なのはここだけ。
+開発時は DynamoDB Local、Socket サーバー、Vite を起動する。Docker が必要なのは DynamoDB Local だけ。
 
 ```bash
 cp .env.example .env.local
+npm run dev
+```
+
+ブラウザで http://localhost:5173 を開く。Vite が `/api`・`/health`・`/socket.io` を Socket サーバー（3001）へプロキシする。
+
+別々に起動する場合。
+
+```bash
 npm run db:up
-npm run dev:server
+npm run dev:server   # 別ターミナル
+npm run dev:web      # 別ターミナル
+curl http://localhost:5173/health   # => {"status":"ok"}  （Vite 経由）
 ```
 
 大会を作ってみる。
@@ -101,7 +111,9 @@ npm run db:scan
 
 | コマンド                | 内容                                                     |
 | ----------------------- | -------------------------------------------------------- |
+| `npm run dev`           | DynamoDB Local + Socket サーバー + Vite をまとめて起動   |
 | `npm run dev:server`    | Socket サーバーを watch モードで起動                     |
+| `npm run dev:web`       | Vite 開発サーバーを起動（http://localhost:5173）         |
 | `npm run db:up`         | DynamoDB Local を起動（Docker Compose）                  |
 | `npm run db:down`       | DynamoDB Local を停止                                    |
 | `npm run db:reset`      | ローカル DB のデータを捨てて作り直す（要サーバー再起動） |

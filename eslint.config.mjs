@@ -95,6 +95,13 @@ export default tseslint.config(
   },
 
   {
+    files: ['apps/web/**/*.{ts,tsx}'],
+    languageOptions: {
+      globals: globals.browser,
+    },
+  },
+
+  {
     files: ['apps/server/src/**/*.ts'],
     ignores: ['apps/server/src/socket/broadcast.ts'],
     rules: {
