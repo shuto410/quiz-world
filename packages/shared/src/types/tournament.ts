@@ -44,6 +44,24 @@ export type Tournament = {
 };
 
 /**
+ * Every field a client may see.
+ *
+ * The conversion from `TournamentRecord` builds its result from exactly these keys, and a
+ * test compares the two. A field added to the record without being added here therefore
+ * stays on the server by default, which is the safe direction for a type that holds a
+ * credential hash.
+ */
+export const TOURNAMENT_KEYS = [
+  'id',
+  'name',
+  'maxParticipants',
+  'inviteCode',
+  'status',
+  'createdAt',
+  'updatedAt',
+] as const satisfies readonly (keyof Tournament)[];
+
+/**
  * Tournament settings as stored in DynamoDB.
  *
  * Must never be returned from an HTTP handler or a socket event; convert to `Tournament`

@@ -605,9 +605,22 @@ sequenceDiagram
 
 Socketサーバー上の Express が提供する。Next.js は使わない。
 
-- `POST /api/tournaments`: 大会を作成し、招待コードとホストトークンを返す
+- `POST /api/tournaments`: 大会を作成し、招待コードとホストトークンを返す。成功時は `201`
 - `GET /api/tournaments/by-invite-code/:code`: 招待コードから大会名と参加可否を返す
 - `GET /health`: ALBのヘルスチェック用
+
+エラーコードとHTTPステータスの対応は1箇所（`apps/server/src/api/errors.ts`）に持ち、ハンドラごとに決めない。同じコードが呼び出し場所によって違うステータスになることを防ぐため。
+
+| コード | ステータス |
+| --- | --- |
+| `VALIDATION_ERROR` | 400 |
+| `TOURNAMENT_NOT_FOUND` | 404 |
+| `TOURNAMENT_NOT_JOINABLE` | 409 |
+| `INTERNAL_ERROR` | 500 |
+
+リクエストボディは 8KB までとする。JSONとして壊れているボディやサイズ超過は `500` ではなく `400` と `VALIDATION_ERROR` で返す。呼び出し側の誤りだから。
+
+例外はハンドラで捕まえずエラーミドルウェアに集約する。クライアントへ返すメッセージは固定文言にし、原因はログにのみ書く。このエンドポイントは誰でも叩けるため、例外メッセージがテーブル名や保存値を含んで漏れることを避ける。
 
 ```ts
 type CreateTournamentRequest = {
@@ -687,9 +700,11 @@ type ApiErrorResponse = {
 - 32文字ちょうどにしているのは偶然ではない。256が32で割り切れるため、ランダムな1バイトを剰余で写しても分布が偏らず、再抽選ループが要らない
 - 乱数源は引数で受け取る。`packages/shared` を実行環境に依存させないため、サーバーが `node:crypto` 由来の関数を渡す
 - 大文字小文字を区別せず、保存・検索時に正規化する
-- `inviteCode-index` で衝突を確認し、衝突時は再生成する
+- `inviteCode-index` で衝突を確認し、衝突時は再生成する。最大5回試して駄目なら `INTERNAL_ERROR` を返す。無限ループにしない
 - GSIは結果整合性のため厳密な一意性保証にはならないが、十分なコード空間で実用上無視できる水準にする
 - 招待コード自体に認証能力を持たせない。参加時にステータスと定員を再検証する
+
+招待URLは `{PUBLIC_BASE_URL}/join?code=XXXXXXXX` の形にする。コードをパスではなくクエリパラメーターに置くことで、`/join` という1つのルートが両方の入口を兼ねる。コード付きなら表示名入力へ直行し、コードなしならコードを手入力する画面を出す。
 
 ### `canJoin` の意味
 
@@ -701,8 +716,9 @@ type ApiErrorResponse = {
 
 Cognitoは使わない。
 
-- 大会作成時にサーバーが32バイトのランダムトークンを生成する
+- 大会作成時にサーバーが32バイトのランダムトークンを生成し、base64url で符号化する
 - レスポンスで1度だけ平文を返し、DynamoDBには SHA-256 ハッシュのみ保存する
+- ハッシュは bcrypt や argon2 ではなく素の SHA-256 でよい。パスワードハッシュが意図的に遅いのは、推測可能な秘密に対する総当たりを遅らせるため。このトークンは CSPRNG 由来の256ビットであり推測対象が存在しないので、遅くする意味がない。ハッシュ化の目的はDBダンプが流出しても全大会の操作権を渡さないことだけ
 - ホストのブラウザは `tournamentId` をキーにトークンを保存する
 - `tournament:host-join` でトークンを提示し、サーバーがハッシュを比較する
 - トークンを失った場合はホスト引き継ぎ機能で回復する
@@ -737,8 +753,12 @@ MVPでは2テーブル構成にする。
 
 - 大会IDから設定を取得: `GetItem`
 - 招待コードから設定を取得: `Query` on `inviteCode-index`
-- 大会作成: `PutItem`
+- 大会作成: `PutItem`（`attribute_not_exists(id)` 条件つき。IDはUUIDなので衝突は実質バグであり、そのバグが進行中の大会を消せないようにする）
 - 大会終了時にステータス更新: `UpdateItem`
+
+上記4つ以外のアクセスパターンをリポジトリに生やさない。汎用の `find` やクエリビルダーを置くと、キー設計で支えられるかを確認しないまま新しい読み方が増えるため。
+
+テーブルはスキーマレスであり、過去のデプロイが書いた項目が残りうる。読み出しはキャストせず必ず検証を通し、形が合わなければその場で例外にする。フィールド名だけをエラーに載せ、値は載せない（ひとつはトークンハッシュのため）。
 
 ### `RoomSnapshots`
 
@@ -808,12 +828,13 @@ TypeScriptのCDKで2スタックに分ける。
 
 AWSにデプロイせずに全機能を動作確認できるようにする。
 
-- `docker compose up` で DynamoDB Local を起動する
-- サーバー起動時にテーブルの存在を確認し、なければ自動作成する
+- `npm run db:up` で DynamoDB Local を起動する（Docker Compose）
+- サーバー起動時にテーブルの存在を確認し、なければ自動作成する。ただし `DYNAMODB_ENDPOINT` が設定されているときだけ。AWS上ではテーブルはCDKの `PersistentStack` が持ち、タスクロールに作成権限を与えない。設定漏れのタスクが本番にテーブルを作ってしまう経路を塞ぐ
 - Vite の dev server で `/api` と `/socket.io` をローカルサーバーへプロキシする。本番のCloudFront構成と同じパス構造になる
 - `npm run dev` でDocker Compose、Viteサーバー、Socketサーバーをまとめて起動する
-- `npm run db:reset` でローカルDynamoDBのデータをリセットする
-- 環境変数は `.env.local` に集約する
+- `npm run db:reset` でローカルDynamoDBのデータをリセットする（ボリュームごと作り直す）。テーブルも消えるのでサーバーの再起動が要る。テーブル作成を起動時の1回に限っているのは、リクエストのたびに存在確認する作りにすると、本番でも同じ経路が動きうるため
+- 中身の確認は `npm run db:tables` / `npm run db:scan`（要 AWS CLI）か、`npm run db:admin`（ブラウザ GUI）を使う。いずれも Local 向けのエンドポイントとダミー認証をスクリプトが渡す
+- 環境変数は `.env.local` に集約する。`.env.example` を写して使う
 
 必要な環境変数
 
@@ -821,8 +842,18 @@ AWSにデプロイせずに全機能を動作確認できるようにする。
 - `LOG_LEVEL`: `debug` / `info` / `warn` / `error`（既定 `info`）
 - `DYNAMODB_ENDPOINT`: ローカル時のみ設定する
 - `TOURNAMENTS_TABLE`, `ROOM_SNAPSHOTS_TABLE`
-- `PUBLIC_BASE_URL`: 招待URL生成に使う
-- `AWS_REGION`
+- `PUBLIC_BASE_URL`: 招待URL生成に使う（既定 `http://localhost:5173`）
+- `AWS_REGION`（既定 `ap-northeast-1`）
+
+### テストはDockerを要求しない
+
+`npm run check` に Docker を必要としない。リポジトリのテストは DynamoDB Local ではなく、DynamoDBのワイヤープロトコルを実装した `dynalite` をインプロセスで起動して実行する。
+
+モックしたクライアントを使わないのは、この層で捕まえたい誤りが論理の誤りではないため。各メソッドは数行しかなく、実際に壊れるのはテーブルとの食い違い（インデックス名の綴り、キースキーマに無い属性、往復で失われる値）である。「`Query` がこの引数で呼ばれた」と検証するモックは、その食い違いを検出せず再現してしまう。
+
+テストで使うテーブルはサーバー起動時と同じ `ensureTables` が作る。つまりリポジトリの実装と `apps/server/src/db/tables.ts` の定義がずれればテストが落ちる。
+
+ただしこれは `tables.ts` とCDKスタックの一致までは保証しない。テーブルの所有者はローカルとAWSで異なり、ローカルは `ensureTables`、AWSは `PersistentStack` である。同じキー設計を2箇所に書くことになるため、ステップ20では `tables.ts` の定義をCDK側から読むか、両者を突き合わせるテストを置く。手で同期させる状態のまま放置しない。
 
 ## エラー表示
 
@@ -1025,7 +1056,9 @@ AWSにデプロイせずに全機能を動作確認できるようにする。
 **ステップ20: CDK PersistentStack**（強いモデル推奨）
 - 成果物: DynamoDB 2テーブル、ECRリポジトリ
 - 必須の指定: `billingMode: PAY_PER_REQUEST`、`removalPolicy: RETAIN`、`RoomSnapshots` に `timeToLiveAttribute: "expiresAt"`、`Tournaments` に `inviteCode-index` GSI
-- レビュー観点: キー設計、GSI、TTL設定、削除保護
+- ローカル用の `apps/server/src/db/tables.ts` と同じキー設計になる。二重管理にせず、CDK側がその定義を読むか、両者の一致を検証するテストを置く
+- タスクロールには項目の読み書きだけを許可し、`CreateTable` / `DeleteTable` を渡さない。設定ミスのタスクが空テーブルを新規作成して「大会が消えた」ように見える事故を、権限側で塞ぐ
+- レビュー観点: キー設計、GSI、TTL設定、削除保護、タスクロールの権限範囲
 - 確認: `cdk deploy` でテーブルが作成される
 
 **ステップ21: CDK AppStack**（強いモデル推奨）

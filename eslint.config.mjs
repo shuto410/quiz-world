@@ -75,9 +75,19 @@ export default tseslint.config(
     },
     rules: {
       '@typescript-eslint/no-explicit-any': 'error',
-      // Destructuring a key out in order to drop it is how a field is withheld from a
-      // payload, so the discarded binding is intentional rather than forgotten.
-      '@typescript-eslint/no-unused-vars': ['error', { ignoreRestSiblings: true }],
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        {
+          // Destructuring a key out in order to drop it is how a field is withheld from a
+          // payload, so the discarded binding is intentional rather than forgotten.
+          ignoreRestSiblings: true,
+          // Some signatures are fixed by the framework rather than by the implementation:
+          // Express identifies error middleware by its arity, so the unused fourth parameter
+          // is what makes the function work. An underscore marks the omission as deliberate,
+          // matching what `noUnusedParameters` already accepts in tsconfig.
+          argsIgnorePattern: '^_',
+        },
+      ],
       '@typescript-eslint/no-non-null-assertion': 'error',
       '@typescript-eslint/consistent-type-imports': 'error',
       'no-console': ['warn', { allow: ['warn', 'error'] }],

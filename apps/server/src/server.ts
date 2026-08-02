@@ -12,13 +12,12 @@
 
 import { createServer as createHttpServer, type Server as HttpServer } from 'node:http';
 import { Server as SocketIoServer } from 'socket.io';
+import type { AppDependencies } from './app';
 import { createApp } from './app';
-import type { Logger } from './logger';
 import type { RoomRegistry } from './rooms/roomRegistry';
 import type { SocketServer } from './socket/broadcast';
 
-export type ServerDependencies = {
-  logger: Logger;
+export type ServerDependencies = AppDependencies & {
   /**
    * Not used until connections start joining rooms, but taken here so that the server owns
    * exactly one registry and never reaches for a module-level singleton.
@@ -31,8 +30,9 @@ export type CreatedServer = {
   io: SocketServer;
 };
 
-export function createServer({ logger }: ServerDependencies): CreatedServer {
-  const httpServer = createHttpServer(createApp());
+export function createServer(dependencies: ServerDependencies): CreatedServer {
+  const { logger } = dependencies;
+  const httpServer = createHttpServer(createApp(dependencies));
   const io: SocketServer = new SocketIoServer(httpServer);
 
   io.on('connection', (socket) => {

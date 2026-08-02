@@ -14,6 +14,12 @@
   ],
   "scripts": {
     "dev:server": "npm run dev -w @quiz-world/server",
+    "db:up": "docker compose up -d --wait",
+    "db:down": "docker compose down",
+    "db:reset": "docker compose down -v && npm run db:up",
+    "db:tables": "AWS_ACCESS_KEY_ID=local AWS_SECRET_ACCESS_KEY=local aws dynamodb list-tables --endpoint-url http://localhost:8000 --region ap-northeast-1",
+    "db:scan": "AWS_ACCESS_KEY_ID=local AWS_SECRET_ACCESS_KEY=local aws dynamodb scan --table-name quiz-world-tournaments --endpoint-url http://localhost:8000 --region ap-northeast-1 --output table",
+    "db:admin": "DYNAMO_ENDPOINT=http://localhost:8000 AWS_REGION=ap-northeast-1 AWS_ACCESS_KEY_ID=local AWS_SECRET_ACCESS_KEY=local npx --yes dynamodb-admin",
     "typecheck": "tsc --noEmit && npm run typecheck --workspaces --if-present",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",

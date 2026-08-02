@@ -1,0 +1,35 @@
+# DynamoDB Local for development.
+#
+# Only used to run the app by hand. The automated tests do not need this container: they
+# start an in-process DynamoDB implementation instead, so `npm run check` works without
+# Docker.
+#
+# Data survives a container restart so that a tournament created while developing is still
+# there tomorrow. `npm run db:reset` removes the volume when a clean slate is wanted.
+
+services:
+  dynamodb:
+    image: amazon/dynamodb-local:2.5.4
+    container_name: quiz-world-dynamodb
+    ports:
+      - '8000:8000'
+    # The image's default user does not own a freshly created named volume, and -dbPath needs
+    # a writable directory to persist into.
+    user: root
+    # -sharedDb keeps every client on one database file regardless of the credentials it
+    # sends, which is what makes the data visible to both the server and the AWS CLI.
+    command: ['-jar', 'DynamoDBLocal.jar', '-sharedDb', '-dbPath', '/data']
+    volumes:
+      - dynamodb-data:/data
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'java -version > /dev/null 2>&1 && exec 3<>/dev/tcp/127.0.0.1/8000 && echo ok',
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  dynamodb-data:

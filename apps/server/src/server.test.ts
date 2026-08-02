@@ -10,9 +10,9 @@
 import type { Server as HttpServer } from 'node:http';
 import { io as connect, type Socket } from 'socket.io-client';
 import { afterEach, describe, expect, it } from 'vitest';
-import { createLogger } from './logger';
 import { createRoomRegistry } from './rooms/roomRegistry';
 import { createServer, listen, shutdown, type CreatedServer } from './server';
+import { createTestAppDependencies } from './testing/appDependencies';
 
 let running: CreatedServer | undefined;
 let client: Socket | undefined;
@@ -28,7 +28,7 @@ function boundPort(httpServer: HttpServer): number {
 /** Starts a server on a free port and returns it together with its base URL. */
 async function startTestServer(): Promise<{ server: CreatedServer; baseUrl: string }> {
   const server = createServer({
-    logger: createLogger({ minLevel: 'error' }),
+    ...createTestAppDependencies(),
     registry: createRoomRegistry({ now: () => Date.now() }),
   });
   await listen(server.httpServer, 0);

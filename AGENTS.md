@@ -16,6 +16,8 @@ Quiz World は、出題者（ホスト）と参加者に役割が分かれるリ
 6. **状態配信は 1 箇所に集約する。** ハンドラから直接 `socket.emit` / `io.emit` で状態を送らず、`broadcastRoomState()` を経由する。
 7. **ホスト専用操作はサーバー側で権限を検証する。** UI で隠すだけにしない。
 8. **共有の型・バリデーションは `packages/shared` に置く。** クライアントとサーバーで定義を二重管理しない。
+9. **`TournamentRecord` をサーバーの外に出さない。** ホストトークンのハッシュを持つため、必ず `toTournament()` で `Tournament` に変換してから返す。変換関数はフィールドを明示的に列挙する。削る書き方にすると、あとから足したフィールドが既定で漏れる。
+10. **ホストトークンの平文を保存・再発行しない。** 作成レスポンスで1度だけ返す。紛失時はホスト引き継ぎで回復する。
 
 ## 作らないものリスト
 
@@ -43,15 +45,19 @@ MVP では以下を実装しない。「あると便利だから」で追加し�
 
 規約は可能な範囲で機械的に強制してある。Lint やテストが落ちたら、ルールを緩めるのではなく実装を直す。
 
-| ガードレール                                                                        | 実装場所                                                |
-| ----------------------------------------------------------------------------------- | ------------------------------------------------------- |
-| `any` と非null断言の禁止                                                            | `eslint.config.mjs`                                     |
-| `strict` + `noUncheckedIndexedAccess`                                               | `tsconfig.base.json`                                    |
-| ドメイン層での I/O ライブラリ import 禁止                                           | `eslint.config.mjs`（`apps/server/src/domain/**`）      |
-| ドメイン層での `await` / `async` / タイマー禁止                                     | 同上                                                    |
-| ドメイン層での `Date.now()` / `new Date()` / `Math.random()` 禁止（引数で受け取る） | 同上                                                    |
-| 状態配信を `broadcastRoomState()` 経由に限定（生の `room:state` emit を禁止）       | `eslint.config.mjs`（`apps/server/src/**`）             |
-| 状態の読み書きの間に `await` を挟めない構造                                         | `RoomRegistry` の `update()` が同期関数しか受け取らない |
+| ガードレール                                                                        | 実装場所                                                 |
+| ----------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| `any` と非null断言の禁止                                                            | `eslint.config.mjs`                                      |
+| `strict` + `noUncheckedIndexedAccess`                                               | `tsconfig.base.json`                                     |
+| ドメイン層での I/O ライブラリ import 禁止                                           | `eslint.config.mjs`（`apps/server/src/domain/**`）       |
+| ドメイン層での `await` / `async` / タイマー禁止                                     | 同上                                                     |
+| ドメイン層での `Date.now()` / `new Date()` / `Math.random()` 禁止（引数で受け取る） | 同上                                                     |
+| 状態配信を `broadcastRoomState()` 経由に限定（生の `room:state` emit を禁止）       | `eslint.config.mjs`（`apps/server/src/**`）              |
+| 状態の読み書きの間に `await` を挟めない構造                                         | `RoomRegistry` の `update()` が同期関数しか受け取らない  |
+| クライアントに出してよい大会フィールドの凍結                                        | `TOURNAMENT_KEYS` と `types/tournament.test.ts`          |
+| DynamoDB から読んだ項目の検証（キャスト禁止）                                       | `parseTournamentRecord()`                                |
+| エラーコードとHTTPステータスの1対1対応                                              | `api/errors.ts` と `api/errors.test.ts`                  |
+| リポジトリのテストが本物の DynamoDB 実装に当たること                                | `testing/testDynamoDb.ts`（dynalite をインプロセス起動） |
 
 ## リポジトリ構成
 
@@ -82,6 +88,9 @@ docs/design.md  # 設計の唯一の正
 | コマンド                | 内容                                                                    |
 | ----------------------- | ----------------------------------------------------------------------- |
 | `npm run check`         | 型チェック + Lint + フォーマット確認 + テスト。**各ステップの完了条件** |
+| `npm run db:up`         | DynamoDB Local を起動。手で動かすときだけ必要（テストには不要）         |
+| `npm run db:scan`       | Local の大会テーブルを Scan（要 AWS CLI）                               |
+| `npm run db:admin`      | Local をブラウザで見る GUI                                              |
 | `npm run typecheck`     | 全ワークスペースの型チェック                                            |
 | `npm run lint`          | ESLint                                                                  |
 | `npm run format`        | Prettier で整形                                                         |
