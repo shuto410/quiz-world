@@ -77,13 +77,51 @@ a {
   line-height: 1.5;
 }
 
-.placeholder-card {
+.qw-form {
+  display: grid;
+  gap: var(--space-4);
   padding: var(--space-6);
   border: 1px solid var(--color-line);
   border-radius: calc(var(--radius-control) + 0.25rem);
   background: var(--color-paper-raised);
 }
 
-.placeholder-card code {
-  font-size: 0.9em;
+.qw-form-footer {
+  margin-top: var(--space-6);
+}
+
+.qw-invite-panel {
+  display: grid;
+  gap: var(--space-3);
+  margin-bottom: var(--space-6);
+  padding: var(--space-6);
+  border: 1px solid var(--color-line);
+  border-radius: calc(var(--radius-control) + 0.25rem);
+  background: var(--color-paper-raised);
+}
+
+.qw-invite-panel p {
+  margin: 0;
+  color: var(--color-ink);
+}
+
+.qw-invite-panel__url {
+  overflow-wrap: anywhere;
+  font-size: 0.9rem;
+  color: var(--color-ink-muted) !important;
+}
+
+.qw-room-section {
+  margin-bottom: var(--space-6);
+}
+
+.qw-room-section h2 {
+  margin: 0 0 var(--space-3);
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+}
+
+.qw-room-actions {
+  display: flex;
+  gap: var(--space-3);
 }

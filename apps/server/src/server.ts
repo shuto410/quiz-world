@@ -16,13 +16,16 @@ import type { AppDependencies } from './app';
 import { createApp } from './app';
 import type { RoomRegistry } from './rooms/roomRegistry';
 import type { SocketServer } from './socket/broadcast';
+import { registerJoinHandlers } from './socket/joinHandlers';
 
 export type ServerDependencies = AppDependencies & {
   /**
-   * Not used until connections start joining rooms, but taken here so that the server owns
-   * exactly one registry and never reaches for a module-level singleton.
+   * Owned here so handlers never reach for a module-level singleton. The same registry is
+   * what snapshot recovery (later) will rehydrate into.
    */
   registry: RoomRegistry;
+  /** Fresh participant ids for first-time joins. Injected so tests can pin them. */
+  newParticipantId: () => string;
 };
 
 export type CreatedServer = {
@@ -31,13 +34,22 @@ export type CreatedServer = {
 };
 
 export function createServer(dependencies: ServerDependencies): CreatedServer {
-  const { logger } = dependencies;
+  const { logger, registry, repository, newParticipantId, now } = dependencies;
   const httpServer = createHttpServer(createApp(dependencies));
   const io: SocketServer = new SocketIoServer(httpServer);
 
   io.on('connection', (socket) => {
     const connectionLogger = logger.child({ socketId: socket.id });
     connectionLogger.debug('socket connected');
+
+    registerJoinHandlers(socket, {
+      io,
+      registry,
+      repository,
+      newParticipantId,
+      now,
+      logger: connectionLogger,
+    });
 
     socket.on('disconnect', (reason) => {
       connectionLogger.debug('socket disconnected', { reason });

@@ -30,6 +30,7 @@ async function startTestServer(): Promise<{ server: CreatedServer; baseUrl: stri
   const server = createServer({
     ...createTestAppDependencies(),
     registry: createRoomRegistry({ now: () => Date.now() }),
+    newParticipantId: () => 'participant-test',
   });
   await listen(server.httpServer, 0);
   running = server;

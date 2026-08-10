@@ -1,8 +1,8 @@
 /**
  * Root of the SPA: routing and the toast host.
  *
- * Screens are placeholders until step 8. What matters here is that the public paths —
- * especially `/join` — already exist, and that every screen can call `useToast()`.
+ * Public paths — especially `/join` — are part of the invite URL contract. Every screen can
+ * call `useToast()` because the provider wraps the router.
  */
 
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
