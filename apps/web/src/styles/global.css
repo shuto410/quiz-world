@@ -1,0 +1,127 @@
+/**
+ * Global tokens and resets for the SPA.
+ *
+ * Kept deliberately small at this stage: enough for the shared controls and placeholder
+ * pages to share one look, without painting a full design system before the screens exist.
+ */
+
+:root {
+  color-scheme: light;
+  --font-display: 'Fraunces', 'Iowan Old Style', 'Palatino Linotype', Palatino, serif;
+  --font-body: 'Source Sans 3', 'Segoe UI', sans-serif;
+  --color-ink: #1c1917;
+  --color-ink-muted: #57534e;
+  --color-paper: #faf7f2;
+  --color-paper-raised: #ffffff;
+  --color-line: #d6d3d1;
+  --color-accent: #0f766e;
+  --color-accent-ink: #ffffff;
+  --color-danger: #b91c1c;
+  --shadow-toast: 0 10px 30px rgb(28 25 23 / 0.12);
+  --radius-control: 0.5rem;
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  color: var(--color-ink);
+  background:
+    radial-gradient(circle at top left, rgb(15 118 110 / 0.08), transparent 40%),
+    linear-gradient(180deg, #f3efe6 0%, var(--color-paper) 45%, #f7f3ec 100%);
+}
+
+button,
+input {
+  font: inherit;
+}
+
+a {
+  color: var(--color-accent);
+}
+
+.app-shell {
+  width: min(40rem, calc(100% - 2rem));
+  margin: 0 auto;
+  padding: var(--space-8) 0;
+}
+
+.app-shell h1 {
+  margin: 0 0 var(--space-2);
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 4vw, 2.75rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.app-shell p {
+  margin: 0 0 var(--space-6);
+  color: var(--color-ink-muted);
+  line-height: 1.5;
+}
+
+.qw-form {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-6);
+  border: 1px solid var(--color-line);
+  border-radius: calc(var(--radius-control) + 0.25rem);
+  background: var(--color-paper-raised);
+}
+
+.qw-form-footer {
+  margin-top: var(--space-6);
+}
+
+.qw-invite-panel {
+  display: grid;
+  gap: var(--space-3);
+  margin-bottom: var(--space-6);
+  padding: var(--space-6);
+  border: 1px solid var(--color-line);
+  border-radius: calc(var(--radius-control) + 0.25rem);
+  background: var(--color-paper-raised);
+}
+
+.qw-invite-panel p {
+  margin: 0;
+  color: var(--color-ink);
+}
+
+.qw-invite-panel__url {
+  overflow-wrap: anywhere;
+  font-size: 0.9rem;
+  color: var(--color-ink-muted) !important;
+}
+
+.qw-room-section {
+  margin-bottom: var(--space-6);
+}
+
+.qw-room-section h2 {
+  margin: 0 0 var(--space-3);
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+}
+
+.qw-room-actions {
+  display: flex;
+  gap: var(--space-3);
+}

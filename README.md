@@ -1,186 +1,134 @@
 # Quiz World
 
-[![Tests](https://img.shields.io/badge/Tests-318-green)](https://github.com/shuto410/quiz-world)
-[![Coverage](https://img.shields.io/badge/Coverage-92.17%25-brightgreen)](https://github.com/shuto410/quiz-world)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue)](https://github.com/shuto410/quiz-world)
+出題者（ホスト）と参加者に役割が分かれる、リアルタイム早押しクイズ大会プラットフォーム。
 
-A real-time multiplayer quiz application built with Next.js and Socket.io, developed using Test-Driven Development practices.
+ホストが外部資料を見ながら問題を読み上げ、参加者はブラウザから早押しする。早押し順・回答権・スコアはすべて Socket.io サーバーが決定し、全クライアントへ配信する。アプリ内に問題管理機能は持たない。
 
-## Overview
+## 技術構成
 
-Quiz World is a real-time multiplayer quiz application where users can create rooms, join existing ones, and participate in interactive quiz games. The application supports both text-based and image-based questions with real-time synchronization of user states and game progress.
+| レイヤー         | 採用技術                                            |
+| ---------------- | --------------------------------------------------- |
+| フロントエンド   | Vite + React + TypeScript（SPA）                    |
+| リアルタイム通信 | Socket.io                                           |
+| バックエンド     | Express + Socket.io on ECS Fargate                  |
+| 配信             | CloudFront + S3（静的） / ALB（API・WebSocket）     |
+| 永続化           | DynamoDB（大会設定と `RoomState` スナップショット） |
+| IaC              | AWS CDK (TypeScript)                                |
 
-## Key Features
+ゲーム状態はサーバーのメモリ上を正とし、DynamoDB には復旧用のスナップショットを TTL つきで書き出す。
 
-- **Real-time multiplayer rooms** with Socket.io
-- **Quiz creation and management** with text and image support  
-- **Host management** with role transfer capabilities
-- **Persistent user sessions** across browser refreshes
-- **Comprehensive test coverage** (318 tests, 92.17% coverage)
-- **Feature-based architecture** for maintainability
+## リポジトリ構成
 
-## Project Structure
+npm workspaces のモノレポ。クライアントとサーバーで Socket イベント型とバリデーションを共有するため。
 
 ```
-src/
-├── app/                    # Next.js app router
-│   ├── room/[id]/         # Dynamic room pages
-│   ├── quiz-creator/      # Quiz creation page
-│   ├── quiz-game/         # Quiz game page
-│   ├── layout.tsx         # Root layout
-│   └── page.tsx           # Home page
-├── features/              # Feature-based modules
-│   ├── room/             # Room management feature
-│   │   ├── components/   # Room-specific components
-│   │   └── hooks/        # Room-specific hooks
-│   ├── quiz/             # Quiz management feature
-│   │   ├── components/   # Quiz-specific components
-│   │   └── hooks/        # Quiz-specific hooks
-│   └── chat/             # Chat feature
-│       └── hooks/        # Chat-specific hooks
-├── components/            # Shared components
-│   └── ui/               # Reusable UI components
-├── lib/                  # Utility libraries
-│   ├── socketClient.ts   # Socket.io client
-│   ├── userStorage.ts    # User data persistence
-│   └── roomManager.ts    # Room management logic
-├── server/               # Socket.io server
-│   ├── index.ts          # Server entry point
-│   └── socket.ts         # Socket event handlers
-├── types/                # TypeScript type definitions
-└── test/                 # Test utilities
+apps/web        # Vite + React + TypeScript (SPA)
+apps/server     # Express + Socket.io
+packages/shared # ドメイン型、Socketイベント型、バリデーション
+infra           # AWS CDK (TypeScript)
+docs/design.md  # 設計の唯一の正
+AGENTS.md       # 開発規約と不変条件
 ```
 
-## Development Methodology
+ワークスペースは実装ステップの進行に合わせて追加していく。現時点では `packages/shared`、`apps/server`、`apps/web` が存在する。
 
-This project follows Test-Driven Development (TDD) practices:
+`apps/server` の内部構成は責務で分かれている。
 
-- **Red-Green-Refactor cycle**: Write failing tests first, implement minimal code, then refactor
-- **High test coverage**: Maintaining 92.17% test coverage across the codebase
-- **Quality assurance**: 318 tests ensure code reliability and prevent regressions
-- **Continuous testing**: All changes are validated through comprehensive test suites
-
-## Getting Started
-
-### Prerequisites
-
-- Node.js 18+
-- npm or yarn
-
-### Installation
-
-1. Clone the repository:
-```bash
-git clone <repository-url>
-cd quiz-world
+```
+src/domain/      # 状態遷移の純粋関数。I/O、await、時刻取得を禁止（ESLint で強制）
+src/rooms/       # RoomRegistry。ルーム状態への唯一のアクセス経路
+src/socket/      # Socket.io の配信。broadcastRoomState() が状態配信の唯一の経路
+src/tournaments/ # 大会のユースケースと DynamoDB リポジトリ
+src/db/          # DynamoDB クライアントとテーブル定義
+src/api/         # Express のルートとエラー形式
+src/app.ts       # Express アプリ
+src/server.ts    # HTTP と Socket.io の組み立て
+src/index.ts     # プロセスの入口。環境変数の読み取りと終了処理のみ
 ```
 
-2. Install dependencies:
+## セットアップ
+
+Node.js 22 以上が必要。テストに Docker は要らない。
+
 ```bash
 npm install
+npm run check
 ```
 
-3. Start the development environment:
+開発時は DynamoDB Local、Socket サーバー、Vite を起動する。Docker が必要なのは DynamoDB Local だけ。
 
-**Terminal 1 - Frontend:**
 ```bash
+cp .env.example .env.local
 npm run dev
 ```
 
-**Terminal 2 - Socket.io Server:**
+ブラウザで http://localhost:5173 を開く。Vite が `/api`・`/health`・`/socket.io` を Socket サーバー（3001）へプロキシする。
+
+別々に起動する場合。
+
 ```bash
-npm run dev:server
+npm run db:up
+npm run dev:server   # 別ターミナル
+npm run dev:web      # 別ターミナル
+curl http://localhost:5173/health   # => {"status":"ok"}  （Vite 経由）
 ```
 
-4. Open your browser and navigate to:
-   - Frontend: http://localhost:3000
-   - Server Health Check: http://localhost:3002/health
+大会を作ってみる。
 
-### Available Scripts
-
-- `npm run dev` - Start Next.js development server
-- `npm run dev:server` - Start Socket.io server in development
-- `npm run build` - Build for production
-- `npm run start` - Start production server
-- `npm run test` - Run tests in watch mode
-- `npm run test:run` - Run all tests once
-- `npm run test:coverage` - Run tests with coverage report
-- `npm run lint` - Run ESLint
-- `npm run typecheck` - Run TypeScript type checking
-- `npm run check` - Run all checks (type, lint, test)
-
-## Socket.io Events
-
-### Client to Server
-- `room:join` - Join a specific room
-- `room:leave` - Leave current room
-- `room:create` - Create new room
-- `room:requestList` - Get available public rooms
-- `quiz:start` - Begin quiz game
-- `quiz:answer` - Submit quiz answer
-- `host:transfer` - Transfer host role
-- `chat:message` - Send chat message
-
-### Server to Client
-- `room:joined` - Confirmation of successful room join
-- `room:userJoined` - Notification of new user joining
-- `room:userLeft` - Notification of user leaving
-- `room:updated` - Room state changes
-- `room:list` - Available rooms with current status
-- `quiz:started` - Quiz game initiation
-- `quiz:ended` - Quiz completion with results
-- `host:transferred` - Host role transfer confirmation
-- `chat:message` - Broadcast chat message
-- `error` - Error handling
-
-## Testing
-
-### Test Structure
-- **Unit Tests**: Individual components and functions
-- **Integration Tests**: Socket event handling
-- **Component Tests**: React components with full lifecycle
-- **Hook Tests**: Custom hooks with edge cases
-
-### Running Tests
 ```bash
-# Run all tests
-npm run test:run
-
-# Run tests in watch mode
-npm run test
-
-# Generate coverage report
-npm run test:coverage
+curl -X POST http://localhost:3001/api/tournaments \
+  -H 'content-type: application/json' \
+  -d '{"name":"社内クイズ大会","maxParticipants":20}'
 ```
 
-### Test Coverage
-Current coverage: 92.17%
-- UI Components: 98.26%
-- Feature Modules: 95%+
-- Socket Client: Comprehensive event handling
-- User Storage: Multi-storage fallback testing
-- Room Management: Complete room lifecycle testing
+```json
+{
+  "tournament": { "id": "...", "inviteCode": "ECUQEFWQ", "status": "active", "...": "..." },
+  "inviteUrl": "http://localhost:5173/join?code=ECUQEFWQ",
+  "hostToken": "Cmv-Q13jx6Kybo_ryx8mD9KT8fYSHt0Yoy6ZHLel0AI"
+}
+```
 
-## Contributing
+`hostToken` が返るのはこの1回だけで、サーバーは SHA-256 ハッシュしか保存しない。設定できる環境変数は [`.env.example`](./.env.example) にまとめてある。
 
-### Development Workflow
+招待コードから大会名を引く。
 
-1. Fork and clone the repository
-2. Create a feature branch
-3. Write tests for your changes
-4. Implement the feature
-5. Ensure all tests pass
-6. Maintain test coverage above 90%
-7. Submit a pull request
+```bash
+curl http://localhost:3001/api/tournaments/by-invite-code/ECUQEFWQ | jq
+# => { "tournamentId": "...", "name": "社内クイズ大会", "status": "active", "canJoin": true }
+```
 
-### Quality Standards
+保存されたレコードを確認する（要 AWS CLI。`brew install awscli`）。
 
-- All tests must pass
-- Test coverage must be maintained at 90%+
-- TypeScript type checking must pass
-- ESLint rules must be followed
-- Code should be well-documented
+```bash
+npm run db:tables
+npm run db:scan
+```
 
-## License
+ブラウザで見たいときは `npm run db:admin` のあと http://localhost:8001 を開く。
 
-This project is licensed under the MIT License.
+## コマンド
+
+| コマンド                | 内容                                                     |
+| ----------------------- | -------------------------------------------------------- |
+| `npm run dev`           | DynamoDB Local + Socket サーバー + Vite をまとめて起動   |
+| `npm run dev:server`    | Socket サーバーを watch モードで起動                     |
+| `npm run dev:web`       | Vite 開発サーバーを起動（http://localhost:5173）         |
+| `npm run db:up`         | DynamoDB Local を起動（Docker Compose）                  |
+| `npm run db:down`       | DynamoDB Local を停止                                    |
+| `npm run db:reset`      | ローカル DB のデータを捨てて作り直す（要サーバー再起動） |
+| `npm run db:tables`     | Local のテーブル一覧（要 AWS CLI）                       |
+| `npm run db:scan`       | Local の大会テーブルを Scan（要 AWS CLI）                |
+| `npm run db:admin`      | Local をブラウザで見る GUI（http://localhost:8001）      |
+| `npm run check`         | 型チェック + Lint + フォーマット確認 + テスト            |
+| `npm run typecheck`     | 全ワークスペースの型チェック                             |
+| `npm run lint`          | ESLint（`npm run lint:fix` で自動修正）                  |
+| `npm run format`        | Prettier で整形（`npm run format:check` で確認のみ）     |
+| `npm run test`          | Vitest（watch モード）                                   |
+| `npm run test:run`      | Vitest（1 回実行）                                       |
+| `npm run test:coverage` | カバレッジ付きで実行                                     |
+
+## ドキュメント
+
+- [`docs/design.md`](./docs/design.md) — アーキテクチャ、`RoomState` 設計、Socket イベント仕様、AWS 構成、実装ステップ
+- [`AGENTS.md`](./AGENTS.md) — 破ってはいけない不変条件、作らないものリスト、コーディング規約
