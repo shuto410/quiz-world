@@ -125,3 +125,33 @@ a {
   display: flex;
   gap: var(--space-3);
 }
+
+.app-shell--play {
+  padding-bottom: 6rem;
+}
+
+.qw-buzz-bar {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: grid;
+  gap: var(--space-2);
+  justify-items: center;
+  padding: var(--space-4) var(--space-4) calc(var(--space-4) + env(safe-area-inset-bottom, 0));
+  border-top: 1px solid var(--color-line);
+  background: rgb(250 247 242 / 0.96);
+  backdrop-filter: blur(8px);
+}
+
+.qw-buzz-bar .qw-button {
+  width: min(24rem, 100%);
+  min-height: 3.5rem;
+  font-size: 1.15rem;
+}
+
+.qw-buzz-bar__hint {
+  margin: 0 !important;
+  font-size: 0.85rem;
+  color: var(--color-ink-muted);
+}

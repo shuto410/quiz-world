@@ -49,6 +49,7 @@ async function startTestServer(options?: { newParticipantId?: () => string }): P
         participantSeq += 1;
         return `participant-${participantSeq}`;
       }),
+    newBuzzSessionId: () => 'buzz-session-1',
     now: () => TEST_NOW,
   });
   await listen(server.httpServer, 0);

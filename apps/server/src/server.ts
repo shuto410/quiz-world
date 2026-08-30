@@ -16,6 +16,7 @@ import type { AppDependencies } from './app';
 import { createApp } from './app';
 import type { RoomRegistry } from './rooms/roomRegistry';
 import type { SocketServer } from './socket/broadcast';
+import { registerBuzzHandlers } from './socket/buzzHandlers';
 import { registerJoinHandlers } from './socket/joinHandlers';
 
 export type ServerDependencies = AppDependencies & {
@@ -26,6 +27,8 @@ export type ServerDependencies = AppDependencies & {
   registry: RoomRegistry;
   /** Fresh participant ids for first-time joins. Injected so tests can pin them. */
   newParticipantId: () => string;
+  /** Fresh buzz-session ids when the first press of a round opens one. */
+  newBuzzSessionId: () => string;
 };
 
 export type CreatedServer = {
@@ -34,7 +37,7 @@ export type CreatedServer = {
 };
 
 export function createServer(dependencies: ServerDependencies): CreatedServer {
-  const { logger, registry, repository, newParticipantId, now } = dependencies;
+  const { logger, registry, repository, newParticipantId, newBuzzSessionId, now } = dependencies;
   const httpServer = createHttpServer(createApp(dependencies));
   const io: SocketServer = new SocketIoServer(httpServer);
 
@@ -49,6 +52,13 @@ export function createServer(dependencies: ServerDependencies): CreatedServer {
       newParticipantId,
       now,
       logger: connectionLogger,
+    });
+
+    registerBuzzHandlers(socket, {
+      io,
+      registry,
+      newBuzzSessionId,
+      now,
     });
 
     socket.on('disconnect', (reason) => {

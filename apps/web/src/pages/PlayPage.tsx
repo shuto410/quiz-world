@@ -1,15 +1,18 @@
 /**
- * Participant play screen for step 8: join with a display name and watch the roster update.
+ * Participant play screen: join with a display name, watch the roster, and press the buzzer.
  *
- * Buzz and answer UI arrive later. The display name is taken from router state (set by the
- * join form) so a refresh without state sends the user back to re-enter their name.
+ * The buzzer is pinned to the bottom of the viewport. Whether it is enabled is derived from
+ * the broadcast state (`canBuzz`) so a disabled button matches what the server would refuse.
+ * Answer text UI arrives in a later step.
  */
 
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import { Button } from '../components/Button';
+import { BuzzOrderList } from '../components/BuzzOrderList';
 import { ParticipantList } from '../components/ParticipantList';
 import { useToast } from '../components/Toast';
+import { canBuzz } from '../game/canBuzz';
 import { useRoomSocket } from '../hooks/useRoomSocket';
 import { joinPath, ROUTE_PATHS } from '../routes';
 import { loadParticipantId } from '../storage/sessionKeys';
@@ -34,7 +37,33 @@ export function PlayPage() {
     };
   }, [tournamentId, displayName]);
 
-  const { status, roomState, participantId, errorMessage, leave } = useRoomSocket(joinRequest);
+  const {
+    status,
+    roomState,
+    participantId,
+    errorMessage,
+    socketError,
+    clearSocketError,
+    leave,
+    buzz,
+  } = useRoomSocket(joinRequest);
+
+  useEffect(() => {
+    if (socketError === undefined) {
+      return;
+    }
+    toast.show(socketError.message, 'error');
+    clearSocketError();
+  }, [socketError, clearSocketError, toast.show]);
+
+  const buzzEnabled =
+    status === 'joined' &&
+    canBuzz({
+      status: roomState?.status,
+      participantId,
+      hostId: roomState?.hostId,
+      buzzOrder: roomState?.buzzOrder,
+    });
 
   if (tournamentId === undefined) {
     return (
@@ -70,11 +99,20 @@ export function PlayPage() {
   }
 
   return (
-    <main className="app-shell">
+    <main className="app-shell app-shell--play">
       <h1>プレイ</h1>
       <p>
         {displayName} として参加中 — {status === 'joined' ? '接続中' : '接続しています…'}
       </p>
+
+      <section className="qw-room-section" aria-label="早押し順">
+        <h2>早押し順</h2>
+        <BuzzOrderList
+          buzzOrder={roomState?.buzzOrder ?? []}
+          participants={roomState?.participants ?? []}
+          currentResponderId={roomState?.currentResponderId}
+        />
+      </section>
 
       <section className="qw-room-section" aria-label="参加者一覧">
         <h2>参加者</h2>
@@ -95,6 +133,21 @@ export function PlayPage() {
         >
           退出
         </Button>
+      </div>
+
+      <div className="qw-buzz-bar">
+        <Button
+          type="button"
+          disabled={!buzzEnabled}
+          onClick={() => {
+            buzz();
+          }}
+        >
+          早押し
+        </Button>
+        {!buzzEnabled && status === 'joined' ? (
+          <p className="qw-buzz-bar__hint">いまは押せません</p>
+        ) : null}
       </div>
     </main>
   );

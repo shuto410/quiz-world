@@ -1,13 +1,14 @@
 /**
- * Host room screen for step 8: join with the stored token and show the live participant list.
+ * Host room screen: join with the stored token, watch the roster, and follow the buzz order.
  *
- * Game controls arrive in later steps. What matters here is that creating a tournament and
- * opening this URL is enough for the host to see guests appear in real time.
+ * Judgement controls arrive later. For now the host needs the same live buzz order the
+ * participants see, so that a multi-tab sync check has something to look at on this side.
  */
 
 import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Button } from '../components/Button';
+import { BuzzOrderList } from '../components/BuzzOrderList';
 import { ParticipantList } from '../components/ParticipantList';
 import { useToast } from '../components/Toast';
 import { useRoomSocket } from '../hooks/useRoomSocket';
@@ -96,6 +97,15 @@ export function HostPage() {
           </Button>
         </section>
       ) : null}
+
+      <section className="qw-room-section" aria-label="早押し順">
+        <h2>早押し順</h2>
+        <BuzzOrderList
+          buzzOrder={roomState?.buzzOrder ?? []}
+          participants={roomState?.participants ?? []}
+          currentResponderId={roomState?.currentResponderId}
+        />
+      </section>
 
       <section className="qw-room-section" aria-label="参加者一覧">
         <h2>参加者</h2>

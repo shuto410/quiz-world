@@ -4,12 +4,16 @@
  * One socket per mount. The screen decides which join event to fire; this hook owns connect,
  * ack handling, localStorage of the issued participant id, and teardown on unmount.
  *
+ * Gameplay emits such as `game:buzz` go through here so screens never hold a raw socket.
+ * Refused operations surface on `socketError` for the caller to toast; accepted ones arrive
+ * only as a fresh `room:state`.
+ *
  * The join request is compared by a stable key rather than object identity, so a parent that
  * rebuilds the request object each render does not tear down the socket.
  */
 
-import type { JoinResponse, RoomStateEvent } from '@quiz-world/shared';
-import { useEffect, useRef, useState } from 'react';
+import type { JoinResponse, RoomStateEvent, SocketErrorEvent } from '@quiz-world/shared';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { createSocket, type AppSocket } from '../socket/client';
 import { saveParticipantId } from '../storage/sessionKeys';
 
@@ -29,7 +33,11 @@ export type UseRoomSocketResult = {
   roomState: RoomStateEvent | undefined;
   participantId: string | undefined;
   errorMessage: string | undefined;
+  /** Latest gameplay error from the server; cleared when the caller acknowledges it. */
+  socketError: SocketErrorEvent | undefined;
+  clearSocketError: () => void;
   leave: () => void;
+  buzz: () => void;
 };
 
 function requestKey(request: RoomJoinRequest | undefined): string {
@@ -47,6 +55,7 @@ export function useRoomSocket(request: RoomJoinRequest | undefined): UseRoomSock
   const [roomState, setRoomState] = useState<RoomStateEvent | undefined>(undefined);
   const [participantId, setParticipantId] = useState<string | undefined>(undefined);
   const [errorMessage, setErrorMessage] = useState<string | undefined>(undefined);
+  const [socketError, setSocketError] = useState<SocketErrorEvent | undefined>(undefined);
   const socketRef = useRef<AppSocket | undefined>(undefined);
   const requestRef = useRef(request);
   requestRef.current = request;
@@ -66,6 +75,7 @@ export function useRoomSocket(request: RoomJoinRequest | undefined): UseRoomSock
     setRoomState(undefined);
     setParticipantId(undefined);
     setErrorMessage(undefined);
+    setSocketError(undefined);
 
     const onState = (state: RoomStateEvent) => {
       if (!cancelled) {
@@ -73,7 +83,14 @@ export function useRoomSocket(request: RoomJoinRequest | undefined): UseRoomSock
       }
     };
 
+    const onError = (event: SocketErrorEvent) => {
+      if (!cancelled) {
+        setSocketError(event);
+      }
+    };
+
     socket.on('room:state', onState);
+    socket.on('error', onError);
 
     const finishJoin = (response: JoinResponse) => {
       if (cancelled) {
@@ -132,18 +149,32 @@ export function useRoomSocket(request: RoomJoinRequest | undefined): UseRoomSock
     return () => {
       cancelled = true;
       socket.off('room:state', onState);
+      socket.off('error', onError);
       socket.disconnect();
       socketRef.current = undefined;
     };
   }, [key]);
+
+  const clearSocketError = useCallback(() => {
+    setSocketError(undefined);
+  }, []);
+
+  const leave = useCallback(() => {
+    socketRef.current?.emit('tournament:leave', {});
+  }, []);
+
+  const buzz = useCallback(() => {
+    socketRef.current?.emit('game:buzz', {});
+  }, []);
 
   return {
     status,
     roomState,
     participantId,
     errorMessage,
-    leave: () => {
-      socketRef.current?.emit('tournament:leave', {});
-    },
+    socketError,
+    clearSocketError,
+    leave,
+    buzz,
   };
 }

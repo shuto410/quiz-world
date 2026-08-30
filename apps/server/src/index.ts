@@ -46,6 +46,7 @@ const server = createServer({
   randomBytes: (byteLength) => randomBytes(byteLength),
   newTournamentId: () => randomUUID(),
   newParticipantId: () => randomUUID(),
+  newBuzzSessionId: () => randomUUID(),
   now: () => Date.now(),
   publicBaseUrl: config.publicBaseUrl,
 });
