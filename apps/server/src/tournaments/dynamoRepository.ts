@@ -9,7 +9,7 @@
  */
 
 import type { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
-import { GetCommand, PutCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
+import { GetCommand, PutCommand, QueryCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import { ConditionalCheckFailedException } from '@aws-sdk/client-dynamodb';
 import { normalizeInviteCode } from '@quiz-world/shared';
 import { INVITE_CODE_INDEX } from '../db/tables';
@@ -67,6 +67,21 @@ export function createDynamoTournamentRepository({
 
       const item = Items?.[0];
       return item === undefined ? undefined : parseTournamentRecord(item);
+    },
+
+    async updateStatus(id, status, updatedAt) {
+      await client.send(
+        new UpdateCommand({
+          TableName: tableName,
+          Key: { id },
+          UpdateExpression: 'SET #status = :status, updatedAt = :updatedAt',
+          // `status` is a DynamoDB reserved word, so it cannot appear literally here.
+          ExpressionAttributeNames: { '#status': 'status' },
+          ExpressionAttributeValues: { ':status': status, ':updatedAt': updatedAt },
+          // Without this, UpdateItem would create an item holding nothing but a status.
+          ConditionExpression: 'attribute_exists(id)',
+        }),
+      );
     },
   };
 }

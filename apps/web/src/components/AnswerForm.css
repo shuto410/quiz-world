@@ -1,0 +1,30 @@
+.qw-answer-form {
+  width: min(24rem, 100%);
+}
+
+.qw-answer-form__row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.qw-answer-form__field {
+  flex: 1;
+  min-width: 0;
+}
+
+/*
+ * The label is read by assistive technology but not drawn: the field sits in a fixed bar
+ * above the buzzer, where a line of label text would push the buzzer off small screens. The
+ * placeholder carries the same wording for sighted users.
+ */
+.qw-answer-form__field .qw-input__label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  clip-path: inset(50%);
+}

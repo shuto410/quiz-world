@@ -32,6 +32,7 @@ export const INPUT_CONSTRAINTS = {
   displayName: { maxLength: 20 },
   answerText: { maxLength: 200 },
   maxParticipants: { min: 2, max: 50 },
+  scoreDelta: { min: -999, max: 999 },
 } as const;
 
 /** C0 and C1 control characters, which includes newlines and tabs. */
@@ -105,6 +106,29 @@ export function validateAnswerText(value: unknown): ValidationResult<string> {
 export function validateMaxParticipants(value: unknown): ValidationResult<number> {
   const { min, max } = INPUT_CONSTRAINTS.maxParticipants;
   const message = `最大参加人数は${min}〜${max}の整数で入力してください`;
+
+  if (typeof value !== 'number' || !Number.isInteger(value)) {
+    return { ok: false, message };
+  }
+
+  if (value < min || value > max) {
+    return { ok: false, message };
+  }
+
+  return { ok: true, value };
+}
+
+/**
+ * Validates the points the host awards when judging an answer.
+ *
+ * Zero and negative values are ordinary: the host may award nothing for a correct answer, or
+ * deduct for a wrong one. The bounds are a safeguard rather than a game rule. Scores are only
+ * ever added to, so a `NaN` or a mistyped digit would stay in the standings for the rest of
+ * the tournament with no operation to undo it.
+ */
+export function validateScoreDelta(value: unknown): ValidationResult<number> {
+  const { min, max } = INPUT_CONSTRAINTS.scoreDelta;
+  const message = `得点は${min}〜${max}の整数で入力してください`;
 
   if (typeof value !== 'number' || !Number.isInteger(value)) {
     return { ok: false, message };

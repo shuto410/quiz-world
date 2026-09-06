@@ -108,6 +108,9 @@ export function applyHostJoin(
  *
  * A matching claim resumes the seat (capacity is not re-checked). An unknown claim is
  * ignored and a fresh id is issued, so a stale browser cannot block a real newcomer.
+ *
+ * A finished tournament still takes reconnects, so that the people who played can reopen the
+ * final result, but no new seats are created in one.
  */
 export function applyParticipantJoin(
   current: InternalRoomState,
@@ -149,6 +152,13 @@ export function applyParticipantJoin(
         updatedAt: input.now,
       },
     };
+  }
+
+  // Checked against the room as well as the stored tournament: `tournament:finish` writes the
+  // closed status to DynamoDB after the room has already finished, so a failed write must not
+  // leave a finished room accepting newcomers through the invite code.
+  if (current.status === 'finished') {
+    return { ok: false, code: 'TOURNAMENT_NOT_JOINABLE' };
   }
 
   if (current.participants.length >= input.maxParticipants) {

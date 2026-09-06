@@ -1,0 +1,81 @@
+.qw-final-result {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.qw-final-result__empty {
+  margin: 0;
+  color: var(--color-ink-muted);
+}
+
+.qw-final-result__winners {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  margin: 0;
+  padding: var(--space-4);
+  border: 2px solid var(--color-accent);
+  border-radius: calc(var(--radius-control) + 0.25rem);
+  background: rgb(15 118 110 / 0.08);
+}
+
+.qw-final-result__crown {
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: var(--color-accent);
+  color: var(--color-accent-ink);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.qw-final-result__winner-names {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+}
+
+.qw-final-result__tie {
+  font-size: 0.85rem;
+  color: var(--color-ink-muted);
+}
+
+.qw-final-result__table {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--color-line);
+  border-radius: calc(var(--radius-control) + 0.25rem);
+  background: var(--color-paper-raised);
+  overflow: hidden;
+}
+
+.qw-final-result__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--color-line);
+}
+
+.qw-final-result__row:first-child {
+  border-top: 0;
+}
+
+.qw-final-result__row--winner {
+  background: rgb(15 118 110 / 0.08);
+  font-weight: 600;
+}
+
+.qw-final-result__row--offline {
+  color: var(--color-ink-muted);
+}
+
+.qw-final-result__rank {
+  min-width: 3rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.qw-final-result__score {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}

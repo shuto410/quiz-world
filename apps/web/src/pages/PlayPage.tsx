@@ -1,15 +1,29 @@
 /**
- * Participant play screen for step 8: join with a display name and watch the roster update.
+ * Participant play screen: join with a display name, watch the roster, and press the buzzer.
  *
- * Buzz and answer UI arrive later. The display name is taken from router state (set by the
- * join form) so a refresh without state sends the user back to re-enter their name.
+ * The buzzer and the answer field are pinned to the bottom of the viewport, both always
+ * present so the layout does not move between rounds. Whether either is enabled is derived
+ * from the broadcast state (`canBuzz`, `canSubmitAnswer`) so a disabled control matches what
+ * the server would refuse. A sent answer is not echoed back: participants are not shown an
+ * unjudged answer, not even their own.
+ *
+ * The judgement section appears only while the room is showing a result, which is also the
+ * only time the server includes the answer text in a participant's state. Both come straight
+ * from that state, so this screen never decides what may be revealed.
  */
 
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
+import { AnswerForm } from '../components/AnswerForm';
 import { Button } from '../components/Button';
+import { BuzzOrderList } from '../components/BuzzOrderList';
+import { FinalResult } from '../components/FinalResult';
+import { LastResult } from '../components/LastResult';
 import { ParticipantList } from '../components/ParticipantList';
+import { SubmittedAnswer } from '../components/SubmittedAnswer';
 import { useToast } from '../components/Toast';
+import { canBuzz } from '../game/canBuzz';
+import { canSubmitAnswer } from '../game/canSubmitAnswer';
 import { useRoomSocket } from '../hooks/useRoomSocket';
 import { joinPath, ROUTE_PATHS } from '../routes';
 import { loadParticipantId } from '../storage/sessionKeys';
@@ -34,7 +48,49 @@ export function PlayPage() {
     };
   }, [tournamentId, displayName]);
 
-  const { status, roomState, participantId, errorMessage, leave } = useRoomSocket(joinRequest);
+  const {
+    status,
+    roomState,
+    participantId,
+    errorMessage,
+    socketError,
+    clearSocketError,
+    leave,
+    buzz,
+    submitAnswer,
+    roomClosed,
+  } = useRoomSocket(joinRequest);
+
+  useEffect(() => {
+    if (socketError === undefined) {
+      return;
+    }
+    toast.show(socketError.message, 'error');
+    clearSocketError();
+  }, [socketError, clearSocketError, toast.show]);
+
+  const buzzEnabled =
+    status === 'joined' &&
+    canBuzz({
+      status: roomState?.status,
+      participantId,
+      hostId: roomState?.hostId,
+      buzzOrder: roomState?.buzzOrder,
+    });
+
+  const answerEnabled =
+    status === 'joined' &&
+    canSubmitAnswer({
+      status: roomState?.status,
+      participantId,
+      currentResponderId: roomState?.currentResponderId,
+    });
+
+  const connectionLabel = roomClosed
+    ? 'ホストがルームを閉じました'
+    : status === 'joined'
+      ? '接続中'
+      : '接続しています…';
 
   if (tournamentId === undefined) {
     return (
@@ -70,11 +126,38 @@ export function PlayPage() {
   }
 
   return (
-    <main className="app-shell">
+    <main className="app-shell app-shell--play">
       <h1>プレイ</h1>
       <p>
-        {displayName} として参加中 — {status === 'joined' ? '接続中' : '接続しています…'}
+        {displayName} として参加中 — {connectionLabel}
       </p>
+
+      {roomState?.status === 'finished' ? (
+        <section className="qw-room-section" aria-label="最終結果">
+          <h2>最終結果</h2>
+          <FinalResult participants={roomState.participants} hostId={roomState.hostId} />
+        </section>
+      ) : null}
+
+      {roomState?.status === 'result' ? (
+        <section className="qw-room-section" aria-label="判定結果">
+          <h2>判定</h2>
+          <LastResult result={roomState.lastResult} participants={roomState.participants} />
+          <SubmittedAnswer
+            answer={roomState.currentSubmittedAnswer}
+            participants={roomState.participants}
+          />
+        </section>
+      ) : null}
+
+      <section className="qw-room-section" aria-label="早押し順">
+        <h2>早押し順</h2>
+        <BuzzOrderList
+          buzzOrder={roomState?.buzzOrder ?? []}
+          participants={roomState?.participants ?? []}
+          currentResponderId={roomState?.currentResponderId}
+        />
+      </section>
 
       <section className="qw-room-section" aria-label="参加者一覧">
         <h2>参加者</h2>
@@ -95,6 +178,28 @@ export function PlayPage() {
         >
           退出
         </Button>
+      </div>
+
+      <div className="qw-buzz-bar">
+        <AnswerForm
+          disabled={!answerEnabled}
+          onSubmit={(answerText) => {
+            submitAnswer(answerText);
+            toast.show('回答を送信しました');
+          }}
+        />
+        <Button
+          type="button"
+          disabled={!buzzEnabled}
+          onClick={() => {
+            buzz();
+          }}
+        >
+          早押し
+        </Button>
+        {!buzzEnabled && status === 'joined' ? (
+          <p className="qw-buzz-bar__hint">いまは押せません</p>
+        ) : null}
       </div>
     </main>
   );

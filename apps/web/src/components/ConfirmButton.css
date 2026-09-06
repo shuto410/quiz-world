@@ -1,0 +1,17 @@
+.qw-confirm {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--color-danger);
+  border-radius: calc(var(--radius-control) + 0.25rem);
+}
+
+.qw-confirm__question {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.qw-confirm__actions {
+  display: flex;
+  gap: var(--space-2);
+}

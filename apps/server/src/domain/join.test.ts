@@ -197,6 +197,45 @@ describe('applyParticipantJoin', () => {
     });
   });
 
+  it('rejects a newcomer once the tournament has finished', () => {
+    // The stored status may still say active: it is written after the room finishes, so this
+    // check is what holds if that write failed.
+    const current = createRoomStateFixture({ status: 'finished' });
+
+    expect(applyParticipantJoin(current, baseInput)).toEqual({
+      ok: false,
+      code: 'TOURNAMENT_NOT_JOINABLE',
+    });
+  });
+
+  it('still lets somebody who played reconnect to a finished tournament', () => {
+    const current = createRoomStateFixture({
+      status: 'finished',
+      participants: [
+        {
+          id: 'participant-1',
+          name: DEFAULT_HOST_DISPLAY_NAME,
+          online: true,
+          joinedAt: NOW,
+          score: 0,
+        },
+        { id: 'participant-2', name: '花子', online: false, joinedAt: NOW, score: 4 },
+      ],
+    });
+
+    const result = applyParticipantJoin(current, {
+      ...baseInput,
+      claimedParticipantId: 'participant-2',
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+    expect(result.isReconnect).toBe(true);
+    expect(result.state.participants[1]).toMatchObject({ score: 4, online: true });
+  });
+
   it('rejects a newcomer when the room is at capacity', () => {
     const current = createRoomStateFixture({
       participants: [

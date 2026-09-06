@@ -14,6 +14,7 @@ import {
   validateAnswerText,
   validateDisplayName,
   validateMaxParticipants,
+  validateScoreDelta,
   validateTournamentName,
 } from './fields';
 
@@ -111,5 +112,36 @@ describe('validateMaxParticipants', () => {
 
   it('names both bounds in the message so the user knows the range', () => {
     expect(expectRejection(validateMaxParticipants(0))).toContain(`${min}〜${max}`);
+  });
+});
+
+describe('validateScoreDelta', () => {
+  const { min, max } = INPUT_CONSTRAINTS.scoreDelta;
+
+  it.each([min, max, -1, 0, 1])(
+    'accepts %i, since judging may deduct or award nothing',
+    (value) => {
+      expect(validateScoreDelta(value)).toEqual({ ok: true, value });
+    },
+  );
+
+  it.each([min - 1, max + 1])('rejects the out-of-range value %i', (value) => {
+    expectRejection(validateScoreDelta(value));
+  });
+
+  it('rejects a fractional value, which would make scores impossible to reconcile', () => {
+    expectRejection(validateScoreDelta(1.5));
+  });
+
+  it.each([Number.NaN, Number.POSITIVE_INFINITY])('rejects %s', (value) => {
+    expectRejection(validateScoreDelta(value));
+  });
+
+  it('rejects a numeric string instead of coercing it', () => {
+    expectRejection(validateScoreDelta('1'));
+  });
+
+  it('names both bounds in the message so the host knows the range', () => {
+    expect(expectRejection(validateScoreDelta(1000))).toContain(`${min}〜${max}`);
   });
 });

@@ -41,6 +41,15 @@ export function createInMemoryTournamentRepository(
       return Promise.resolve([...records.values()].find((record) => record.inviteCode === wanted));
     },
 
+    updateStatus: (id, status, updatedAt) => {
+      const existing = records.get(id);
+      if (existing === undefined) {
+        return Promise.reject(new Error(`tournament ${id} does not exist`));
+      }
+      records.set(id, { ...existing, status, updatedAt });
+      return Promise.resolve();
+    },
+
     stored: () => [...records.values()],
   };
 }

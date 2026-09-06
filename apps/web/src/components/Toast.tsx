@@ -7,7 +7,15 @@
  * markup themselves.
  */
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react';
 import './Toast.css';
 
 export type ToastTone = 'info' | 'error';
@@ -49,13 +57,13 @@ export function ToastProvider({
 }: ToastProviderProps) {
   const [items, setItems] = useState<ToastItem[]>([]);
 
-  const api: ToastApi = {
-    show(message, tone = 'info') {
-      const id = nextToastId;
-      nextToastId += 1;
-      setItems((current) => [...current, { id, message, tone }]);
-    },
-  };
+  const show = useCallback((message: string, tone: ToastTone = 'info') => {
+    const id = nextToastId;
+    nextToastId += 1;
+    setItems((current) => [...current, { id, message, tone }]);
+  }, []);
+
+  const api = useMemo<ToastApi>(() => ({ show }), [show]);
 
   return (
     <ToastContext.Provider value={api}>
