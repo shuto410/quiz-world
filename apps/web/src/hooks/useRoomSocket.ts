@@ -38,6 +38,8 @@ export type UseRoomSocketResult = {
   clearSocketError: () => void;
   leave: () => void;
   buzz: () => void;
+  /** Text is validated here as well, but the server's answer is the binding one. */
+  submitAnswer: (answerText: string) => void;
 };
 
 function requestKey(request: RoomJoinRequest | undefined): string {
@@ -167,6 +169,10 @@ export function useRoomSocket(request: RoomJoinRequest | undefined): UseRoomSock
     socketRef.current?.emit('game:buzz', {});
   }, []);
 
+  const submitAnswer = useCallback((answerText: string) => {
+    socketRef.current?.emit('answer:submit', { answerText });
+  }, []);
+
   return {
     status,
     roomState,
@@ -176,5 +182,6 @@ export function useRoomSocket(request: RoomJoinRequest | undefined): UseRoomSock
     clearSocketError,
     leave,
     buzz,
+    submitAnswer,
   };
 }

@@ -126,8 +126,9 @@ a {
   gap: var(--space-3);
 }
 
+/* Clears the fixed bar, which now holds the answer field as well as the buzzer. */
 .app-shell--play {
-  padding-bottom: 6rem;
+  padding-bottom: 11rem;
 }
 
 .qw-buzz-bar {
@@ -144,7 +145,8 @@ a {
   backdrop-filter: blur(8px);
 }
 
-.qw-buzz-bar .qw-button {
+/* Direct child only: the send button inside the answer form keeps its ordinary size. */
+.qw-buzz-bar > .qw-button {
   width: min(24rem, 100%);
   min-height: 3.5rem;
   font-size: 1.15rem;

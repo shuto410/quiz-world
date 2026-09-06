@@ -596,8 +596,10 @@ sequenceDiagram
 
 `answer:submit`
 
-- `currentResponderId` と一致する参加者のみ。それ以外は `NOT_CURRENT_RESPONDER`
-- 空文字と空白のみは拒否する
+- 受理するのは `answering` のみ。他の状態での送信は `INVALID_STATE` を返す。回答権を持ちうる状態が `answering` しかない以上、状態の不一致は回答権の有無より手前の話であり、`NOT_CURRENT_RESPONDER` を返すと「回答権さえあれば送れる状態だった」と誤読させる
+- `answering` 中に `currentResponderId` と一致しない参加者が送った場合だけ `NOT_CURRENT_RESPONDER` を返す。ホスト席からの送信もここに含まれる（ホストは早押しできないので `currentResponderId` になり得ない）
+- 空文字と空白のみは拒否する。回答テキストの検証は表示名と同じ共有バリデーターで行い、失敗は `VALIDATION_ERROR` にする。状態を読む前に弾くので再配信もしない
+- 同じ `buzzSession` 中の再送は上書きする。保持するのは最新の1件だけで、送信履歴は持たない
 - 受信時刻はサーバー時刻を使う
 
 ### 再接続と多重接続

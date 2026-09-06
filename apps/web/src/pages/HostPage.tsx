@@ -1,8 +1,12 @@
 /**
- * Host room screen: join with the stored token, watch the roster, and follow the buzz order.
+ * Host room screen: join with the stored token, watch the roster, follow the buzz order and
+ * read the answer that is waiting to be judged.
  *
- * Judgement controls arrive later. For now the host needs the same live buzz order the
- * participants see, so that a multi-tab sync check has something to look at on this side.
+ * The submitted answer is on this screen and nowhere else until the judgement is shown. That
+ * is not enforced here: the server strips the field from the participants' copy of the
+ * state, so this screen simply renders what only it receives.
+ *
+ * Judgement controls arrive in a later step.
  */
 
 import { useMemo, useState } from 'react';
@@ -10,6 +14,7 @@ import { Link, useParams } from 'react-router-dom';
 import { Button } from '../components/Button';
 import { BuzzOrderList } from '../components/BuzzOrderList';
 import { ParticipantList } from '../components/ParticipantList';
+import { SubmittedAnswer } from '../components/SubmittedAnswer';
 import { useToast } from '../components/Toast';
 import { useRoomSocket } from '../hooks/useRoomSocket';
 import { ROUTE_PATHS } from '../routes';
@@ -104,6 +109,14 @@ export function HostPage() {
           buzzOrder={roomState?.buzzOrder ?? []}
           participants={roomState?.participants ?? []}
           currentResponderId={roomState?.currentResponderId}
+        />
+      </section>
+
+      <section className="qw-room-section" aria-label="テキスト回答">
+        <h2>回答</h2>
+        <SubmittedAnswer
+          answer={roomState?.currentSubmittedAnswer}
+          participants={roomState?.participants ?? []}
         />
       </section>
 

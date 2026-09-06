@@ -15,6 +15,7 @@ import { Server as SocketIoServer } from 'socket.io';
 import type { AppDependencies } from './app';
 import { createApp } from './app';
 import type { RoomRegistry } from './rooms/roomRegistry';
+import { registerAnswerHandlers } from './socket/answerHandlers';
 import type { SocketServer } from './socket/broadcast';
 import { registerBuzzHandlers } from './socket/buzzHandlers';
 import { registerJoinHandlers } from './socket/joinHandlers';
@@ -58,6 +59,12 @@ export function createServer(dependencies: ServerDependencies): CreatedServer {
       io,
       registry,
       newBuzzSessionId,
+      now,
+    });
+
+    registerAnswerHandlers(socket, {
+      io,
+      registry,
       now,
     });
 

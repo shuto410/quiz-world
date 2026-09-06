@@ -1,18 +1,22 @@
 /**
  * Participant play screen: join with a display name, watch the roster, and press the buzzer.
  *
- * The buzzer is pinned to the bottom of the viewport. Whether it is enabled is derived from
- * the broadcast state (`canBuzz`) so a disabled button matches what the server would refuse.
- * Answer text UI arrives in a later step.
+ * The buzzer and the answer field are pinned to the bottom of the viewport, both always
+ * present so the layout does not move between rounds. Whether either is enabled is derived
+ * from the broadcast state (`canBuzz`, `canSubmitAnswer`) so a disabled control matches what
+ * the server would refuse. A sent answer is not echoed back: participants are not shown an
+ * unjudged answer, not even their own.
  */
 
 import { useEffect, useMemo } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
+import { AnswerForm } from '../components/AnswerForm';
 import { Button } from '../components/Button';
 import { BuzzOrderList } from '../components/BuzzOrderList';
 import { ParticipantList } from '../components/ParticipantList';
 import { useToast } from '../components/Toast';
 import { canBuzz } from '../game/canBuzz';
+import { canSubmitAnswer } from '../game/canSubmitAnswer';
 import { useRoomSocket } from '../hooks/useRoomSocket';
 import { joinPath, ROUTE_PATHS } from '../routes';
 import { loadParticipantId } from '../storage/sessionKeys';
@@ -46,6 +50,7 @@ export function PlayPage() {
     clearSocketError,
     leave,
     buzz,
+    submitAnswer,
   } = useRoomSocket(joinRequest);
 
   useEffect(() => {
@@ -63,6 +68,14 @@ export function PlayPage() {
       participantId,
       hostId: roomState?.hostId,
       buzzOrder: roomState?.buzzOrder,
+    });
+
+  const answerEnabled =
+    status === 'joined' &&
+    canSubmitAnswer({
+      status: roomState?.status,
+      participantId,
+      currentResponderId: roomState?.currentResponderId,
     });
 
   if (tournamentId === undefined) {
@@ -136,6 +149,13 @@ export function PlayPage() {
       </div>
 
       <div className="qw-buzz-bar">
+        <AnswerForm
+          disabled={!answerEnabled}
+          onSubmit={(answerText) => {
+            submitAnswer(answerText);
+            toast.show('回答を送信しました');
+          }}
+        />
         <Button
           type="button"
           disabled={!buzzEnabled}
