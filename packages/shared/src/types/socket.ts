@@ -119,6 +119,14 @@ export type JudgeSubmitPayload = {
   nextAction: JudgeNextAction;
 };
 
+/**
+ * Host closes the result screen and reopens buzzing.
+ *
+ * Separate from `judge:submit` on purpose. Judging always applies a score change, so reusing
+ * it to leave the result screen would create a path that awards the same points twice.
+ */
+export type GameResetPayload = Record<string, never>;
+
 /** Host ends the tournament and moves everyone to the final result screen. */
 export type TournamentFinishPayload = Record<string, never>;
 
@@ -224,6 +232,7 @@ export type ClientToServerEvents = {
   'game:buzz': (payload: BuzzPayload) => void;
   'answer:submit': (payload: AnswerSubmitPayload) => void;
   'judge:submit': (payload: JudgeSubmitPayload) => void;
+  'game:reset': (payload: GameResetPayload) => void;
   'tournament:finish': (payload: TournamentFinishPayload) => void;
   'room:close': (payload: RoomClosePayload) => void;
 };
@@ -251,6 +260,7 @@ export const CLIENT_TO_SERVER_EVENT_NAMES = [
   'game:buzz',
   'answer:submit',
   'judge:submit',
+  'game:reset',
   'tournament:finish',
   'room:close',
 ] as const satisfies readonly (keyof ClientToServerEvents)[];
