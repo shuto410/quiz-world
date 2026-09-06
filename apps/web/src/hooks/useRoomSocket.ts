@@ -49,6 +49,12 @@ export type UseRoomSocketResult = {
   judge: (judgement: JudgeSubmitPayload) => void;
   /** Host only. Closes the result screen and reopens buzzing. */
   resetGame: () => void;
+  /** Host only. Ends the tournament and moves everyone to the final result. */
+  finishTournament: () => void;
+  /** Host only. Closes the room, which disconnects everyone including the caller. */
+  closeRoom: () => void;
+  /** True once the host has closed the room. The socket stays down from then on. */
+  roomClosed: boolean;
 };
 
 function requestKey(request: RoomJoinRequest | undefined): string {
@@ -67,6 +73,7 @@ export function useRoomSocket(request: RoomJoinRequest | undefined): UseRoomSock
   const [participantId, setParticipantId] = useState<string | undefined>(undefined);
   const [errorMessage, setErrorMessage] = useState<string | undefined>(undefined);
   const [socketError, setSocketError] = useState<SocketErrorEvent | undefined>(undefined);
+  const [roomClosed, setRoomClosed] = useState(false);
   const socketRef = useRef<AppSocket | undefined>(undefined);
   const requestRef = useRef(request);
   requestRef.current = request;
@@ -87,6 +94,7 @@ export function useRoomSocket(request: RoomJoinRequest | undefined): UseRoomSock
     setParticipantId(undefined);
     setErrorMessage(undefined);
     setSocketError(undefined);
+    setRoomClosed(false);
 
     const onState = (state: RoomStateEvent) => {
       if (!cancelled) {
@@ -100,8 +108,20 @@ export function useRoomSocket(request: RoomJoinRequest | undefined): UseRoomSock
       }
     };
 
+    /**
+     * The server disconnects right after this. Reconnection is disabled here rather than left
+     * to retry forever against a room that no longer exists.
+     */
+    const onClosed = () => {
+      socket.disconnect();
+      if (!cancelled) {
+        setRoomClosed(true);
+      }
+    };
+
     socket.on('room:state', onState);
     socket.on('error', onError);
+    socket.on('room:closed', onClosed);
 
     const finishJoin = (response: JoinResponse) => {
       if (cancelled) {
@@ -161,6 +181,7 @@ export function useRoomSocket(request: RoomJoinRequest | undefined): UseRoomSock
       cancelled = true;
       socket.off('room:state', onState);
       socket.off('error', onError);
+      socket.off('room:closed', onClosed);
       socket.disconnect();
       socketRef.current = undefined;
     };
@@ -190,6 +211,14 @@ export function useRoomSocket(request: RoomJoinRequest | undefined): UseRoomSock
     socketRef.current?.emit('game:reset', {});
   }, []);
 
+  const finishTournament = useCallback(() => {
+    socketRef.current?.emit('tournament:finish', {});
+  }, []);
+
+  const closeRoom = useCallback(() => {
+    socketRef.current?.emit('room:close', {});
+  }, []);
+
   return {
     status,
     roomState,
@@ -202,5 +231,8 @@ export function useRoomSocket(request: RoomJoinRequest | undefined): UseRoomSock
     submitAnswer,
     judge,
     resetGame,
+    finishTournament,
+    closeRoom,
+    roomClosed,
   };
 }

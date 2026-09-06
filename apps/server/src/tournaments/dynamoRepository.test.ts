@@ -14,7 +14,10 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { TournamentRecord } from '@quiz-world/shared';
 import { DeleteCommand, PutCommand, ScanCommand } from '@aws-sdk/lib-dynamodb';
-import { ResourceNotFoundException } from '@aws-sdk/client-dynamodb';
+import {
+  ConditionalCheckFailedException,
+  ResourceNotFoundException,
+} from '@aws-sdk/client-dynamodb';
 import type { TestDynamoDb } from '../testing/testDynamoDb';
 import { startTestDynamoDb } from '../testing/testDynamoDb';
 import { createDynamoTournamentRepository } from './dynamoRepository';
@@ -158,5 +161,47 @@ describe('findByInviteCode', () => {
 
     const found = await repository.findByInviteCode('ZZ99ZZ99');
     expect(found?.id).toBe('tournament-2');
+  });
+});
+
+describe('updateStatus', () => {
+  it('closes a tournament and stamps the new time', async () => {
+    await repository.create(baseRecord);
+
+    await repository.updateStatus(baseRecord.id, 'closed', 1_700_000_009_000);
+
+    expect(await repository.findById(baseRecord.id)).toEqual({
+      ...baseRecord,
+      status: 'closed',
+      updatedAt: 1_700_000_009_000,
+    });
+  });
+
+  it('leaves the settings and the token hash alone', async () => {
+    await repository.create(baseRecord);
+
+    await repository.updateStatus(baseRecord.id, 'closed', 1_700_000_009_000);
+
+    const stored = await repository.findById(baseRecord.id);
+    expect(stored?.hostTokenHash).toBe(baseRecord.hostTokenHash);
+    expect(stored?.inviteCode).toBe(baseRecord.inviteCode);
+    expect(stored?.maxParticipants).toBe(baseRecord.maxParticipants);
+  });
+
+  it('keeps the tournament findable by its invite code afterwards', async () => {
+    await repository.create(baseRecord);
+
+    await repository.updateStatus(baseRecord.id, 'closed', 1_700_000_009_000);
+
+    const found = await repository.findByInviteCode(baseRecord.inviteCode);
+    expect(found?.status).toBe('closed');
+  });
+
+  it('refuses to bring a tournament into existence', async () => {
+    await expect(
+      repository.updateStatus('never-created', 'closed', 1_700_000_009_000),
+    ).rejects.toThrowError(ConditionalCheckFailedException);
+
+    expect(await repository.findById('never-created')).toBeUndefined();
   });
 });

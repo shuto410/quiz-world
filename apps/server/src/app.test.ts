@@ -252,6 +252,7 @@ describe('when a handler throws', () => {
     create: () => Promise.reject(new Error('DynamoDB is unreachable')),
     findById: () => Promise.resolve(undefined),
     findByInviteCode: () => Promise.resolve(undefined),
+    updateStatus: () => Promise.reject(new Error('DynamoDB is unreachable')),
   };
 
   it('answers 500 with the shared error format instead of an Express stack page', async () => {

@@ -12,7 +12,7 @@
  * design supports it.
  */
 
-import type { TournamentRecord } from '@quiz-world/shared';
+import type { TournamentRecord, TournamentStatus } from '@quiz-world/shared';
 
 export type TournamentRepository = {
   /**
@@ -30,6 +30,18 @@ export type TournamentRepository = {
    * this to reduce the chance of a duplicate, never to guarantee uniqueness.
    */
   findByInviteCode: (inviteCode: string) => Promise<TournamentRecord | undefined>;
+
+  /**
+   * Marks a tournament closed when it ends, so that the invite code stops admitting people.
+   *
+   * Only the status and `updatedAt` are written. The rest of the record is settings the host
+   * chose at creation and nothing changes them, so a full overwrite would only add a way to
+   * lose them.
+   *
+   * @throws if the tournament does not exist. Ending a tournament that was never stored is a
+   * bug, and creating the item here would hide it behind a half-populated record.
+   */
+  updateStatus: (id: string, status: TournamentStatus, updatedAt: number) => Promise<void>;
 };
 
 /**

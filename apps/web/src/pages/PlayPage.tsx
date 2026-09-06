@@ -17,6 +17,7 @@ import { Link, useLocation, useParams } from 'react-router-dom';
 import { AnswerForm } from '../components/AnswerForm';
 import { Button } from '../components/Button';
 import { BuzzOrderList } from '../components/BuzzOrderList';
+import { FinalResult } from '../components/FinalResult';
 import { LastResult } from '../components/LastResult';
 import { ParticipantList } from '../components/ParticipantList';
 import { SubmittedAnswer } from '../components/SubmittedAnswer';
@@ -57,6 +58,7 @@ export function PlayPage() {
     leave,
     buzz,
     submitAnswer,
+    roomClosed,
   } = useRoomSocket(joinRequest);
 
   useEffect(() => {
@@ -83,6 +85,12 @@ export function PlayPage() {
       participantId,
       currentResponderId: roomState?.currentResponderId,
     });
+
+  const connectionLabel = roomClosed
+    ? 'ホストがルームを閉じました'
+    : status === 'joined'
+      ? '接続中'
+      : '接続しています…';
 
   if (tournamentId === undefined) {
     return (
@@ -121,8 +129,15 @@ export function PlayPage() {
     <main className="app-shell app-shell--play">
       <h1>プレイ</h1>
       <p>
-        {displayName} として参加中 — {status === 'joined' ? '接続中' : '接続しています…'}
+        {displayName} として参加中 — {connectionLabel}
       </p>
+
+      {roomState?.status === 'finished' ? (
+        <section className="qw-room-section" aria-label="最終結果">
+          <h2>最終結果</h2>
+          <FinalResult participants={roomState.participants} hostId={roomState.hostId} />
+        </section>
+      ) : null}
 
       {roomState?.status === 'result' ? (
         <section className="qw-room-section" aria-label="判定結果">

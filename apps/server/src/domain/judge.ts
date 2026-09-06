@@ -25,6 +25,7 @@ import type {
   JudgeNextAction,
   ParticipantState,
 } from '@quiz-world/shared';
+import { clearRound } from './round';
 import { accept, reject, type TransitionResult } from './transition';
 
 export type JudgeInput = {
@@ -144,15 +145,7 @@ export function applyGameReset(
  * press again.
  */
 function reopenBuzzing(state: InternalRoomState, now: number): InternalRoomState {
-  const { currentBuzzSession, currentResponderId, currentSubmittedAnswer, lastResult, ...rest } =
-    state;
-
-  return {
-    ...rest,
-    status: 'idle',
-    buzzOrder: [],
-    updatedAt: now,
-  };
+  return clearRound(state, 'idle', now);
 }
 
 function addScore(

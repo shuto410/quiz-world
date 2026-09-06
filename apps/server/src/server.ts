@@ -18,6 +18,7 @@ import type { RoomRegistry } from './rooms/roomRegistry';
 import { registerAnswerHandlers } from './socket/answerHandlers';
 import type { SocketServer } from './socket/broadcast';
 import { registerBuzzHandlers } from './socket/buzzHandlers';
+import { registerFinishHandlers } from './socket/finishHandlers';
 import { registerJoinHandlers } from './socket/joinHandlers';
 import { registerJudgeHandlers } from './socket/judgeHandlers';
 
@@ -73,6 +74,14 @@ export function createServer(dependencies: ServerDependencies): CreatedServer {
       io,
       registry,
       now,
+    });
+
+    registerFinishHandlers(socket, {
+      io,
+      registry,
+      repository,
+      now,
+      logger: connectionLogger,
     });
 
     socket.on('disconnect', (reason) => {

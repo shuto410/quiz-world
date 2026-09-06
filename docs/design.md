@@ -285,7 +285,7 @@ flowchart LR
 - 参加者名前入力画面: 大会名を表示し、表示名だけを入力する
 - 参加者プレイ画面: 参加者一覧、早押し順、スコアを中心に表示。早押しボタンを下部固定、回答入力欄を常設
 - ホスト進行画面: 参加者一覧、接続状態、スコア、早押し順を中心に表示。状態に応じた操作ボタンを下部に表示
-- 最終結果画面: 優勝者を強調表示。同点1位は全員を優勝者として表示
+- 最終結果画面: 優勝者を強調表示。同点1位は全員を優勝者として表示。ホスト席は出題者なので順位に含めない
 
 参加者画面は状態が変わっても基本レイアウトを維持する。ホスト画面の操作ボタンは状態ごとに絞る。
 
@@ -383,8 +383,8 @@ export type ParticipantRoomState = Omit<InternalRoomState, "currentSubmittedAnsw
 
 クライアントで計算できる値は `RoomState` に持たない。
 
-- 優勝者: `participants` の最高スコアから計算する
-- ランキング順位: `participants` を `score` 降順に並べて計算する
+- 優勝者: `participants` の最高スコアから計算する。ホスト席（`hostId`）は除く
+- ランキング順位: `participants` を `score` 降順に並べて計算する。同点は同順位にする
 - 早押し順位: `buzzOrder` の配列インデックスから計算する
 - `isHost`: `hostId === participant.id` で計算する
 - `hasBuzzed`: `buzzOrder` に参加者IDが含まれるかで計算する
@@ -406,6 +406,7 @@ export type ParticipantRoomState = Omit<InternalRoomState, "currentSubmittedAnsw
 - `moveToNextResponder`: `buzzOrder` の次の参加者へ回答権を移す。`currentSubmittedAnswer` はリセットする。`currentBuzzSession` と `buzzOrder` は同じ問題の続きなので保持する。オフラインの参加者を飛ばすことはしない。飛ばす条件をサーバーが判断し始めると、ホストの進行と食い違う
 - 次候補がいない場合は `NO_NEXT_RESPONDER` エラーを返し、状態は変えない。得点も加算しない
 - `game:reset`: `result` を閉じて `idle` へ戻す。リセット範囲は `resetToIdle` と同じで、スコアには触らない
+- `tournament:finish`: `resetToIdle` と同じ範囲をリセットしてから `finished` へ。最終結果はスコアだけを見せるので、直前の判定や回答テキストを残さない
 
 ## Socketイベント設計
 
@@ -605,6 +606,18 @@ sequenceDiagram
 
 - ホストのみ。`status` が `result` のときだけ受理する。それ以外は `INVALID_STATE`
 - スコアと参加者一覧には触らない
+
+`tournament:finish`
+
+- ホストのみ。ホスト席以外からの送信は `NOT_HOST`
+- 受理するのは `idle` と `result` のみ。それ以外は `INVALID_STATE`。回答権を持ったままの参加者を残して終了させない
+- メモリ上の状態を `finished` にしたあとで、`Tournaments` のステータスを `closed` に更新する。DynamoDB への書き込みが失敗しても終了は取り消さない。ゲームの正はメモリ側であり、DBの一時障害で進行が止まるほうが害が大きい
+- 上の順序だと書き込み失敗時に「メモリは終了、DBは `active`」になりうるので、新規参加は大会ステータスだけでなくメモリ上の `finished` でも拒否する。既存参加者の再接続は結果を見せるために許可する
+
+`room:close`
+
+- ホストのみ。`status` が `finished` のときだけ受理する。それ以外は `INVALID_STATE`
+- 全員に `room:closed` を送ってから接続を切り、サーバーはルームの所有権を手放す
 
 `answer:submit`
 
