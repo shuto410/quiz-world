@@ -19,11 +19,12 @@ export function Button({
   busy = false,
   disabled,
   type = 'button',
+  className,
   ...rest
 }: ButtonProps) {
   return (
     <button
-      className="qw-button"
+      className={['qw-button', className].filter(Boolean).join(' ')}
       type={type}
       disabled={disabled || busy}
       aria-busy={busy}

@@ -12,7 +12,12 @@
  * rebuilds the request object each render does not tear down the socket.
  */
 
-import type { JoinResponse, RoomStateEvent, SocketErrorEvent } from '@quiz-world/shared';
+import type {
+  JoinResponse,
+  JudgeSubmitPayload,
+  RoomStateEvent,
+  SocketErrorEvent,
+} from '@quiz-world/shared';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createSocket, type AppSocket } from '../socket/client';
 import { saveParticipantId } from '../storage/sessionKeys';
@@ -40,6 +45,10 @@ export type UseRoomSocketResult = {
   buzz: () => void;
   /** Text is validated here as well, but the server's answer is the binding one. */
   submitAnswer: (answerText: string) => void;
+  /** Host only. The participant id names who is being judged, not the sender. */
+  judge: (judgement: JudgeSubmitPayload) => void;
+  /** Host only. Closes the result screen and reopens buzzing. */
+  resetGame: () => void;
 };
 
 function requestKey(request: RoomJoinRequest | undefined): string {
@@ -173,6 +182,14 @@ export function useRoomSocket(request: RoomJoinRequest | undefined): UseRoomSock
     socketRef.current?.emit('answer:submit', { answerText });
   }, []);
 
+  const judge = useCallback((judgement: JudgeSubmitPayload) => {
+    socketRef.current?.emit('judge:submit', judgement);
+  }, []);
+
+  const resetGame = useCallback(() => {
+    socketRef.current?.emit('game:reset', {});
+  }, []);
+
   return {
     status,
     roomState,
@@ -183,5 +200,7 @@ export function useRoomSocket(request: RoomJoinRequest | undefined): UseRoomSock
     leave,
     buzz,
     submitAnswer,
+    judge,
+    resetGame,
   };
 }

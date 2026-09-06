@@ -6,6 +6,10 @@
  * from the broadcast state (`canBuzz`, `canSubmitAnswer`) so a disabled control matches what
  * the server would refuse. A sent answer is not echoed back: participants are not shown an
  * unjudged answer, not even their own.
+ *
+ * The judgement section appears only while the room is showing a result, which is also the
+ * only time the server includes the answer text in a participant's state. Both come straight
+ * from that state, so this screen never decides what may be revealed.
  */
 
 import { useEffect, useMemo } from 'react';
@@ -13,7 +17,9 @@ import { Link, useLocation, useParams } from 'react-router-dom';
 import { AnswerForm } from '../components/AnswerForm';
 import { Button } from '../components/Button';
 import { BuzzOrderList } from '../components/BuzzOrderList';
+import { LastResult } from '../components/LastResult';
 import { ParticipantList } from '../components/ParticipantList';
+import { SubmittedAnswer } from '../components/SubmittedAnswer';
 import { useToast } from '../components/Toast';
 import { canBuzz } from '../game/canBuzz';
 import { canSubmitAnswer } from '../game/canSubmitAnswer';
@@ -117,6 +123,17 @@ export function PlayPage() {
       <p>
         {displayName} として参加中 — {status === 'joined' ? '接続中' : '接続しています…'}
       </p>
+
+      {roomState?.status === 'result' ? (
+        <section className="qw-room-section" aria-label="判定結果">
+          <h2>判定</h2>
+          <LastResult result={roomState.lastResult} participants={roomState.participants} />
+          <SubmittedAnswer
+            answer={roomState.currentSubmittedAnswer}
+            participants={roomState.participants}
+          />
+        </section>
+      ) : null}
 
       <section className="qw-room-section" aria-label="早押し順">
         <h2>早押し順</h2>

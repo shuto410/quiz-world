@@ -21,6 +21,14 @@ describe('Button', () => {
     expect(screen.getByRole('button', { name: '大会を作成' })).toBeTruthy();
   });
 
+  it('keeps its own class when the call site adds one', () => {
+    render(<Button className="qw-judge__verdict">正解</Button>);
+
+    expect(screen.getByRole('button', { name: '正解' }).className).toBe(
+      'qw-button qw-judge__verdict',
+    );
+  });
+
   it('blocks clicks and swaps the label while busy', async () => {
     const user = userEvent.setup();
     const onClick = vi.fn();

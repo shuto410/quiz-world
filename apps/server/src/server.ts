@@ -19,6 +19,7 @@ import { registerAnswerHandlers } from './socket/answerHandlers';
 import type { SocketServer } from './socket/broadcast';
 import { registerBuzzHandlers } from './socket/buzzHandlers';
 import { registerJoinHandlers } from './socket/joinHandlers';
+import { registerJudgeHandlers } from './socket/judgeHandlers';
 
 export type ServerDependencies = AppDependencies & {
   /**
@@ -63,6 +64,12 @@ export function createServer(dependencies: ServerDependencies): CreatedServer {
     });
 
     registerAnswerHandlers(socket, {
+      io,
+      registry,
+      now,
+    });
+
+    registerJudgeHandlers(socket, {
       io,
       registry,
       now,

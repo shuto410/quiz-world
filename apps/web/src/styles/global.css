@@ -126,6 +126,12 @@ a {
   gap: var(--space-3);
 }
 
+.qw-host-progress {
+  display: grid;
+  gap: var(--space-3);
+  justify-items: start;
+}
+
 /* Clears the fixed bar, which now holds the answer field as well as the buzzer. */
 .app-shell--play {
   padding-bottom: 11rem;
