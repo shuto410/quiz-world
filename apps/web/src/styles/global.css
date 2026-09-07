@@ -453,3 +453,122 @@ a {
 .qw-participant-list__tag {
   color: var(--color-accent-text);
 }
+
+/* The room has one destination: keep context above the game instead of simulating navigation. */
+.qw-workspace {
+  grid-template-columns: minmax(0, 1fr) 290px;
+  grid-template-rows: auto 1fr;
+}
+.qw-sidebar {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  flex-direction: row;
+  align-items: center;
+  gap: 24px;
+  padding: 14px 24px;
+  border-right: 0;
+  border-bottom: 1px solid var(--color-line);
+}
+.qw-sidebar__footer {
+  margin: 0 0 0 auto;
+}
+.qw-room-info {
+  position: relative;
+  font-size: 13px;
+}
+.qw-room-info summary {
+  cursor: pointer;
+  padding: 10px 0;
+}
+.qw-room-info[open] {
+  align-self: flex-start;
+}
+.qw-room-info .qw-invite-panel {
+  margin: 0;
+  max-width: 320px;
+}
+.qw-stage__header {
+  min-height: 64px;
+}
+.qw-stage__content {
+  max-width: 960px;
+}
+.qw-stage-intro {
+  text-align: left;
+  padding: 0 0 16px;
+}
+.qw-stage-intro h2 {
+  font-size: 24px;
+  letter-spacing: 0;
+}
+.qw-submitted-answer {
+  border: 0;
+  border-left: 3px solid var(--color-accent);
+  border-radius: 0;
+  background: transparent;
+  padding: 8px 20px;
+}
+.qw-submitted-answer__text {
+  font-size: 30px;
+  font-weight: 600;
+}
+.qw-participant-list,
+.qw-buzz-order {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.qw-buzz-order__row {
+  padding: 12px 8px;
+}
+.qw-buzz-bar {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 16px 0 24px;
+  align-items: flex-start;
+}
+.qw-host-progress > .qw-next-question {
+  color: var(--color-accent-ink);
+  background: var(--color-accent);
+  border-color: transparent;
+}
+.qw-host-progress {
+  margin-top: 16px;
+}
+.qw-roster {
+  grid-column: 2;
+}
+@media (max-width: 700px) {
+  .qw-sidebar {
+    display: flex;
+    flex-wrap: wrap;
+    padding: 12px 16px;
+    gap: 16px;
+  }
+  .qw-brand {
+    font-size: 16px;
+  }
+  .qw-brand__mark {
+    width: 30px;
+    height: 30px;
+    font-size: 20px;
+    border-radius: 8px;
+  }
+  .qw-room-info {
+    position: static;
+  }
+  .qw-room-info[open] {
+    order: 3;
+    flex-basis: 100%;
+  }
+  .qw-stage__content {
+    padding-top: 16px;
+  }
+  .qw-stage-intro h2 {
+    font-size: 22px;
+  }
+  .qw-buzz-bar {
+    align-items: center;
+  }
+}

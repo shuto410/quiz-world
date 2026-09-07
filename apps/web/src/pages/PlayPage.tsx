@@ -156,19 +156,18 @@ export function PlayPage() {
       }
     >
       <div className="qw-stage-intro">
-        <span className="qw-eyebrow">QUIZ ROOM</span>
         <h2>
           {roomState?.status === 'finished'
-            ? 'おつかれさまでした。'
+            ? '大会終了'
             : answerEnabled
               ? 'あなたの回答番です。'
               : buzzEnabled
-                ? 'ひらめいたら、押そう。'
-                : '次の展開を待ちましょう。'}
+                ? '早押し受付中'
+                : 'ホストの進行を待っています'}
         </h2>
         <p>
           {roomState?.status === 'finished'
-            ? '最後までご参加ありがとうございました。'
+            ? '最終スコアと順位をご確認ください。'
             : '回答権を得たら、声またはテキストで回答してください。'}
         </p>
       </div>

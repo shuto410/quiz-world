@@ -24,21 +24,13 @@ export function RoomFrame({
     <div className="qw-workspace">
       <aside className="qw-sidebar">
         <Link className="qw-brand" to="/">
-          {' '}
           <span className="qw-brand__mark">Q</span> Quiz World
         </Link>
-        <div className="qw-sidebar__room">
-          <span className="qw-eyebrow">TOURNAMENT ROOM</span>
-          <h2>{title}</h2>
-        </div>
-        <div className="qw-channel">
-          <span aria-hidden="true">#</span> クイズルーム
-        </div>
-        {sidebar}
-        <div className="qw-sidebar__footer">
-          <p>声を合わせて、知識を競おう。</p>
-          {actions}
-        </div>
+        <details className="qw-room-info">
+          <summary>大会情報</summary>
+          {sidebar}
+        </details>
+        <div className="qw-sidebar__footer">{actions}</div>
       </aside>
       <main className="qw-stage">
         <header className="qw-stage__header">

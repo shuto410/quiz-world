@@ -193,6 +193,7 @@ export function HostPage() {
             <div className="qw-host-progress">
               <LastResult result={roomState.lastResult} participants={roomState.participants} />
               <Button
+                className="qw-next-question"
                 onClick={() => {
                   resetGame();
                 }}
