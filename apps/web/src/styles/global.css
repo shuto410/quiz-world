@@ -1,21 +1,22 @@
 /**
  * Global tokens and resets for the SPA.
  *
- * Warm charcoal surfaces and apricot actions unify entry forms and responsive room layouts.
+ * Warm ivory surfaces and apricot actions unify entry forms and responsive room layouts.
  */
 
 :root {
-  color-scheme: dark;
+  color-scheme: light;
   --font-display: 'Segoe UI', 'Yu Gothic UI', sans-serif;
   --font-body: 'Source Sans 3', 'Segoe UI', sans-serif;
-  --color-ink: #f5ede3;
-  --color-ink-muted: #bcafa3;
-  --color-paper: #211d1b;
-  --color-paper-raised: #2c2623;
-  --color-line: #443a34;
+  --color-ink: #342b25;
+  --color-ink-muted: #746357;
+  --color-paper: #fffaf5;
+  --color-paper-raised: #ffffff;
+  --color-line: #e4d6c9;
   --color-accent: #f2aa7e;
+  --color-accent-text: #98491f;
   --color-accent-ink: #211d1b;
-  --color-danger: #f18f91;
+  --color-danger: #b13f43;
   --shadow-toast: 0 10px 30px rgb(28 25 23 / 0.12);
   --radius-control: 0.5rem;
   --space-1: 0.25rem;
@@ -51,7 +52,7 @@ input {
 }
 
 a {
-  color: var(--color-accent);
+  color: var(--color-accent-text);
 }
 
 .app-shell {
@@ -136,7 +137,7 @@ a {
   grid-template-columns: 240px minmax(0, 1fr) 300px;
 }
 .qw-sidebar {
-  background: #1b1816;
+  background: #f3e9de;
   padding: 28px 18px;
   display: flex;
   flex-direction: column;
@@ -176,8 +177,8 @@ a {
 .qw-channel {
   padding: 13px;
   border-radius: 8px;
-  background: #3b2d25;
-  color: var(--color-accent);
+  background: #f8dcc5;
+  color: var(--color-accent-text);
   font-weight: 600;
 }
 .qw-channel span {
@@ -236,7 +237,7 @@ a {
   font-size: 14px;
 }
 .qw-roster {
-  background: #26211e;
+  background: #f8f0e7;
   border-left: 1px solid var(--color-line);
   padding: 28px 18px;
   min-width: 0;
@@ -264,7 +265,7 @@ a {
 .qw-invite-panel code {
   display: block;
   margin-top: 10px;
-  color: var(--color-accent);
+  color: var(--color-accent-text);
   font-size: 23px;
   letter-spacing: 0.1em;
 }
@@ -303,8 +304,8 @@ a {
 }
 .qw-buzz-bar > .qw-button:disabled {
   box-shadow: none;
-  background: #443a34;
-  color: #bcafa3;
+  background: #e9dfd5;
+  color: #746357;
   opacity: 1;
 }
 .qw-buzz-bar__hint {
@@ -314,7 +315,7 @@ a {
 }
 .qw-judge__verdict[aria-pressed='false'],
 .qw-judge__quick-button {
-  background: #39312c;
+  background: #f5ede5;
   color: var(--color-ink);
   border-color: var(--color-line);
 }
@@ -353,14 +354,14 @@ a {
   bottom: auto;
 }
 .qw-toast--error {
-  color: #211d1b;
+  color: #ffffff;
 }
 .app-shell {
   padding-top: 64px;
 }
 .qw-input__control {
   width: 100%;
-  background: #211d1b;
+  background: #ffffff;
 }
 :focus-visible {
   outline: 2px solid var(--color-accent);
@@ -446,4 +447,9 @@ a {
   .qw-sidebar .qw-invite-panel {
     grid-column: 1 / -1;
   }
+}
+
+/* Small accent text uses a darker shade for contrast on pale surfaces. */
+.qw-participant-list__tag {
+  color: var(--color-accent-text);
 }
