@@ -123,10 +123,6 @@ export function applyParticipantJoin(
     tournamentStatus: TournamentStatus;
   },
 ): JoinOutcome {
-  if (input.tournamentStatus !== 'active') {
-    return { ok: false, code: 'TOURNAMENT_NOT_JOINABLE' };
-  }
-
   const claimed =
     input.claimedParticipantId === undefined
       ? undefined
@@ -157,7 +153,7 @@ export function applyParticipantJoin(
   // Checked against the room as well as the stored tournament: `tournament:finish` writes the
   // closed status to DynamoDB after the room has already finished, so a failed write must not
   // leave a finished room accepting newcomers through the invite code.
-  if (current.status === 'finished') {
+  if (current.status === 'finished' || input.tournamentStatus !== 'active') {
     return { ok: false, code: 'TOURNAMENT_NOT_JOINABLE' };
   }
 

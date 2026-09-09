@@ -19,6 +19,7 @@ import { registerAnswerHandlers } from './socket/answerHandlers';
 import type { SocketServer } from './socket/broadcast';
 import { registerBuzzHandlers } from './socket/buzzHandlers';
 import { registerFinishHandlers } from './socket/finishHandlers';
+import { createConnections } from './socket/connections';
 import { registerJoinHandlers } from './socket/joinHandlers';
 import { registerJudgeHandlers } from './socket/judgeHandlers';
 
@@ -44,11 +45,14 @@ export function createServer(dependencies: ServerDependencies): CreatedServer {
   const httpServer = createHttpServer(createApp(dependencies));
   const io: SocketServer = new SocketIoServer(httpServer);
 
+  const connections = createConnections();
+
   io.on('connection', (socket) => {
     const connectionLogger = logger.child({ socketId: socket.id });
     connectionLogger.debug('socket connected');
 
     registerJoinHandlers(socket, {
+      connections,
       io,
       registry,
       repository,

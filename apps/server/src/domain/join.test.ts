@@ -208,6 +208,28 @@ describe('applyParticipantJoin', () => {
     });
   });
 
+  it('restores an existing seat even when the persisted tournament is closed', () => {
+    const current = createRoomStateFixture({
+      status: 'finished',
+      participants: [{ id: 'p', name: '太郎', online: false, score: 5, joinedAt: NOW }],
+    });
+    const outcome = applyParticipantJoin(current, {
+      ...baseInput,
+      displayName: '太郎',
+      claimedParticipantId: 'p',
+      tournamentStatus: 'closed',
+    });
+    expect(outcome).toMatchObject({
+      ok: true,
+      participantId: 'p',
+      isReconnect: true,
+      state: {
+        status: 'finished',
+        participants: [{ id: 'p', name: '太郎', score: 5, online: true }],
+      },
+    });
+  });
+
   it('still lets somebody who played reconnect to a finished tournament', () => {
     const current = createRoomStateFixture({
       status: 'finished',

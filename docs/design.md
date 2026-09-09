@@ -586,7 +586,7 @@ sequenceDiagram
 `tournament:host-join`
 
 - `hostToken` をハッシュ化し、DynamoDB の `hostTokenHash` と比較する
-- 大会ステータスは `active` と `closed` の両方で接続を許可する（終了後の結果表示のため）
+- 大会ステータスは `active` と `closed` の両方で接続を許可する（終了後の結果表示のため）。`closed` ではメモリ上または復元済みの既存ルームが必要であり、空のルームを新しく作らない
 - ホスト権限が既に他の参加者へ移っている場合は `UNAUTHORIZED` を返し、参加者として `tournament:join` させる
 - 成功時は `role: "host"` を返し、`paused` なら `statusBeforePause` へ復帰させる
 
@@ -656,6 +656,9 @@ sequenceDiagram
 - 切断検知後は画面の状態を維持したまま操作を無効化し、joinのackと最新の `room:state` を受け取ってから操作を再開する
 - 同じ参加者IDで新しい接続が来た場合、新しい接続を有効にする
 - 古い接続には `session:invalidated` を送り、以降の操作は `STALE_CONNECTION` で拒否する
+- 無効化通知を受けたクライアントは自動再接続を停止する。無効化済みSocketからの再joinも `STALE_CONNECTION` で拒否する
+- 1本のSocketで同時に複数のjoinや複数席の保持は許可しない。join処理中や参加済みのSocketからのjoinは `INVALID_STATE` とし、別席への移動は退出後に行う
+- Socketチャネルの移動と接続所有者の切り替えは、単一サーバーの同期メモリアダプタ上で状態遷移に続けて行う
 - 参加者IDごとに現在有効なSocketを記録する。古いSocketの遅れて届いた `disconnect` は、新しい接続をオフラインに戻してはならない
 - ホスト切断を検知したら `paused` にし、`statusBeforePause` に直前の状態を保存する
 - 参加者切断時は `online: false` にし、スコアと表示名を維持する

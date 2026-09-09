@@ -50,7 +50,7 @@ export function registerFinishHandlers(
   });
 
   socket.on('room:close', () => {
-    handleRoomClose(socket, dependencies);
+    void handleRoomClose(socket, dependencies);
   });
 }
 
@@ -96,7 +96,10 @@ async function handleFinish(
   }
 }
 
-function handleRoomClose(socket: AppSocket, dependencies: FinishHandlerDependencies): void {
+async function handleRoomClose(
+  socket: AppSocket,
+  dependencies: FinishHandlerDependencies,
+): Promise<void> {
   const session = requireSession(socket);
   if (session === undefined) {
     return;
@@ -115,6 +118,20 @@ function handleRoomClose(socket: AppSocket, dependencies: FinishHandlerDependenc
     broadcastRoomState(io, handle);
     return;
   }
+
+  try {
+    await dependencies.repository.updateStatus(session.tournamentId, 'closed', dependencies.now());
+  } catch (error: unknown) {
+    dependencies.logger.error('failed to close room', {
+      error,
+      tournamentId: session.tournamentId,
+    });
+    emitError(socket, 'INTERNAL_ERROR');
+    return;
+  }
+
+  // Another close may have completed while storage was pending.
+  if (registry.find(session.tournamentId) === undefined) return;
 
   const channels = [hostChannel(session.tournamentId), participantChannel(session.tournamentId)];
   for (const channel of channels) {

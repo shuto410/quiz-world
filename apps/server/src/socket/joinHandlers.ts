@@ -38,10 +38,13 @@ import {
   participantChannel,
   type SocketServer,
 } from './broadcast';
+import type { Connections } from './connections';
 import { socketErrorMessage } from './errorMessages';
-import { bindSession, clearSession, readSession } from './session';
+import { clearSession, readSession } from './session';
 
+/** Services and transport ownership needed to admit or detach a seat. */
 export type JoinHandlerDependencies = {
+  connections: Connections;
   io: SocketServer;
   registry: RoomRegistry;
   repository: TournamentRepository;
@@ -57,6 +60,17 @@ export function registerJoinHandlers(
   socket: AppSocket,
   dependencies: JoinHandlerDependencies,
 ): void {
+  socket.use(([, ...args], next) => {
+    if (!dependencies.connections.isInvalidated(socket)) {
+      next();
+      return;
+    }
+    const error = failure('STALE_CONNECTION');
+    const ack: unknown = args.at(-1);
+    if (typeof ack === 'function') (ack as (response: AckFailure) => void)(error);
+    else socket.emit('error', { code: error.code, message: error.message });
+  });
+  socket.on('disconnect', () => handleLeave(socket, dependencies));
   socket.on('tournament:host-join', (payload, ack) => {
     void handleHostJoin(socket, dependencies, payload, ack);
   });
@@ -82,8 +96,22 @@ async function handleHostJoin(
     return;
   }
 
+  if (
+    (socket.data as Record<string, unknown>)['joining'] === true ||
+    readSession(socket.data) !== undefined
+  ) {
+    ack(failure('INVALID_STATE'));
+    return;
+  }
+  (socket.data as Record<string, unknown>)['joining'] = true;
+  const wasOwned = dependencies.registry.find(parsed.tournamentId) !== undefined;
   try {
     const record = await dependencies.repository.findById(parsed.tournamentId);
+    if (!socket.connected) return;
+    if (wasOwned && dependencies.registry.find(parsed.tournamentId) === undefined) {
+      ack(failure('TOURNAMENT_NOT_JOINABLE'));
+      return;
+    }
     if (record === undefined) {
       ack(failure('TOURNAMENT_NOT_FOUND'));
       return;
@@ -94,7 +122,14 @@ async function handleHostJoin(
       return;
     }
 
-    // Host may reconnect to a closed tournament to view the final result; no status gate here.
+    // A closed tournament needs an existing room; never resurrect an empty playing room.
+    if (
+      record.status === 'closed' &&
+      dependencies.registry.find(parsed.tournamentId) === undefined
+    ) {
+      ack(failure('TOURNAMENT_NOT_JOINABLE'));
+      return;
+    }
 
     const { registry, now, newParticipantId, io } = dependencies;
     const handle = registry.claim(
@@ -123,8 +158,7 @@ async function handleHostJoin(
       return;
     }
 
-    await moveToChannel(socket, parsed.tournamentId, 'host');
-    bindSession(socket.data as Record<string, unknown>, {
+    dependencies.connections.bind(socket, {
       tournamentId: parsed.tournamentId,
       participantId: joined.participantId,
       role: 'host',
@@ -140,6 +174,8 @@ async function handleHostJoin(
   } catch (error: unknown) {
     dependencies.logger.error('host join failed', { error, socketId: socket.id });
     ack(failure('INTERNAL_ERROR'));
+  } finally {
+    (socket.data as Record<string, unknown>)['joining'] = false;
   }
 }
 
@@ -155,10 +191,32 @@ async function handleParticipantJoin(
     return;
   }
 
+  if (
+    (socket.data as Record<string, unknown>)['joining'] === true ||
+    readSession(socket.data) !== undefined
+  ) {
+    ack(failure('INVALID_STATE'));
+    return;
+  }
+  (socket.data as Record<string, unknown>)['joining'] = true;
+  const wasOwned = dependencies.registry.find(parsed.tournamentId) !== undefined;
   try {
     const record = await dependencies.repository.findById(parsed.tournamentId);
+    if (!socket.connected) return;
+    if (wasOwned && dependencies.registry.find(parsed.tournamentId) === undefined) {
+      ack(failure('TOURNAMENT_NOT_JOINABLE'));
+      return;
+    }
     if (record === undefined) {
       ack(failure('TOURNAMENT_NOT_FOUND'));
+      return;
+    }
+
+    if (
+      record.status === 'closed' &&
+      dependencies.registry.find(parsed.tournamentId) === undefined
+    ) {
+      ack(failure('TOURNAMENT_NOT_JOINABLE'));
       return;
     }
 
@@ -193,8 +251,7 @@ async function handleParticipantJoin(
       return;
     }
 
-    await moveToChannel(socket, parsed.tournamentId, 'participant');
-    bindSession(socket.data as Record<string, unknown>, {
+    dependencies.connections.bind(socket, {
       tournamentId: parsed.tournamentId,
       participantId: joined.participantId,
       role: 'participant',
@@ -210,6 +267,8 @@ async function handleParticipantJoin(
   } catch (error: unknown) {
     dependencies.logger.error('participant join failed', { error, socketId: socket.id });
     ack(failure('INTERNAL_ERROR'));
+  } finally {
+    (socket.data as Record<string, unknown>)['joining'] = false;
   }
 }
 
@@ -218,6 +277,8 @@ function handleLeave(socket: AppSocket, dependencies: JoinHandlerDependencies): 
   if (session === undefined) {
     return;
   }
+
+  if (!dependencies.connections.release(socket, session)) return;
 
   const handle = dependencies.registry.find(session.tournamentId);
   if (handle === undefined) {
@@ -233,16 +294,6 @@ function handleLeave(socket: AppSocket, dependencies: JoinHandlerDependencies): 
   void socket.leave(participantChannel(session.tournamentId));
   clearSession(socket.data as Record<string, unknown>);
   broadcastRoomState(dependencies.io, handle);
-}
-
-async function moveToChannel(
-  socket: AppSocket,
-  tournamentId: string,
-  role: 'host' | 'participant',
-): Promise<void> {
-  await socket.leave(hostChannel(tournamentId));
-  await socket.leave(participantChannel(tournamentId));
-  await socket.join(role === 'host' ? hostChannel(tournamentId) : participantChannel(tournamentId));
 }
 
 function failure(code: AckFailure['code'], message: string = socketErrorMessage(code)): AckFailure {

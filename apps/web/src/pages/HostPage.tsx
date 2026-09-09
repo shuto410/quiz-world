@@ -73,7 +73,8 @@ export function HostPage() {
     ? 'ルームを閉じました'
     : status === 'joined'
       ? '接続中'
-      : '接続しています…';
+      : (errorMessage ??
+        (roomState === undefined ? '接続しています…' : '接続が切れました。再接続しています…'));
 
   if (tournamentId === undefined) {
     return (
@@ -154,6 +155,7 @@ export function HostPage() {
         <div className="qw-room-actions">
           <Button
             type="button"
+            disabled={status !== 'joined'}
             onClick={() => {
               leave();
               toast.show('退出しました');
@@ -174,7 +176,11 @@ export function HostPage() {
         </section>
       ) : null}
       {roomState?.status !== 'finished' ? (
-        <section className="qw-room-section" aria-label="進行">
+        <fieldset
+          disabled={status !== 'joined'}
+          className="qw-room-section qw-room-controls"
+          aria-label="進行"
+        >
           <h2>進行</h2>
           {roomState?.status === 'answering' && responder !== undefined ? (
             <JudgePanel
@@ -218,14 +224,14 @@ export function HostPage() {
               />
             </div>
           ) : null}
-        </section>
+        </fieldset>
       ) : null}
 
       {roomState?.status === 'finished' ? (
         <section className="qw-room-section" aria-label="最終結果">
           <h2>最終結果</h2>
           <FinalResult participants={roomState.participants} hostId={roomState.hostId} />
-          <div className="qw-host-progress">
+          <fieldset disabled={status !== 'joined'} className="qw-host-progress qw-room-controls">
             {roomClosed ? (
               <p>ルームを閉じました。</p>
             ) : (
@@ -238,7 +244,7 @@ export function HostPage() {
                 }}
               />
             )}
-          </div>
+          </fieldset>
         </section>
       ) : null}
 

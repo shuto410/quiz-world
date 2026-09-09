@@ -91,7 +91,8 @@ export function PlayPage() {
     ? 'ホストがルームを閉じました'
     : status === 'joined'
       ? '接続中'
-      : '接続しています…';
+      : (errorMessage ??
+        (roomState === undefined ? '接続しています…' : '接続が切れました。再接続しています…'));
 
   if (tournamentId === undefined) {
     return (
@@ -145,6 +146,7 @@ export function PlayPage() {
         <div className="qw-room-actions">
           <Button
             type="button"
+            disabled={status !== 'joined'}
             onClick={() => {
               leave();
               toast.show('退出しました');
