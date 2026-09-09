@@ -1,22 +1,22 @@
 /**
  * Global tokens and resets for the SPA.
  *
- * Kept deliberately small at this stage: enough for the shared controls and placeholder
- * pages to share one look, without painting a full design system before the screens exist.
+ * Warm ivory surfaces and apricot actions unify entry forms and responsive room layouts.
  */
 
 :root {
   color-scheme: light;
-  --font-display: 'Fraunces', 'Iowan Old Style', 'Palatino Linotype', Palatino, serif;
+  --font-display: 'Segoe UI', 'Yu Gothic UI', sans-serif;
   --font-body: 'Source Sans 3', 'Segoe UI', sans-serif;
-  --color-ink: #1c1917;
-  --color-ink-muted: #57534e;
-  --color-paper: #faf7f2;
+  --color-ink: #342b25;
+  --color-ink-muted: #746357;
+  --color-paper: #fffaf5;
   --color-paper-raised: #ffffff;
-  --color-line: #d6d3d1;
-  --color-accent: #0f766e;
-  --color-accent-ink: #ffffff;
-  --color-danger: #b91c1c;
+  --color-line: #e4d6c9;
+  --color-accent: #f2aa7e;
+  --color-accent-text: #98491f;
+  --color-accent-ink: #211d1b;
+  --color-danger: #b13f43;
   --shadow-toast: 0 10px 30px rgb(28 25 23 / 0.12);
   --radius-control: 0.5rem;
   --space-1: 0.25rem;
@@ -43,9 +43,7 @@ body {
   margin: 0;
   font-family: var(--font-body);
   color: var(--color-ink);
-  background:
-    radial-gradient(circle at top left, rgb(15 118 110 / 0.08), transparent 40%),
-    linear-gradient(180deg, #f3efe6 0%, var(--color-paper) 45%, #f7f3ec 100%);
+  background: var(--color-paper);
 }
 
 button,
@@ -54,7 +52,7 @@ input {
 }
 
 a {
-  color: var(--color-accent);
+  color: var(--color-accent-text);
 }
 
 .app-shell {
@@ -132,34 +130,445 @@ a {
   justify-items: start;
 }
 
-/* Clears the fixed bar, which now holds the answer field as well as the buzzer. */
-.app-shell--play {
-  padding-bottom: 11rem;
-}
-
-.qw-buzz-bar {
-  position: fixed;
-  right: 0;
-  bottom: 0;
-  left: 0;
+/* Warm room surfaces preserve stable regions while giving gameplay the primary focus. */
+.qw-workspace {
+  min-height: 100dvh;
   display: grid;
-  gap: var(--space-2);
-  justify-items: center;
-  padding: var(--space-4) var(--space-4) calc(var(--space-4) + env(safe-area-inset-bottom, 0));
-  border-top: 1px solid var(--color-line);
-  background: rgb(250 247 242 / 0.96);
-  backdrop-filter: blur(8px);
+  grid-template-columns: 240px minmax(0, 1fr) 300px;
 }
-
-/* Direct child only: the send button inside the answer form keeps its ordinary size. */
-.qw-buzz-bar > .qw-button {
-  width: min(24rem, 100%);
-  min-height: 3.5rem;
-  font-size: 1.15rem;
+.qw-sidebar {
+  background: #f3e9de;
+  padding: 28px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  border-right: 1px solid var(--color-line);
 }
-
-.qw-buzz-bar__hint {
-  margin: 0 !important;
-  font-size: 0.85rem;
+.qw-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--color-ink);
+  font-weight: 750;
+  text-decoration: none;
+  font-size: 19px;
+}
+.qw-brand__mark {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  background: var(--color-accent);
+  color: var(--color-accent-ink);
+  border-radius: 13px;
+  font-size: 25px;
+}
+.qw-eyebrow {
   color: var(--color-ink-muted);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  font-weight: 700;
+}
+.qw-sidebar__room h2 {
+  font-size: 18px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.qw-channel {
+  padding: 13px;
+  border-radius: 8px;
+  background: #f8dcc5;
+  color: var(--color-accent-text);
+  font-weight: 600;
+}
+.qw-channel span {
+  margin-right: 10px;
+}
+.qw-sidebar__footer {
+  margin-top: auto;
+  font-size: 12px;
+  color: var(--color-ink-muted);
+}
+.qw-sidebar__identity {
+  color: var(--color-ink-muted);
+  overflow-wrap: anywhere;
+}
+.qw-stage {
+  min-width: 0;
+}
+.qw-stage__header {
+  min-height: 82px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 20px 32px;
+  border-bottom: 1px solid var(--color-line);
+}
+.qw-stage__header h1 {
+  font-size: 18px;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.qw-connection {
+  color: var(--color-ink-muted);
+  font-size: 12px;
+  flex-shrink: 0;
+}
+.qw-stage__content {
+  max-width: 900px;
+  margin: auto;
+  padding: 32px;
+}
+.qw-stage__content p {
+  line-height: 1.7;
+}
+.qw-stage-intro {
+  text-align: center;
+  padding: 22px 0;
+}
+.qw-stage-intro h2 {
+  font-size: clamp(24px, 3vw, 36px);
+  margin: 12px 0;
+  letter-spacing: -0.04em;
+}
+.qw-stage-intro p {
+  color: var(--color-ink-muted);
+  font-size: 14px;
+}
+.qw-roster {
+  background: #f8f0e7;
+  border-left: 1px solid var(--color-line);
+  padding: 28px 18px;
+  min-width: 0;
+}
+.qw-roster summary {
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 24px;
+}
+.qw-roster h2 {
+  display: none;
+}
+.qw-room-section h2 {
+  font-size: 13px;
+  color: var(--color-ink-muted);
+  letter-spacing: 0.05em;
+  margin-bottom: 16px;
+}
+.qw-invite-panel {
+  padding: 16px 0;
+  background: none;
+  border: 0;
+}
+.qw-invite-panel code {
+  display: block;
+  margin-top: 10px;
+  color: var(--color-accent-text);
+  font-size: 23px;
+  letter-spacing: 0.1em;
+}
+.qw-invite-panel__url {
+  font-size: 11px;
+}
+.qw-room-actions .qw-button,
+.qw-host-progress .qw-button {
+  background: transparent;
+  border-color: var(--color-line);
+  color: var(--color-ink-muted);
+}
+.qw-buzz-bar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+  padding: 28px 24px 36px;
+  margin-bottom: 36px;
+  background: var(--color-paper-raised);
+  border: 1px solid var(--color-line);
+  border-radius: 16px;
+}
+.qw-buzz-bar > .qw-button {
+  order: -1;
+  width: min(100%, 340px);
+  min-height: 120px;
+  border-radius: 16px;
+  font-size: 30px;
+  letter-spacing: 0.12em;
+  box-shadow: 0 5px 0 #a76a48;
+}
+.qw-buzz-bar > .qw-button:active:not(:disabled) {
+  transform: translateY(3px);
+  box-shadow: 0 2px 0 #a76a48;
+}
+.qw-buzz-bar > .qw-button:disabled {
+  box-shadow: none;
+  background: #e9dfd5;
+  color: #746357;
+  opacity: 1;
+}
+.qw-buzz-bar__hint {
+  font-size: 13px;
+  margin: 0;
+  color: var(--color-ink-muted);
+}
+.qw-judge__verdict[aria-pressed='false'],
+.qw-judge__quick-button {
+  background: #f5ede5;
+  color: var(--color-ink);
+  border-color: var(--color-line);
+}
+.qw-judge__verdict[aria-pressed='true'] {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 3px;
+}
+.qw-participant-list__row {
+  padding: 16px 10px;
+  gap: 8px;
+}
+.qw-participant-list__name,
+.qw-buzz-order__name,
+.qw-final-result__name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.qw-participant-list__meta {
+  gap: 8px;
+  font-size: 12px;
+}
+.qw-participant-list__row--self,
+.qw-buzz-order__row--responder,
+.qw-final-result__row--winner,
+.qw-final-result__winners {
+  background: rgb(242 170 126 / 0.09);
+}
+.qw-final-result__winners {
+  padding: 28px;
+}
+.qw-submitted-answer__text {
+  font-size: 24px;
+}
+.qw-toast-region {
+  top: 18px;
+  bottom: auto;
+}
+.qw-toast--error {
+  color: #ffffff;
+}
+.app-shell {
+  padding-top: 64px;
+}
+.qw-input__control {
+  width: 100%;
+  background: #ffffff;
+}
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 4px;
+}
+@media (max-width: 1100px) {
+  .qw-workspace {
+    grid-template-columns: 210px minmax(0, 1fr);
+  }
+  .qw-roster {
+    grid-column: 2;
+    border-top: 1px solid var(--color-line);
+  }
+  .qw-sidebar {
+    grid-row: 1 / 3;
+  }
+}
+@media (max-width: 700px) {
+  .qw-workspace {
+    display: flex;
+    flex-direction: column;
+  }
+  .qw-sidebar {
+    padding: 16px;
+    gap: 16px;
+    border-right: 0;
+  }
+  .qw-sidebar__room,
+  .qw-channel,
+  .qw-sidebar__footer > p {
+    display: none;
+  }
+  .qw-sidebar__footer {
+    margin-top: 0;
+  }
+  .qw-invite-panel {
+    margin: 0;
+  }
+  .qw-stage__header {
+    padding: 18px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .qw-stage__content {
+    padding: 20px 16px;
+  }
+  .qw-roster {
+    border-left: 0;
+    padding: 20px 16px;
+  }
+  .qw-stage-intro {
+    padding: 0;
+  }
+  .qw-buzz-bar {
+    padding: 24px 16px;
+  }
+  .qw-judge__actions {
+    flex-direction: column;
+  }
+  .qw-stage-intro p {
+    font-size: 13px;
+  }
+}
+
+/* Compact mobile context leaves the primary control within reach on short screens. */
+@media (max-width: 700px) {
+  .qw-sidebar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+  }
+  .qw-sidebar__identity {
+    grid-column: 1;
+    grid-row: 2;
+    margin: 0;
+    font-size: 12px;
+  }
+  .qw-sidebar__footer {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .qw-sidebar .qw-invite-panel {
+    grid-column: 1 / -1;
+  }
+}
+
+/* Small accent text uses a darker shade for contrast on pale surfaces. */
+.qw-participant-list__tag {
+  color: var(--color-accent-text);
+}
+
+/* The room has one destination: keep context above the game instead of simulating navigation. */
+.qw-workspace {
+  grid-template-columns: minmax(0, 1fr) 290px;
+  grid-template-rows: auto 1fr;
+}
+.qw-sidebar {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  flex-direction: row;
+  align-items: center;
+  gap: 24px;
+  padding: 14px 24px;
+  border-right: 0;
+  border-bottom: 1px solid var(--color-line);
+}
+.qw-sidebar__footer {
+  margin: 0 0 0 auto;
+}
+.qw-room-info {
+  position: relative;
+  font-size: 13px;
+}
+.qw-room-info summary {
+  cursor: pointer;
+  padding: 10px 0;
+}
+.qw-room-info[open] {
+  align-self: flex-start;
+}
+.qw-room-info .qw-invite-panel {
+  margin: 0;
+  max-width: 320px;
+}
+.qw-stage__header {
+  min-height: 64px;
+}
+.qw-stage__content {
+  max-width: 960px;
+}
+.qw-stage-intro {
+  text-align: left;
+  padding: 0 0 16px;
+}
+.qw-stage-intro h2 {
+  font-size: 24px;
+  letter-spacing: 0;
+}
+.qw-submitted-answer {
+  border: 0;
+  border-left: 3px solid var(--color-accent);
+  border-radius: 0;
+  background: transparent;
+  padding: 8px 20px;
+}
+.qw-submitted-answer__text {
+  font-size: 30px;
+  font-weight: 600;
+}
+.qw-participant-list,
+.qw-buzz-order {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.qw-buzz-order__row {
+  padding: 12px 8px;
+}
+.qw-buzz-bar {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 16px 0 24px;
+  align-items: flex-start;
+}
+.qw-host-progress > .qw-next-question {
+  color: var(--color-accent-ink);
+  background: var(--color-accent);
+  border-color: transparent;
+}
+.qw-host-progress {
+  margin-top: 16px;
+}
+.qw-roster {
+  grid-column: 2;
+}
+@media (max-width: 700px) {
+  .qw-sidebar {
+    display: flex;
+    flex-wrap: wrap;
+    padding: 12px 16px;
+    gap: 16px;
+  }
+  .qw-brand {
+    font-size: 16px;
+  }
+  .qw-brand__mark {
+    width: 30px;
+    height: 30px;
+    font-size: 20px;
+    border-radius: 8px;
+  }
+  .qw-room-info {
+    position: static;
+  }
+  .qw-room-info[open] {
+    order: 3;
+    flex-basis: 100%;
+  }
+  .qw-stage__content {
+    padding-top: 16px;
+  }
+  .qw-stage-intro h2 {
+    font-size: 22px;
+  }
+  .qw-buzz-bar {
+    align-items: center;
+  }
 }

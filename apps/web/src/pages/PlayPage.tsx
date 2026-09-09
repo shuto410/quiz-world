@@ -1,7 +1,7 @@
 /**
  * Participant play screen: join with a display name, watch the roster, and press the buzzer.
  *
- * The buzzer and the answer field are pinned to the bottom of the viewport, both always
+ * The buzzer and the answer field share the central gameplay area, both always
  * present so the layout does not move between rounds. Whether either is enabled is derived
  * from the broadcast state (`canBuzz`, `canSubmitAnswer`) so a disabled control matches what
  * the server would refuse. A sent answer is not echoed back: participants are not shown an
@@ -15,6 +15,7 @@
 import { useEffect, useMemo } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import { AnswerForm } from '../components/AnswerForm';
+import { RoomFrame } from '../components/RoomFrame';
 import { Button } from '../components/Button';
 import { BuzzOrderList } from '../components/BuzzOrderList';
 import { FinalResult } from '../components/FinalResult';
@@ -126,11 +127,50 @@ export function PlayPage() {
   }
 
   return (
-    <main className="app-shell app-shell--play">
-      <h1>プレイ</h1>
-      <p>
-        {displayName} として参加中 — {connectionLabel}
-      </p>
+    <RoomFrame
+      title="プレイ"
+      connectionLabel={connectionLabel}
+      sidebar={<p className="qw-sidebar__identity">{displayName} として参加中</p>}
+      roster={
+        <section className="qw-room-section" aria-label="参加者一覧">
+          <h2>参加者</h2>
+          <ParticipantList
+            participants={roomState?.participants ?? []}
+            selfParticipantId={participantId}
+            hostId={roomState?.hostId}
+          />
+        </section>
+      }
+      actions={
+        <div className="qw-room-actions">
+          <Button
+            type="button"
+            onClick={() => {
+              leave();
+              toast.show('退出しました');
+            }}
+          >
+            退出
+          </Button>
+        </div>
+      }
+    >
+      <div className="qw-stage-intro">
+        <h2>
+          {roomState?.status === 'finished'
+            ? '大会終了'
+            : answerEnabled
+              ? 'あなたの回答番です。'
+              : buzzEnabled
+                ? '早押し受付中'
+                : 'ホストの進行を待っています'}
+        </h2>
+        <p>
+          {roomState?.status === 'finished'
+            ? '最終スコアと順位をご確認ください。'
+            : '回答権を得たら、声またはテキストで回答してください。'}
+        </p>
+      </div>
 
       {roomState?.status === 'finished' ? (
         <section className="qw-room-section" aria-label="最終結果">
@@ -150,57 +190,39 @@ export function PlayPage() {
         </section>
       ) : null}
 
-      <section className="qw-room-section" aria-label="早押し順">
-        <h2>早押し順</h2>
-        <BuzzOrderList
-          buzzOrder={roomState?.buzzOrder ?? []}
-          participants={roomState?.participants ?? []}
-          currentResponderId={roomState?.currentResponderId}
-        />
-      </section>
-
-      <section className="qw-room-section" aria-label="参加者一覧">
-        <h2>参加者</h2>
-        <ParticipantList
-          participants={roomState?.participants ?? []}
-          selfParticipantId={participantId}
-          hostId={roomState?.hostId}
-        />
-      </section>
-
-      <div className="qw-room-actions">
-        <Button
-          type="button"
-          onClick={() => {
-            leave();
-            toast.show('退出しました');
-          }}
-        >
-          退出
-        </Button>
-      </div>
-
-      <div className="qw-buzz-bar">
-        <AnswerForm
-          disabled={!answerEnabled}
-          onSubmit={(answerText) => {
-            submitAnswer(answerText);
-            toast.show('回答を送信しました');
-          }}
-        />
-        <Button
-          type="button"
-          disabled={!buzzEnabled}
-          onClick={() => {
-            buzz();
-          }}
-        >
-          早押し
-        </Button>
-        {!buzzEnabled && status === 'joined' ? (
-          <p className="qw-buzz-bar__hint">いまは押せません</p>
-        ) : null}
-      </div>
-    </main>
+      {roomState?.status !== 'finished' ? (
+        <div className="qw-buzz-bar">
+          <AnswerForm
+            disabled={!answerEnabled}
+            onSubmit={(answerText) => {
+              submitAnswer(answerText);
+              toast.show('回答を送信しました');
+            }}
+          />
+          <Button
+            type="button"
+            disabled={!buzzEnabled}
+            onClick={() => {
+              buzz();
+            }}
+          >
+            早押し
+          </Button>
+          {!buzzEnabled && status === 'joined' ? (
+            <p className="qw-buzz-bar__hint">いまは押せません</p>
+          ) : null}
+        </div>
+      ) : null}
+      {roomState?.status !== 'finished' ? (
+        <section className="qw-room-section" aria-label="早押し順">
+          <h2>早押し順</h2>
+          <BuzzOrderList
+            buzzOrder={roomState?.buzzOrder ?? []}
+            participants={roomState?.participants ?? []}
+            currentResponderId={roomState?.currentResponderId}
+          />
+        </section>
+      ) : null}
+    </RoomFrame>
   );
 }
