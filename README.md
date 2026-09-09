@@ -107,12 +107,43 @@ npm run db:scan
 
 ブラウザで見たいときは `npm run db:admin` のあと http://localhost:8001 を開く。
 
+## 3人分のウィンドウでデバッグする（macOS）
+
+Google Chrome をインストールし、`npm run dev` を起動した状態で実行する。
+
+```bash
+npm run debug:windows
+```
+
+ホスト用のトップ画面と、参加者A・B用の参加画面を、保存領域の異なる3つのウィンドウで開く。
+ホストで大会を作成したあと、A・Bへ同じ招待コードと別々の表示名を入力すれば、そのまま対戦を操作できる。
+ウィンドウは幅480pxで横並びに起動する。画面に収まらない場合は位置・サイズを調整する。
+
+既存大会の招待URLを渡すと、A・Bは表示名の入力から始められる。
+
+```bash
+npm run debug:windows -- 'http://localhost:5173/join?code=ECUQEFWQ'
+```
+
+ブラウザデータは `node_modules/.cache/quiz-world-browsers/` 内の `host`、`participant-a`、`participant-b` に保存する。
+再実行時も同じ参加記録を使い、普段のChromeの保存領域とは分離される。
+再実行すると各役の新しいウィンドウを開くため、同じ席の旧ウィンドウは多重接続として無効化される。
+新しい参加者としてやり直す場合は、デバッグ用Chromeを終了してから該当する役のディレクトリを削除する。
+`npm ci` などで `node_modules` を削除すると、この参加記録も消える。
+
+開発サーバーのURLを変更した場合は `DEBUG_BASE_URL` を指定する。
+
+```bash
+DEBUG_BASE_URL=http://localhost:5174 npm run debug:windows
+```
+
 ## コマンド
 
 | コマンド                | 内容                                                     |
 | ----------------------- | -------------------------------------------------------- |
 | `npm run dev`           | DynamoDB Local + Socket サーバー + Vite をまとめて起動   |
 | `npm run dev:server`    | Socket サーバーを watch モードで起動                     |
+| `npm run debug:windows` | 独立した3人分のChromeウィンドウを開く（macOS）           |
 | `npm run dev:web`       | Vite 開発サーバーを起動（http://localhost:5173）         |
 | `npm run db:up`         | DynamoDB Local を起動（Docker Compose）                  |
 | `npm run db:down`       | DynamoDB Local を停止                                    |
