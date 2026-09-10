@@ -53,6 +53,8 @@ export type RoomRegistry = {
   release: (tournamentId: string) => void;
   /** Every room currently held, for snapshotting and for shutting down cleanly. */
   ownedTournamentIds: () => readonly string[];
+  /** Observes committed changes synchronously; listeners only enqueue persistence work. */
+  subscribe: (listener: (state: InternalRoomState) => void) => () => void;
 };
 
 export type RoomRegistryOptions = {
@@ -62,6 +64,7 @@ export type RoomRegistryOptions = {
 
 export function createRoomRegistry(options: RoomRegistryOptions): RoomRegistry {
   const rooms = new Map<string, InternalRoomState>();
+  const listeners = new Set<(state: InternalRoomState) => void>();
 
   const createHandle = (tournamentId: string): RoomHandle => {
     const requireOwned = (): InternalRoomState => {
@@ -82,6 +85,7 @@ export function createRoomRegistry(options: RoomRegistryOptions): RoomRegistry {
         }
         const stamped = { ...result.state, updatedAt: options.now() };
         rooms.set(tournamentId, stamped);
+        for (const listener of listeners) listener(stamped);
         return { ok: true, state: stamped };
       },
     };
@@ -91,6 +95,7 @@ export function createRoomRegistry(options: RoomRegistryOptions): RoomRegistry {
     claim: (tournamentId, initialState) => {
       if (!rooms.has(tournamentId)) {
         rooms.set(tournamentId, initialState);
+        for (const listener of listeners) listener(initialState);
       }
       return createHandle(tournamentId);
     },
@@ -99,5 +104,11 @@ export function createRoomRegistry(options: RoomRegistryOptions): RoomRegistry {
       rooms.delete(tournamentId);
     },
     ownedTournamentIds: () => [...rooms.keys()],
+    subscribe: (listener) => {
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
+      };
+    },
   };
 }

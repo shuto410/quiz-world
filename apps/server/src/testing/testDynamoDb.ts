@@ -21,6 +21,7 @@ export type TestDynamoDb = {
   client: DynamoDBClient;
   documentClient: DynamoDBDocumentClient;
   tournamentsTable: string;
+  snapshotsTable: string;
   stop: () => Promise<void>;
 };
 
@@ -47,12 +48,14 @@ export async function startTestDynamoDb(): Promise<TestDynamoDb> {
   const documentClient = createDocumentClient(client);
   const tournamentsTable = 'test-tournaments';
 
-  await ensureTables(client, { tournaments: tournamentsTable });
+  const snapshotsTable = 'test-room-snapshots';
+  await ensureTables(client, { tournaments: tournamentsTable, snapshots: snapshotsTable });
 
   return {
     client,
     documentClient,
     tournamentsTable,
+    snapshotsTable,
     stop: async () => {
       documentClient.destroy();
       await new Promise<void>((resolve, reject) => {

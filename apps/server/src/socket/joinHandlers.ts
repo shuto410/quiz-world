@@ -29,6 +29,7 @@ import {
 import { accept, reject } from '../domain/transition';
 import { isRecord } from '../guards';
 import type { Logger } from '../logger';
+import type { SnapshotLifecycle } from '../snapshots/lifecycle';
 import type { RoomRegistry } from '../rooms/roomRegistry';
 import { hashHostToken } from '../tournaments/hostToken';
 import type { TournamentRepository } from '../tournaments/repository';
@@ -47,6 +48,7 @@ export type JoinHandlerDependencies = {
   connections: Connections;
   io: SocketServer;
   registry: RoomRegistry;
+  persistence?: SnapshotLifecycle;
   repository: TournamentRepository;
   newParticipantId: () => string;
   now: () => number;
@@ -124,6 +126,7 @@ async function handleHostJoin(
 
     // A closed tournament needs an existing room; never resurrect an empty playing room.
     if (
+      dependencies.persistence === undefined &&
       record.status === 'closed' &&
       dependencies.registry.find(parsed.tournamentId) === undefined
     ) {
@@ -132,10 +135,19 @@ async function handleHostJoin(
     }
 
     const { registry, now, newParticipantId, io } = dependencies;
-    const handle = registry.claim(
-      parsed.tournamentId,
-      createInitialRoomState(parsed.tournamentId, now()),
-    );
+    const handle =
+      dependencies.persistence === undefined
+        ? registry.claim(parsed.tournamentId, createInitialRoomState(parsed.tournamentId, now()))
+        : await dependencies.persistence.load(parsed.tournamentId);
+    if (!socket.connected) return;
+    if (
+      handle === undefined ||
+      dependencies.persistence?.isClosing(parsed.tournamentId) === true ||
+      registry.find(parsed.tournamentId) === undefined
+    ) {
+      ack(failure('TOURNAMENT_NOT_JOINABLE'));
+      return;
+    }
 
     let joined: { participantId: string; isReconnect: boolean } | undefined;
     const transition = handle.update((current) => {
@@ -213,6 +225,7 @@ async function handleParticipantJoin(
     }
 
     if (
+      dependencies.persistence === undefined &&
       record.status === 'closed' &&
       dependencies.registry.find(parsed.tournamentId) === undefined
     ) {
@@ -221,10 +234,19 @@ async function handleParticipantJoin(
     }
 
     const { registry, now, newParticipantId, io } = dependencies;
-    const handle = registry.claim(
-      parsed.tournamentId,
-      createInitialRoomState(parsed.tournamentId, now()),
-    );
+    const handle =
+      dependencies.persistence === undefined
+        ? registry.claim(parsed.tournamentId, createInitialRoomState(parsed.tournamentId, now()))
+        : await dependencies.persistence.load(parsed.tournamentId);
+    if (!socket.connected) return;
+    if (
+      handle === undefined ||
+      dependencies.persistence?.isClosing(parsed.tournamentId) === true ||
+      registry.find(parsed.tournamentId) === undefined
+    ) {
+      ack(failure('TOURNAMENT_NOT_JOINABLE'));
+      return;
+    }
 
     let joined: { participantId: string; isReconnect: boolean } | undefined;
     const transition = handle.update((current) => {

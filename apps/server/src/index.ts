@@ -12,7 +12,8 @@
 import { randomBytes, randomUUID } from 'node:crypto';
 import { loadConfig } from './config';
 import { createDocumentClient, createDynamoDbClient } from './db/client';
-import { ensureTables } from './db/tables';
+import { ensureTables, ensureSnapshotTtl } from './db/tables';
+import { createDynamoSnapshotRepository } from './snapshots/dynamoRepository';
 import { createLogger } from './logger';
 import { createRoomRegistry } from './rooms/roomRegistry';
 import { createServer, listen, shutdown } from './server';
@@ -32,13 +33,22 @@ const dynamoDbClient = createDynamoDbClient({
  * `PersistentStack`, and the task role is not expected to be allowed to create them.
  */
 if (config.dynamoDbEndpoint !== undefined) {
-  await ensureTables(dynamoDbClient, { tournaments: config.tournamentsTable });
+  await ensureTables(dynamoDbClient, {
+    tournaments: config.tournamentsTable,
+    snapshots: config.snapshotsTable,
+  });
+  await ensureSnapshotTtl(dynamoDbClient, config.snapshotsTable);
   logger.info('local tables ready', { endpoint: config.dynamoDbEndpoint });
 }
 
 const server = createServer({
   logger,
   registry,
+  snapshots: createDynamoSnapshotRepository({
+    client: createDocumentClient(dynamoDbClient),
+    tableName: config.snapshotsTable,
+    now: () => Date.now(),
+  }),
   repository: createDynamoTournamentRepository({
     client: createDocumentClient(dynamoDbClient),
     tableName: config.tournamentsTable,

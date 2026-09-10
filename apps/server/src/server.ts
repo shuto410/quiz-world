@@ -14,6 +14,8 @@ import { createServer as createHttpServer, type Server as HttpServer } from 'nod
 import { Server as SocketIoServer } from 'socket.io';
 import type { AppDependencies } from './app';
 import { createApp } from './app';
+import { createSnapshotLifecycle, type SnapshotLifecycle } from './snapshots/lifecycle';
+import type { SnapshotRepository } from './snapshots/repository';
 import type { RoomRegistry } from './rooms/roomRegistry';
 import { registerAnswerHandlers } from './socket/answerHandlers';
 import type { SocketServer } from './socket/broadcast';
@@ -27,9 +29,11 @@ import { registerJudgeHandlers } from './socket/judgeHandlers';
 export type ServerDependencies = AppDependencies & {
   /**
    * Owned here so handlers never reach for a module-level singleton. The same registry is
-   * what snapshot recovery (later) will rehydrate into.
+   * what snapshot recovery rehydrates into.
    */
   registry: RoomRegistry;
+  /** Durable recovery storage; omitted only by tests that exercise transport in isolation. */
+  snapshots?: SnapshotRepository;
   /** Fresh participant ids for first-time joins. Injected so tests can pin them. */
   newParticipantId: () => string;
   /** Fresh buzz-session ids when the first press of a round opens one. */
@@ -39,6 +43,7 @@ export type ServerDependencies = AppDependencies & {
 export type CreatedServer = {
   httpServer: HttpServer;
   io: SocketServer;
+  persistence?: SnapshotLifecycle;
 };
 
 export function createServer(dependencies: ServerDependencies): CreatedServer {
@@ -47,6 +52,16 @@ export function createServer(dependencies: ServerDependencies): CreatedServer {
   const io: SocketServer = new SocketIoServer(httpServer);
 
   const connections = createConnections();
+  const persistence =
+    dependencies.snapshots === undefined
+      ? undefined
+      : createSnapshotLifecycle({
+          registry,
+          snapshots: dependencies.snapshots,
+          repository,
+          logger,
+          now,
+        });
 
   io.on('connection', (socket) => {
     const connectionLogger = logger.child({ socketId: socket.id });
@@ -57,6 +72,7 @@ export function createServer(dependencies: ServerDependencies): CreatedServer {
       io,
       registry,
       repository,
+      persistence,
       newParticipantId,
       now,
       logger: connectionLogger,
@@ -87,6 +103,7 @@ export function createServer(dependencies: ServerDependencies): CreatedServer {
       io,
       registry,
       repository,
+      persistence,
       now,
       logger: connectionLogger,
     });
@@ -96,7 +113,7 @@ export function createServer(dependencies: ServerDependencies): CreatedServer {
     });
   });
 
-  return { httpServer, io };
+  return { httpServer, io, persistence };
 }
 
 /** Starts listening and resolves once the port is bound. */
@@ -113,7 +130,8 @@ export async function listen(httpServer: HttpServer, port: number): Promise<void
  * ECS sends SIGTERM and then kills the task, so disconnecting sockets explicitly is what
  * lets clients start reconnecting immediately instead of waiting for a timeout.
  */
-export async function shutdown({ io }: CreatedServer): Promise<void> {
+export async function shutdown({ io, persistence }: CreatedServer): Promise<void> {
   // Closing the Socket.io server also closes the HTTP server it was attached to.
   await io.close();
+  await persistence?.shutdown();
 }
