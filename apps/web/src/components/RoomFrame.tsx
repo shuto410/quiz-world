@@ -6,6 +6,7 @@ import { Link } from 'react-router-dom';
 type RoomFrameProps = {
   title: string;
   connectionLabel: string;
+  reconnecting?: boolean;
   sidebar?: ReactNode;
   roster: ReactNode;
   actions: ReactNode;
@@ -15,6 +16,7 @@ type RoomFrameProps = {
 export function RoomFrame({
   title,
   connectionLabel,
+  reconnecting = false,
   sidebar,
   roster,
   actions,
@@ -35,8 +37,13 @@ export function RoomFrame({
       <main className="qw-stage">
         <header className="qw-stage__header">
           <h1>{title}</h1>
-          <span className="qw-connection">{connectionLabel}</span>
+          <span className="qw-connection">{reconnecting ? '再接続中' : connectionLabel}</span>
         </header>
+        {reconnecting ? (
+          <div className="qw-connection-banner" role="alert">
+            {connectionLabel}
+          </div>
+        ) : null}
         <div className="qw-stage__content">{children}</div>
       </main>
       <aside className="qw-roster">

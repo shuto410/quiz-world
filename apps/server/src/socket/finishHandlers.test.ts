@@ -10,7 +10,7 @@
  * are the last thing anyone sees and nothing later can correct them.
  */
 
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   nextError,
   nextRoomState,
@@ -197,6 +197,28 @@ describe('finish handlers', () => {
     room.first.emit('room:close', {});
     await expect(participantError).resolves.toMatchObject({ code: 'NOT_HOST' });
     expect(room.first.connected).toBe(true);
+  });
+
+  it('keeps the finished room usable when closing storage fails and retries on close', async () => {
+    const { seedRoom, dependencies } = await start();
+    const room = await seedRoom('DB障害大会');
+    const update = vi.spyOn(dependencies.repository, 'updateStatus');
+    update.mockRejectedValueOnce(new Error('finish write failed'));
+    const finished = nextRoomStateEverywhere(room);
+    room.host.emit('tournament:finish', {});
+    await finished;
+    update.mockRejectedValueOnce(new Error('close write failed'));
+    const error = nextError(room.host);
+    room.host.emit('room:close', {});
+    await expect(error).resolves.toMatchObject({ code: 'INTERNAL_ERROR' });
+    expect(room.host.connected).toBe(true);
+    expect(room.first.connected).toBe(true);
+    expect(dependencies.repository.stored()[0]?.status).toBe('active');
+    const disconnected = nextDisconnect(room.first);
+    room.host.emit('room:close', {});
+    await disconnected;
+    expect(update).toHaveBeenCalledTimes(3);
+    expect(dependencies.repository.stored()[0]?.status).toBe('closed');
   });
 
   it('refuses both operations from a connection that never joined', async () => {

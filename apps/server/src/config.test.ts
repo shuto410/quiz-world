@@ -17,6 +17,7 @@ const defaults = {
   awsRegion: 'ap-northeast-1',
   dynamoDbEndpoint: undefined,
   tournamentsTable: 'quiz-world-tournaments',
+  snapshotsTable: 'quiz-world-room-snapshots',
   publicBaseUrl: 'http://localhost:5173',
 };
 
@@ -33,6 +34,7 @@ describe('loadConfig', () => {
         AWS_REGION: '',
         DYNAMODB_ENDPOINT: '',
         TOURNAMENTS_TABLE: '',
+        ROOM_SNAPSHOTS_TABLE: '',
         PUBLIC_BASE_URL: '',
       }),
     ).toEqual(defaults);
@@ -46,6 +48,7 @@ describe('loadConfig', () => {
         AWS_REGION: 'us-east-1',
         DYNAMODB_ENDPOINT: 'http://localhost:8000',
         TOURNAMENTS_TABLE: 'staging-tournaments',
+        ROOM_SNAPSHOTS_TABLE: 'staging-snapshots',
         PUBLIC_BASE_URL: 'https://quiz.example.com',
       }),
     ).toEqual({
@@ -54,6 +57,7 @@ describe('loadConfig', () => {
       awsRegion: 'us-east-1',
       dynamoDbEndpoint: 'http://localhost:8000',
       tournamentsTable: 'staging-tournaments',
+      snapshotsTable: 'staging-snapshots',
       publicBaseUrl: 'https://quiz.example.com',
     });
   });

@@ -71,3 +71,12 @@ export function loadInviteDetails(tournamentId: string): StoredInviteDetails | u
   }
   return undefined;
 }
+
+/** Persists the authoritative display name alongside the seat for reconnect fallback. */
+export function saveParticipantName(tournamentId: string, name: string): void {
+  window.localStorage.setItem(`qw:participantName:${tournamentId}`, name);
+}
+
+export function loadParticipantName(tournamentId: string): string | undefined {
+  return window.localStorage.getItem(`qw:participantName:${tournamentId}`) ?? undefined;
+}

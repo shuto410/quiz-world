@@ -46,6 +46,7 @@ export function JoinPage() {
     const validated = validateInviteCode(codeFromUrl);
     if (!validated.ok) {
       setCodeError(validated.message);
+      toast.show(validated.message, 'error');
       setResolved(undefined);
       return;
     }
@@ -59,6 +60,7 @@ export function JoinPage() {
       setResolving(false);
       if (!result.ok) {
         setCodeError(result.message);
+        toast.show(result.message, 'error');
         setResolved(undefined);
         return;
       }
@@ -74,13 +76,14 @@ export function JoinPage() {
     return () => {
       cancelled = true;
     };
-  }, [codeFromUrl]);
+  }, [codeFromUrl, toast.show]);
 
   function onSubmitCode(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const validated = validateInviteCode(codeInput);
     if (!validated.ok) {
       setCodeError(validated.message);
+      toast.show(validated.message, 'error');
       return;
     }
     setParams({ code: validated.value });
@@ -95,6 +98,7 @@ export function JoinPage() {
     const validated = validateDisplayName(displayName);
     if (!validated.ok) {
       setNameError(validated.message);
+      toast.show(validated.message, 'error');
       return;
     }
 

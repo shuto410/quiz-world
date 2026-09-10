@@ -46,7 +46,10 @@ export function createDynamoTournamentRepository({
     },
 
     async findById(id) {
-      const { Item } = await client.send(new GetCommand({ TableName: tableName, Key: { id } }));
+      // Recovery must observe a completed close before deciding whether to seed a room.
+      const { Item } = await client.send(
+        new GetCommand({ TableName: tableName, Key: { id }, ConsistentRead: true }),
+      );
 
       return Item === undefined ? undefined : parseTournamentRecord(Item);
     },

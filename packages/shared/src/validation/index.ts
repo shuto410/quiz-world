@@ -4,3 +4,4 @@
 
 export * from './fields';
 export * from './inviteCode';
+export * from './roomState';

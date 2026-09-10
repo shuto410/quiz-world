@@ -3,7 +3,7 @@
  *
  * `tournament:finish` is the one gameplay operation with a database write behind it. The
  * order is deliberate: the room finishes first and is broadcast, and only then is the
- * tournament marked closed in DynamoDB. The memory state is what the game is played against,
+ * finished snapshot flushed and the tournament marked closed in DynamoDB. The memory state is what the game is played against,
  * so a database hiccup must not be able to refuse the host's decision to end the tournament.
  *
  * The cost of that order is a window where the room has finished and the stored status still
@@ -19,6 +19,7 @@ import type { ClientToServerEvents, ServerToClientEvents } from '@quiz-world/sha
 import type { Socket } from 'socket.io';
 import { applyTournamentFinish, checkRoomClose } from '../domain/finish';
 import type { Logger } from '../logger';
+import type { SnapshotLifecycle } from '../snapshots/lifecycle';
 import type { RoomRegistry } from '../rooms/roomRegistry';
 import type { TournamentRepository } from '../tournaments/repository';
 import {
@@ -33,6 +34,7 @@ import { readSession, type SocketSession } from './session';
 export type FinishHandlerDependencies = {
   io: SocketServer;
   registry: RoomRegistry;
+  persistence?: SnapshotLifecycle;
   repository: TournamentRepository;
   now: () => number;
   logger: Logger;
@@ -50,7 +52,7 @@ export function registerFinishHandlers(
   });
 
   socket.on('room:close', () => {
-    handleRoomClose(socket, dependencies);
+    void handleRoomClose(socket, dependencies);
   });
 }
 
@@ -85,6 +87,7 @@ async function handleFinish(
   broadcastRoomState(dependencies.io, handle);
 
   try {
+    await dependencies.persistence?.flush(session.tournamentId);
     await dependencies.repository.updateStatus(session.tournamentId, 'closed', dependencies.now());
   } catch (error: unknown) {
     // The tournament is over either way. Logged rather than surfaced, because there is
@@ -96,7 +99,10 @@ async function handleFinish(
   }
 }
 
-function handleRoomClose(socket: AppSocket, dependencies: FinishHandlerDependencies): void {
+async function handleRoomClose(
+  socket: AppSocket,
+  dependencies: FinishHandlerDependencies,
+): Promise<void> {
   const session = requireSession(socket);
   if (session === undefined) {
     return;
@@ -116,6 +122,22 @@ function handleRoomClose(socket: AppSocket, dependencies: FinishHandlerDependenc
     return;
   }
 
+  try {
+    await dependencies.repository.updateStatus(session.tournamentId, 'closed', dependencies.now());
+    await dependencies.persistence?.remove(session.tournamentId);
+  } catch (error: unknown) {
+    dependencies.logger.error('failed to close room', {
+      error,
+      tournamentId: session.tournamentId,
+    });
+    emitError(socket, 'INTERNAL_ERROR');
+    return;
+  }
+
+  // Another close may have completed while storage was pending.
+  if (registry.find(session.tournamentId) === undefined) return;
+
+  registry.release(session.tournamentId);
   const channels = [hostChannel(session.tournamentId), participantChannel(session.tournamentId)];
   for (const channel of channels) {
     io.to(channel).emit('room:closed', { reason: 'hostClosed' });
@@ -124,7 +146,6 @@ function handleRoomClose(socket: AppSocket, dependencies: FinishHandlerDependenc
     void io.in(channel).disconnectSockets();
   }
 
-  registry.release(session.tournamentId);
   dependencies.logger.info('room closed by host', { tournamentId: session.tournamentId });
 }
 

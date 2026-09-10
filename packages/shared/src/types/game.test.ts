@@ -42,6 +42,7 @@ const roomState: Required<InternalRoomState> = {
   status: 'result',
   statusBeforePause: 'answering',
   pausedReason: 'hostDisconnected',
+  initialHostId: 'host-1',
   hostId: 'participant-1',
   hostOnline: true,
   participants: [participant],

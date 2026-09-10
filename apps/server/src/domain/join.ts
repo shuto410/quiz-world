@@ -66,6 +66,9 @@ export function applyHostJoin(
   current: InternalRoomState,
   input: { newParticipantId: string; now: number },
 ): JoinOutcome {
+  if (current.initialHostId !== undefined && current.initialHostId !== current.hostId) {
+    return { ok: false, code: 'UNAUTHORIZED' };
+  }
   const existingHost = findParticipant(current, current.hostId);
 
   if (existingHost !== undefined) {
@@ -96,6 +99,7 @@ export function applyHostJoin(
     state: {
       ...current,
       hostId: host.id,
+      initialHostId: host.id,
       hostOnline: true,
       participants: [...current.participants, host],
       updatedAt: input.now,
@@ -123,10 +127,6 @@ export function applyParticipantJoin(
     tournamentStatus: TournamentStatus;
   },
 ): JoinOutcome {
-  if (input.tournamentStatus !== 'active') {
-    return { ok: false, code: 'TOURNAMENT_NOT_JOINABLE' };
-  }
-
   const claimed =
     input.claimedParticipantId === undefined
       ? undefined
@@ -142,7 +142,7 @@ export function applyParticipantJoin(
       participantId: claimed.id,
       isReconnect: true,
       state: {
-        ...current,
+        ...(current.hostId === claimed.id ? resumeHost(current, claimed.id, input.now) : current),
         participants: current.participants.map((participant) =>
           participant.id === claimed.id
             ? { ...participant, name: input.displayName, online: true }
@@ -157,7 +157,7 @@ export function applyParticipantJoin(
   // Checked against the room as well as the stored tournament: `tournament:finish` writes the
   // closed status to DynamoDB after the room has already finished, so a failed write must not
   // leave a finished room accepting newcomers through the invite code.
-  if (current.status === 'finished') {
+  if (current.status === 'finished' || input.tournamentStatus !== 'active') {
     return { ok: false, code: 'TOURNAMENT_NOT_JOINABLE' };
   }
 
@@ -207,6 +207,15 @@ export function applyLeave(
 
   return accept({
     ...current,
+    ...(current.hostId === participantId &&
+    current.status !== 'paused' &&
+    current.status !== 'finished'
+      ? {
+          status: 'paused' as const,
+          statusBeforePause: current.status,
+          pausedReason: 'hostDisconnected' as const,
+        }
+      : {}),
     participants: current.participants.map((participant) =>
       participant.id === participantId ? { ...participant, online: false } : participant,
     ),
@@ -224,7 +233,11 @@ function resumeHost(
     participant.id === hostParticipantId ? { ...participant, online: true } : participant,
   );
 
-  if (current.status === 'paused' && current.statusBeforePause !== undefined) {
+  if (
+    current.status === 'paused' &&
+    current.pausedReason === 'hostDisconnected' &&
+    current.statusBeforePause !== undefined
+  ) {
     const { statusBeforePause, pausedReason, ...rest } = current;
     return {
       ...rest,

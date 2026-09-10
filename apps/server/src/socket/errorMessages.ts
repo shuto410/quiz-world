@@ -19,6 +19,7 @@ export const SOCKET_ERROR_MESSAGES: Record<SocketErrorCode, string> = {
   INVALID_STATE: '現在の状態ではその操作はできません',
   NO_NEXT_RESPONDER: '次の回答者がいません',
   STALE_CONNECTION: '別の接続に引き継がれました',
+  RATE_LIMITED: '操作が多すぎます。少し待ってから再試行してください',
   INTERNAL_ERROR: 'サーバーエラーが発生しました',
 };
 

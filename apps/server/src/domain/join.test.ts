@@ -47,6 +47,7 @@ describe('applyHostJoin', () => {
       state: {
         ...current,
         hostId: 'host-1',
+        initialHostId: 'host-1',
         hostOnline: true,
         participants: [
           {
@@ -205,6 +206,28 @@ describe('applyParticipantJoin', () => {
     expect(applyParticipantJoin(current, baseInput)).toEqual({
       ok: false,
       code: 'TOURNAMENT_NOT_JOINABLE',
+    });
+  });
+
+  it('restores an existing seat even when the persisted tournament is closed', () => {
+    const current = createRoomStateFixture({
+      status: 'finished',
+      participants: [{ id: 'p', name: '太郎', online: false, score: 5, joinedAt: NOW }],
+    });
+    const outcome = applyParticipantJoin(current, {
+      ...baseInput,
+      displayName: '太郎',
+      claimedParticipantId: 'p',
+      tournamentStatus: 'closed',
+    });
+    expect(outcome).toMatchObject({
+      ok: true,
+      participantId: 'p',
+      isReconnect: true,
+      state: {
+        status: 'finished',
+        participants: [{ id: 'p', name: '太郎', score: 5, online: true }],
+      },
     });
   });
 

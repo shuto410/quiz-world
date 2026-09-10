@@ -14,6 +14,8 @@ import {
   saveHostToken,
   saveInviteDetails,
   saveParticipantId,
+  saveParticipantName,
+  loadParticipantName,
 } from './sessionKeys';
 
 afterEach(() => {
@@ -48,4 +50,12 @@ describe('sessionKeys', () => {
     });
     expect(loadInviteDetails('missing')).toBeUndefined();
   });
+});
+
+it('keeps reconnect names isolated by tournament', () => {
+  saveParticipantName('t1', '旧ホスト');
+  saveParticipantName('t2', '太郎');
+  expect(loadParticipantName('t1')).toBe('旧ホスト');
+  expect(loadParticipantName('t2')).toBe('太郎');
+  expect(loadParticipantName('t3')).toBeUndefined();
 });

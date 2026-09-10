@@ -12,6 +12,7 @@
  * TypeScript settings as the code it supports.
  */
 
+import type { RateLimitOverrides } from '../socket/rateLimit';
 import type { Server as HttpServer } from 'node:http';
 import type {
   ClientToServerEvents,
@@ -52,7 +53,12 @@ export type SocketTestHarness = {
   stop: () => Promise<void>;
 };
 
-export async function startSocketTestHarness(): Promise<SocketTestHarness> {
+/** Optional narrow limits and clock make middleware boundaries observable over real sockets. */
+type HarnessOptions = { rateLimits?: RateLimitOverrides; now?: () => number };
+
+export async function startSocketTestHarness(
+  options: HarnessOptions = {},
+): Promise<SocketTestHarness> {
   let participantSeq = 0;
   let buzzSessionSeq = 0;
   const dependencies = createTestAppDependencies();
@@ -67,7 +73,8 @@ export async function startSocketTestHarness(): Promise<SocketTestHarness> {
       buzzSessionSeq += 1;
       return `buzz-session-${buzzSessionSeq}`;
     },
-    now: () => TEST_NOW,
+    now: options.now ?? (() => TEST_NOW),
+    rateLimits: options.rateLimits,
   });
   await listen(server.httpServer, 0);
 

@@ -14,20 +14,12 @@
 
 import { useEffect, useMemo } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
-import { AnswerForm } from '../components/AnswerForm';
-import { RoomFrame } from '../components/RoomFrame';
-import { Button } from '../components/Button';
-import { BuzzOrderList } from '../components/BuzzOrderList';
-import { FinalResult } from '../components/FinalResult';
-import { LastResult } from '../components/LastResult';
-import { ParticipantList } from '../components/ParticipantList';
-import { SubmittedAnswer } from '../components/SubmittedAnswer';
+import { HostRoomView } from '../components/HostRoomView';
+import { ParticipantRoomView } from '../components/ParticipantRoomView';
 import { useToast } from '../components/Toast';
-import { canBuzz } from '../game/canBuzz';
-import { canSubmitAnswer } from '../game/canSubmitAnswer';
 import { useRoomSocket } from '../hooks/useRoomSocket';
 import { joinPath, ROUTE_PATHS } from '../routes';
-import { loadParticipantId } from '../storage/sessionKeys';
+import { loadParticipantId, loadParticipantName } from '../storage/sessionKeys';
 import type { PlayNavigationState } from './JoinPage';
 
 export function PlayPage() {
@@ -38,29 +30,21 @@ export function PlayPage() {
   const displayName = navState?.displayName;
 
   const joinRequest = useMemo(() => {
-    if (tournamentId === undefined || displayName === undefined) {
+    const savedName = tournamentId === undefined ? undefined : loadParticipantName(tournamentId);
+    if (tournamentId === undefined || (displayName === undefined && savedName === undefined)) {
       return undefined;
     }
     return {
       kind: 'participant' as const,
       tournamentId,
-      displayName,
+      displayName: savedName ?? displayName ?? '',
       participantId: loadParticipantId(tournamentId),
     };
   }, [tournamentId, displayName]);
 
-  const {
-    status,
-    roomState,
-    participantId,
-    errorMessage,
-    socketError,
-    clearSocketError,
-    leave,
-    buzz,
-    submitAnswer,
-    roomClosed,
-  } = useRoomSocket(joinRequest);
+  const connection = useRoomSocket(joinRequest);
+  const { status, roomState, participantId, errorMessage, socketError, clearSocketError } =
+    connection;
 
   useEffect(() => {
     if (socketError === undefined) {
@@ -69,29 +53,6 @@ export function PlayPage() {
     toast.show(socketError.message, 'error');
     clearSocketError();
   }, [socketError, clearSocketError, toast.show]);
-
-  const buzzEnabled =
-    status === 'joined' &&
-    canBuzz({
-      status: roomState?.status,
-      participantId,
-      hostId: roomState?.hostId,
-      buzzOrder: roomState?.buzzOrder,
-    });
-
-  const answerEnabled =
-    status === 'joined' &&
-    canSubmitAnswer({
-      status: roomState?.status,
-      participantId,
-      currentResponderId: roomState?.currentResponderId,
-    });
-
-  const connectionLabel = roomClosed
-    ? 'ホストがルームを閉じました'
-    : status === 'joined'
-      ? '接続中'
-      : '接続しています…';
 
   if (tournamentId === undefined) {
     return (
@@ -102,7 +63,7 @@ export function PlayPage() {
     );
   }
 
-  if (displayName === undefined) {
+  if (joinRequest === undefined) {
     return (
       <main className="app-shell">
         <h1>プレイ</h1>
@@ -126,103 +87,19 @@ export function PlayPage() {
     );
   }
 
+  if (
+    roomState !== undefined &&
+    participantId !== undefined &&
+    roomState.hostId === participantId
+  ) {
+    return <HostRoomView connection={connection} />;
+  }
   return (
-    <RoomFrame
-      title="プレイ"
-      connectionLabel={connectionLabel}
-      sidebar={<p className="qw-sidebar__identity">{displayName} として参加中</p>}
-      roster={
-        <section className="qw-room-section" aria-label="参加者一覧">
-          <h2>参加者</h2>
-          <ParticipantList
-            participants={roomState?.participants ?? []}
-            selfParticipantId={participantId}
-            hostId={roomState?.hostId}
-          />
-        </section>
+    <ParticipantRoomView
+      connection={connection}
+      displayName={
+        roomState?.participants.find((p) => p.id === participantId)?.name ?? joinRequest.displayName
       }
-      actions={
-        <div className="qw-room-actions">
-          <Button
-            type="button"
-            onClick={() => {
-              leave();
-              toast.show('退出しました');
-            }}
-          >
-            退出
-          </Button>
-        </div>
-      }
-    >
-      <div className="qw-stage-intro">
-        <h2>
-          {roomState?.status === 'finished'
-            ? '大会終了'
-            : answerEnabled
-              ? 'あなたの回答番です。'
-              : buzzEnabled
-                ? '早押し受付中'
-                : 'ホストの進行を待っています'}
-        </h2>
-        <p>
-          {roomState?.status === 'finished'
-            ? '最終スコアと順位をご確認ください。'
-            : '回答権を得たら、声またはテキストで回答してください。'}
-        </p>
-      </div>
-
-      {roomState?.status === 'finished' ? (
-        <section className="qw-room-section" aria-label="最終結果">
-          <h2>最終結果</h2>
-          <FinalResult participants={roomState.participants} hostId={roomState.hostId} />
-        </section>
-      ) : null}
-
-      {roomState?.status === 'result' ? (
-        <section className="qw-room-section" aria-label="判定結果">
-          <h2>判定</h2>
-          <LastResult result={roomState.lastResult} participants={roomState.participants} />
-          <SubmittedAnswer
-            answer={roomState.currentSubmittedAnswer}
-            participants={roomState.participants}
-          />
-        </section>
-      ) : null}
-
-      {roomState?.status !== 'finished' ? (
-        <div className="qw-buzz-bar">
-          <AnswerForm
-            disabled={!answerEnabled}
-            onSubmit={(answerText) => {
-              submitAnswer(answerText);
-              toast.show('回答を送信しました');
-            }}
-          />
-          <Button
-            type="button"
-            disabled={!buzzEnabled}
-            onClick={() => {
-              buzz();
-            }}
-          >
-            早押し
-          </Button>
-          {!buzzEnabled && status === 'joined' ? (
-            <p className="qw-buzz-bar__hint">いまは押せません</p>
-          ) : null}
-        </div>
-      ) : null}
-      {roomState?.status !== 'finished' ? (
-        <section className="qw-room-section" aria-label="早押し順">
-          <h2>早押し順</h2>
-          <BuzzOrderList
-            buzzOrder={roomState?.buzzOrder ?? []}
-            participants={roomState?.participants ?? []}
-            currentResponderId={roomState?.currentResponderId}
-          />
-        </section>
-      ) : null}
-    </RoomFrame>
+    />
   );
 }

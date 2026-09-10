@@ -1,0 +1,318 @@
+/** @vitest-environment jsdom
+ * Verifies handshake ordering and reconnect safety without relying on React render timing.
+ */
+import { act, cleanup, renderHook } from '@testing-library/react';
+import { afterEach, expect, it, vi } from 'vitest';
+import type { JoinResponse, RoomStateEvent, RenameResponse } from '@quiz-world/shared';
+import {
+  saveParticipantId,
+  saveParticipantName,
+  loadParticipantName,
+} from '../storage/sessionKeys';
+import { createSocket } from '../socket/client';
+import { useRoomSocket, type RoomJoinRequest } from './useRoomSocket';
+
+vi.mock('../socket/client', () => ({ createSocket: vi.fn() }));
+afterEach(() => {
+  cleanup();
+  localStorage.clear();
+  vi.clearAllMocks();
+});
+
+function setup(
+  request: RoomJoinRequest = { kind: 'participant', tournamentId: 't1', displayName: '太郎' },
+) {
+  const listeners = new Map<string, Set<(...args: never[]) => void>>();
+  const socket = {
+    connected: false,
+    on: vi.fn((event: string, handler: (...args: never[]) => void) => {
+      const handlers = listeners.get(event) ?? new Set();
+      handlers.add(handler);
+      listeners.set(event, handlers);
+    }),
+    off: vi.fn((event: string, handler: (...args: never[]) => void) =>
+      listeners.get(event)?.delete(handler),
+    ),
+    connect: vi.fn(),
+    disconnect: vi.fn(),
+    emit: vi.fn<(...args: unknown[]) => void>(),
+  };
+  vi.mocked(createSocket).mockReturnValue(socket as unknown as ReturnType<typeof createSocket>);
+  const fire = (event: string, ...args: unknown[]) =>
+    act(() => {
+      if (event === 'connect') socket.connected = true;
+      if (event === 'disconnect') socket.connected = false;
+      for (const handler of listeners.get(event) ?? []) handler(...(args as never[]));
+    });
+  const ack = (response: JoinResponse) =>
+    act(() => {
+      const callback = socket.emit.mock.lastCall?.[2] as (response: JoinResponse) => void;
+      callback(response);
+    });
+  const hook = renderHook(() => useRoomSocket(request));
+  return { ...hook, socket, fire, ack };
+}
+const success: JoinResponse = {
+  ok: true,
+  role: 'participant',
+  participantId: 'p1',
+  isReconnect: false,
+};
+const state: RoomStateEvent = {
+  tournamentId: 't1',
+  status: 'idle',
+  hostId: 'h',
+  hostOnline: true,
+  participants: [],
+  buzzOrder: [],
+  updatedAt: 1,
+};
+
+it('requires ack and fresh state on every connection and reuses the issued id', () => {
+  const { result, socket, fire, ack } = setup();
+  fire('connect');
+  ack(success);
+  expect(result.current.status).toBe('connecting');
+  fire('room:state', state);
+  expect(result.current.status).toBe('joined');
+  fire('disconnect');
+  expect(result.current.roomState).toEqual(state);
+  expect(result.current.status).toBe('connecting');
+  const count = socket.emit.mock.calls.length;
+  act(() => {
+    result.current.buzz();
+    result.current.finishTournament();
+    result.current.closeRoom();
+    result.current.submitAnswer('回答');
+    result.current.resetGame();
+  });
+  expect(socket.emit).toHaveBeenCalledTimes(count);
+  fire('connect');
+  expect(socket.emit.mock.lastCall?.[1]).toMatchObject({ participantId: 'p1' });
+  fire('room:state', { ...state, updatedAt: 2 });
+  expect(result.current.status).toBe('connecting');
+  ack(success);
+  expect(result.current.status).toBe('joined');
+});
+
+it('keeps a dropped handshake ack from enabling the next connection', () => {
+  const { result, socket, fire, ack } = setup();
+  fire('connect');
+  const oldAck = socket.emit.mock.lastCall?.[2] as (response: JoinResponse) => void;
+  fire('disconnect');
+  fire('connect');
+  fire('room:state', state);
+  act(() => oldAck(success));
+  expect(result.current.status).toBe('connecting');
+  ack(success);
+  expect(result.current.status).toBe('joined');
+});
+
+it.each(['session:invalidated', 'room:closed'])('stops sending after %s', (event) => {
+  const { result, socket, fire, ack } = setup();
+  fire('connect');
+  ack(success);
+  fire('room:state', state);
+  fire(event, {});
+  const count = socket.emit.mock.calls.length;
+  act(() => result.current.buzz());
+  expect(socket.emit).toHaveBeenCalledTimes(count);
+  expect(socket.disconnect).toHaveBeenCalled();
+  expect(result.current.status).not.toBe('joined');
+});
+
+it('rejoins hosts and stops all gameplay sends until the new handshake completes', () => {
+  const { result, socket, fire, ack } = setup({
+    kind: 'host',
+    tournamentId: 't1',
+    hostToken: 'secret',
+  });
+  fire('connect');
+  expect(socket.emit.mock.lastCall?.slice(0, 2)).toEqual([
+    'tournament:host-join',
+    { tournamentId: 't1', hostToken: 'secret' },
+  ]);
+  ack(success);
+  fire('room:state', state);
+  act(() => {
+    result.current.judge({
+      participantId: 'p1',
+      isCorrect: true,
+      scoreDelta: 1,
+      nextAction: 'showResult',
+    });
+    result.current.resetGame();
+    result.current.finishTournament();
+    result.current.closeRoom();
+    result.current.submitAnswer('回答');
+  });
+  expect(socket.emit.mock.calls.map((call) => call[0])).toEqual([
+    'tournament:host-join',
+    'judge:submit',
+    'game:reset',
+    'tournament:finish',
+    'room:close',
+    'answer:submit',
+  ]);
+  fire('disconnect');
+  fire('connect_error');
+  expect(result.current.roomState).toEqual(state);
+  expect(result.current.errorMessage).toBe('サーバーに再接続しています…');
+  fire('connect');
+  expect(socket.emit.mock.lastCall?.[0]).toBe('tournament:host-join');
+});
+
+it('surfaces a rejected rejoin and never enables gameplay from a late state', () => {
+  const { result, socket, fire, ack } = setup();
+  fire('connect');
+  ack({ ok: false, code: 'TOURNAMENT_NOT_JOINABLE', message: '参加できません' });
+  fire('room:state', state);
+  expect(result.current.status).toBe('error');
+  expect(result.current.errorMessage).toBe('参加できません');
+  expect(socket.disconnect).toHaveBeenCalledOnce();
+});
+
+it('forwards server errors and makes leaving terminal for gameplay', () => {
+  const { result, socket, fire, ack } = setup();
+  fire('connect');
+  ack(success);
+  fire('room:state', state);
+  fire('error', { code: 'INVALID_STATE', message: '状態エラー' });
+  expect(result.current.socketError?.message).toBe('状態エラー');
+  act(() => result.current.clearSocketError());
+  expect(result.current.socketError).toBeUndefined();
+  act(() => result.current.leave());
+  expect(result.current.errorMessage).toBe('退出しました');
+  expect(socket.disconnect).toHaveBeenCalledOnce();
+  const count = socket.emit.mock.calls.length;
+  act(() => result.current.buzz());
+  expect(socket.emit).toHaveBeenCalledTimes(count);
+});
+
+it('rejoins an original host as the saved participant after authority moves elsewhere', () => {
+  saveParticipantId('t1', 'p1');
+  saveParticipantName('t1', 'ホスト');
+  const { result, socket, fire, ack } = setup({
+    kind: 'host',
+    tournamentId: 't1',
+    hostToken: 'original',
+  });
+  fire('connect');
+  ack({ ok: false, code: 'UNAUTHORIZED', message: '引き継ぎ済み' });
+  expect(socket.emit.mock.lastCall?.slice(0, 2)).toEqual([
+    'tournament:join',
+    { tournamentId: 't1', participantId: 'p1', displayName: 'ホスト' },
+  ]);
+  ack(success);
+  fire('room:state', {
+    ...state,
+    hostId: 'new-host',
+    participants: [{ id: 'p1', name: '元ホスト', score: 0, online: true, joinedAt: 1 }],
+  });
+  expect(result.current.status).toBe('joined');
+  expect(loadParticipantName('t1')).toBe('元ホスト');
+  fire('disconnect');
+  fire('connect');
+  expect(socket.emit.mock.lastCall?.slice(0, 2)).toEqual([
+    'tournament:join',
+    { tournamentId: 't1', participantId: 'p1', displayName: '元ホスト' },
+  ]);
+});
+
+it('claims only while synchronized and reports a lost takeover race', () => {
+  const { result, socket, fire, ack } = setup();
+  act(() => result.current.claimHost());
+  expect(socket.emit).not.toHaveBeenCalled();
+  fire('connect');
+  ack(success);
+  fire('room:state', {
+    ...state,
+    status: 'paused',
+    pausedReason: 'hostDisconnected',
+    statusBeforePause: 'idle',
+  });
+  act(() => result.current.claimHost());
+  expect(socket.emit.mock.lastCall?.slice(0, 2)).toEqual(['host:claim', {}]);
+  const callback = socket.emit.mock.lastCall?.[2] as (response: {
+    ok: false;
+    code: 'INVALID_STATE';
+    message: string;
+  }) => void;
+  act(() => callback({ ok: false, code: 'INVALID_STATE', message: '他の人が引き継ぎました' }));
+  expect(result.current.socketError?.message).toBe('他の人が引き継ぎました');
+});
+
+it('only sends one rename when ready, reports rejection, and cancels pending work on disconnect', async () => {
+  const { result, socket, fire, ack } = setup();
+  expect(await result.current.rename('名前')).toBe(false);
+  fire('connect');
+  ack(success);
+  fire('room:state', state);
+  let pending: Promise<boolean> = Promise.resolve(false);
+  act(() => {
+    pending = result.current.rename('名前');
+  });
+  expect(result.current.renaming).toBe(true);
+  expect(await result.current.rename('連打')).toBe(false);
+  const callback = socket.emit.mock.lastCall?.[2] as (response: RenameResponse) => void;
+  act(() =>
+    callback({
+      ok: false,
+      code: 'DUPLICATE_DISPLAY_NAME',
+      message: 'その表示名は既に使われています',
+    }),
+  );
+  expect(await pending).toBe(false);
+  expect(result.current.socketError?.code).toBe('DUPLICATE_DISPLAY_NAME');
+  act(() => {
+    pending = result.current.rename('次郎');
+  });
+  const stale = socket.emit.mock.lastCall?.[2] as typeof callback;
+  fire('disconnect');
+  expect(await pending).toBe(false);
+  expect(result.current.renaming).toBe(false);
+  fire('connect');
+  ack(success);
+  fire('room:state', state);
+  act(() => stale({ ok: true, displayName: '古い名前' }));
+  expect(loadParticipantName('t1')).not.toBe('古い名前');
+});
+it('remembers an acknowledged rename before the broadcast and uses it for reconnect', async () => {
+  const { result, socket, fire, ack } = setup();
+  fire('connect');
+  ack(success);
+  fire('room:state', state);
+  let pending: Promise<boolean> = Promise.resolve(false);
+  act(() => {
+    pending = result.current.rename('次郎');
+  });
+  const callback = socket.emit.mock.lastCall?.[2] as (response: RenameResponse) => void;
+  act(() => callback({ ok: true, displayName: '次郎' }));
+  expect(await pending).toBe(true);
+  expect(loadParticipantName('t1')).toBe('次郎');
+  expect(result.current.roomState).toEqual(state);
+  fire('disconnect');
+  fire('connect');
+  expect(socket.emit.mock.lastCall?.[1]).toMatchObject({ displayName: '次郎' });
+});
+it('times out a lost rename acknowledgement so the user can retry', async () => {
+  vi.useFakeTimers();
+  try {
+    const { result, fire, ack } = setup();
+    fire('connect');
+    ack(success);
+    fire('room:state', state);
+    let pending: Promise<boolean> = Promise.resolve(false);
+    act(() => {
+      pending = result.current.rename('名前');
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5000);
+    });
+    expect(await pending).toBe(false);
+    expect(result.current.renaming).toBe(false);
+    expect(result.current.socketError?.message).toContain('応答');
+  } finally {
+    vi.useRealTimers();
+  }
+});

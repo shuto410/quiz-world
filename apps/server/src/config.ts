@@ -27,6 +27,8 @@ export type ServerConfig = {
    */
   dynamoDbEndpoint?: string;
   tournamentsTable: string;
+  /** Short-lived recovery state, separate from durable tournament settings. */
+  snapshotsTable: string;
   /**
    * Origin the SPA is served from, used to build invite URLs. Read from configuration rather
    * than hard-coded so that acquiring a domain later does not require a code change.
@@ -98,6 +100,7 @@ export function loadConfig(env: Environment): ServerConfig {
     awsRegion: optional(env['AWS_REGION']) ?? DEFAULT_AWS_REGION,
     dynamoDbEndpoint: optional(env['DYNAMODB_ENDPOINT']),
     tournamentsTable: optional(env['TOURNAMENTS_TABLE']) ?? DEFAULT_TOURNAMENTS_TABLE,
+    snapshotsTable: optional(env['ROOM_SNAPSHOTS_TABLE']) ?? 'quiz-world-room-snapshots',
     publicBaseUrl: parseBaseUrl(env['PUBLIC_BASE_URL']),
   };
 }

@@ -330,6 +330,8 @@ export type InternalRoomState = {
   pausedReason?: PausedReason;
   /** Participant id currently holding host authority. */
   hostId: string;
+  /** Original seat authenticated by the creation token; does not change on takeover. */
+  initialHostId?: string;
   hostOnline: boolean;
   participants: ParticipantState[];
   currentBuzzSession?: BuzzSessionState;
@@ -558,6 +560,7 @@ export type SocketErrorCode =
   | "INVALID_STATE"           // Operation not allowed in the current status
   | "NO_NEXT_RESPONDER"       // moveToNextResponder with an empty queue
   | "STALE_CONNECTION"        // Operation from a superseded connection
+  | "RATE_LIMITED"            // Too many socket operations
   | "INTERNAL_ERROR";
 ```
 
@@ -586,7 +589,7 @@ sequenceDiagram
 `tournament:host-join`
 
 - `hostToken` をハッシュ化し、DynamoDB の `hostTokenHash` と比較する
-- 大会ステータスは `active` と `closed` の両方で接続を許可する（終了後の結果表示のため）
+- 大会ステータスは `active` と `closed` の両方で接続を許可する（終了後の結果表示のため）。`closed` ではメモリ上または復元済みの既存ルームが必要であり、空のルームを新しく作らない
 - ホスト権限が既に他の参加者へ移っている場合は `UNAUTHORIZED` を返し、参加者として `tournament:join` させる
 - 成功時は `role: "host"` を返し、`paused` なら `statusBeforePause` へ復帰させる
 
@@ -606,14 +609,20 @@ sequenceDiagram
 - 表示名の制約は参加時と同じ
 - 重複する表示名には変更できない
 - 参加者IDとスコアは維持する
-- 大会中いつでも可能
+- ホストを含め、自分の表示名を大会中いつでも変更できる（`paused`、`finished` も含む）。他人の表示名は変更できない
+- 成功した名前をブラウザにも保存し、リロード・再接続で引き継ぐ。画面の名前はサーバー配信の状態で更新する
+- 変更中と通信切断中は送信を無効化する。応答が5秒以内に届かなければエラーを表示し、再試行可能にする
 
 `host:claim`
 
 - `status` が `paused` かつ `pausedReason` が `hostDisconnected` のときのみ許可する
 - オンラインの参加者だけが実行できる
 - 最初にサーバーで受理された1件のみ有効。以降は `INVALID_STATE`
-- 成功後、`hostId` を新ホストに変更し `statusBeforePause` へ復帰する
+- 成功後、`hostId` を新ホストに変更し `statusBeforePause` へ復帰する。スコアと表示名は維持する
+- 新ホストを早押し列から除く。新ホスト本人が回答権を持っていた場合は未判定回答を破棄し、列の次の回答者へ渡す。次がいなければラウンドをクリアして `idle` へ戻す。ホストが自分自身を判定する状態を作らない
+- チャネルとSocketセッションのロールを同期的に切り替えてから状態を配信する。新ホストにだけ未判定回答を送る
+- 最初のホスト席を `initialHostId` に保持する（秘密情報ではなく履歴情報）。作成トークンはこの席専用で、別参加者への引き継ぎ後の `tournament:host-join` は `UNAUTHORIZED`。旧ホストの画面は保存済みID・表示名で `tournament:join` し、通常参加者へ切り替える
+- 新ホストは元の参加者IDで再joinしてホストに復帰できる。URLに依存せず、最新状態の `hostId` に応じて画面を切り替える
 
 `judge:submit`
 
@@ -656,8 +665,11 @@ sequenceDiagram
 - 切断検知後は画面の状態を維持したまま操作を無効化し、joinのackと最新の `room:state` を受け取ってから操作を再開する
 - 同じ参加者IDで新しい接続が来た場合、新しい接続を有効にする
 - 古い接続には `session:invalidated` を送り、以降の操作は `STALE_CONNECTION` で拒否する
+- 無効化通知を受けたクライアントは自動再接続を停止する。無効化済みSocketからの再joinも `STALE_CONNECTION` で拒否する
+- 1本のSocketで同時に複数のjoinや複数席の保持は許可しない。join処理中や参加済みのSocketからのjoinは `INVALID_STATE` とし、別席への移動は退出後に行う
+- Socketチャネルの移動と接続所有者の切り替えは、単一サーバーの同期メモリアダプタ上で状態遷移に続けて行う
 - 参加者IDごとに現在有効なSocketを記録する。古いSocketの遅れて届いた `disconnect` は、新しい接続をオフラインに戻してはならない
-- ホスト切断を検知したら `paused` にし、`statusBeforePause` に直前の状態を保存する
+- ホスト切断を検知したら `idle`・`answering`・`result` は `paused` にし、`statusBeforePause` に直前の状態を保存する。既に `paused` なら保存状態を上書きしない。`finished` は終了状態を維持し、引き継ぎはしない
 - 参加者切断時は `online: false` にし、スコアと表示名を維持する
 - ホスト変更後に旧ホストが戻った場合は通常の参加者として扱う
 
@@ -830,10 +842,12 @@ MVPでは2テーブル構成にする。
 - パーティションキー: `tournamentId`
 - 属性: `state`（`InternalRoomState` のJSON）, `updatedAt`, `expiresAt`
 - TTL属性は `expiresAt`。24時間で自動削除する
-- `RoomState` が変わるたびに書き込む。連続変更に備えて200msデバウンスする
+- `RoomState` が変わるたびに保存を予約する。連続変更は200msの窓で最新状態にまとめ、変更が続いても先頭の変更から200msで書き込みをキューへ渡す（無期限にデバウンスを延長しない）
 - 同じ大会の書き込みは直列化し、古い非同期書き込みが新しい状態を後から上書きしないようにする。イベントログや条件付き世代管理まではMVPで導入しない
-- サーバー起動時、または大会への最初の接続時に読み戻す。復元が完了する前に空のルームを作成しない
-- 大会終了時は、サーバー再起動後も既存参加者が結果へ戻れるよう `finished` のスナップショットを残す
+- 大会への最初の接続時に読み戻す。同じ大会の同時接続は1回の読み戻しを共有し、復元が完了する前に空のルームを作成しない。期限切れはTTL削除前でも復元しない。読み戻し失敗・不正データは接続エラーにし、空ルームで上書きしない
+- 復元時は全員をオフラインにし、進行中の状態は `hostDisconnected` で一時停止する。既に一時停止中なら元の `statusBeforePause` を維持し、`finished` はそのまま復元する。ホストの再接続または引き継ぎで再開する
+- 大会終了時は `finished` のスナップショットをフラッシュしてから大会ステータスを `closed` にする。サーバー再起動後も既存参加者が結果へ戻れるよう、このスナップショットは残す
+- 通常終了時はSocket切断後に保留中の状態をフラッシュする。保存失敗はログに記録し、次の変更または終了処理で最新状態の保存を再試行する
 - ルームクローズ時に保留中の書き込みを止め、`Tournaments.status = closed` を確認したあとで削除する。削除後にデバウンス済み書き込みが走ってスナップショットを復活させてはならない
 
 書き込み量は1大会あたり数百件程度で、オンデマンド課金では実質無料。TTLで自動削除されるため「大会結果を永続保存しない」方針も守れる。
@@ -842,7 +856,7 @@ MVPでは2テーブル構成にする。
 
 - 問題文、正答候補
 - 回答履歴、チャット、ホスト操作ログ、スコア推移
-- 最終結果（結果画面は終了時点のメモリ状態から表示する）
+- 長期保存用の最終結果（結果画面はメモリ状態、または24時間以内の復旧用スナップショットから表示する）
 
 トラブルシュート用のサーバーログは CloudWatch に残す。
 
@@ -919,6 +933,13 @@ AWSにデプロイせずに全機能を動作確認できるようにする。
 テストで使うテーブルはサーバー起動時と同じ `ensureTables` が作る。つまりリポジトリの実装と `apps/server/src/db/tables.ts` の定義がずれればテストが落ちる。
 
 ただしこれは `tables.ts` とCDKスタックの一致までは保証しない。テーブルの所有者はローカルとAWSで異なり、ローカルは `ensureTables`、AWSは `PersistentStack` である。同じキー設計を2箇所に書くことになるため、ステップ20では `tables.ts` の定義をCDK側から読むか、両者を突き合わせるテストを置く。手で同期させる状態のまま放置しない。
+
+## Socketレート制限
+
+- 全Socket操作の前に共通ミドルウェアを1箇所通す。古い接続は先に `STALE_CONNECTION` で拒否する
+- MVPは接続ごと・イベントごとに1秒の固定窓で1000回まで許可する。イベント別の閾値はサーバーの1つの設定表に集約し、フェーズ1で値を絞れるようにする
+- 拒否された試行も上限に含む。上限超過時はハンドラを呼ばず、ackを持つリクエストは失敗ack、その他は `error` イベントで `RATE_LIMITED` を返す。状態の変更・再配信はしない
+- カウンタはSocketの寿命に限定し、接続終了後に残さない。再接続ではリセットする。IP単位の制限、HTTP招待コード検索の制限、接続の作り直しを含む対策は一般公開時に扱う
 
 ## エラー表示
 
