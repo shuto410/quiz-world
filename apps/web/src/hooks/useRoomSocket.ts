@@ -62,6 +62,9 @@ export type UseRoomSocketResult = {
   roomClosed: boolean;
   /** Requests host authority; the broadcast remains the source of truth for the role. */
   claimHost: () => void;
+  /** Resolves after acknowledgement or cancellation; room state remains authoritative. */
+  rename: (displayName: string) => Promise<boolean>;
+  renaming: boolean;
 };
 
 function requestKey(request: RoomJoinRequest | undefined): string {
@@ -81,6 +84,8 @@ export function useRoomSocket(request: RoomJoinRequest | undefined): UseRoomSock
   const [errorMessage, setErrorMessage] = useState<string | undefined>(undefined);
   const [socketError, setSocketError] = useState<SocketErrorEvent | undefined>(undefined);
   const [roomClosed, setRoomClosed] = useState(false);
+  const [renaming, setRenaming] = useState(false);
+  const renameRef = useRef<((name: string) => Promise<boolean>) | undefined>(undefined);
   const readyRef = useRef(false);
   const socketRef = useRef<AppSocket | undefined>(undefined);
   const requestRef = useRef(request);
@@ -107,6 +112,7 @@ export function useRoomSocket(request: RoomJoinRequest | undefined): UseRoomSock
         ? activeRequest.displayName
         : loadParticipantName(activeRequest.tournamentId);
     let rejoinAsParticipant = false;
+    let cancelRename: (() => void) | undefined;
     readyRef.current = false;
     const socket = createSocket();
     socketRef.current = socket;
@@ -123,6 +129,7 @@ export function useRoomSocket(request: RoomJoinRequest | undefined): UseRoomSock
       if (readyRef.current) setStatus('joined');
     };
     const onDisconnect = () => {
+      cancelRename?.();
       generation += 1;
       acknowledged = false;
       receivedState = false;
@@ -153,6 +160,7 @@ export function useRoomSocket(request: RoomJoinRequest | undefined): UseRoomSock
      * to retry forever against a room that no longer exists.
      */
     const onClosed = () => {
+      cancelRename?.();
       terminal = true;
       readyRef.current = false;
       setStatus('connecting');
@@ -167,6 +175,11 @@ export function useRoomSocket(request: RoomJoinRequest | undefined): UseRoomSock
       readyRef.current = false;
       setStatus('error');
       setErrorMessage('別のタブで接続したため、この接続は無効になりました');
+      setSocketError({
+        code: 'STALE_CONNECTION',
+        message: '別のタブで接続したため、この接続は無効になりました',
+      });
+      cancelRename?.();
       socket.disconnect();
     };
     const onConnectError = () => {
@@ -206,6 +219,7 @@ export function useRoomSocket(request: RoomJoinRequest | undefined): UseRoomSock
           terminal = true;
           setStatus('error');
           setErrorMessage(response.message);
+          setSocketError({ code: response.code, message: response.message });
           socket.disconnect();
           return;
         }
@@ -240,10 +254,46 @@ export function useRoomSocket(request: RoomJoinRequest | undefined): UseRoomSock
       joinParticipant();
     };
 
+    renameRef.current = (name) => {
+      if (!readyRef.current || !socket.connected || cancelRename !== undefined)
+        return Promise.resolve(false);
+      return new Promise<boolean>((resolve) => {
+        let active = true;
+        const finish = (ok: boolean) => {
+          active = false;
+          clearTimeout(timer);
+          cancelRename = undefined;
+          if (!cancelled) setRenaming(false);
+          resolve(ok);
+        };
+        const timer = setTimeout(() => {
+          setSocketError({
+            code: 'INTERNAL_ERROR',
+            message: '表示名変更の応答がありません。名前を確認して再試行してください',
+          });
+          finish(false);
+        }, 5000);
+        cancelRename = () => finish(false);
+        setRenaming(true);
+        socket.emit('participant:rename', { displayName: name }, (response) => {
+          if (!active || cancelled || terminal || !socket.connected) return;
+          if (response.ok) {
+            displayName = response.displayName;
+            saveParticipantName(activeRequest.tournamentId, displayName);
+          } else {
+            setSocketError({ code: response.code, message: response.message });
+          }
+          finish(response.ok);
+        });
+      });
+    };
+
     socket.on('connect', join);
     socket.connect();
 
     return () => {
+      cancelRename?.();
+      renameRef.current = undefined;
       cancelled = true;
       readyRef.current = false;
       socket.off('connect', join);
@@ -310,7 +360,14 @@ export function useRoomSocket(request: RoomJoinRequest | undefined): UseRoomSock
     });
   }, []);
 
+  const rename = useCallback(
+    (name: string) => renameRef.current?.(name) ?? Promise.resolve(false),
+    [],
+  );
+
   return {
+    rename,
+    renaming,
     status,
     roomState,
     participantId,

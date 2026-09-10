@@ -580,3 +580,15 @@ a {
   padding: 0;
   border: 0;
 }
+
+/* Connection loss remains visible while the last authoritative room stays on screen. */
+.qw-connection-banner {
+  padding: 14px 24px;
+  background: #fff1db;
+  color: #713d00;
+  border-bottom: 1px solid #e2bd83;
+  line-height: 1.6;
+}
+.qw-rename-form {
+  width: 100%;
+}

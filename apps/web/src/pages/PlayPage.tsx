@@ -19,7 +19,7 @@ import { ParticipantRoomView } from '../components/ParticipantRoomView';
 import { useToast } from '../components/Toast';
 import { useRoomSocket } from '../hooks/useRoomSocket';
 import { joinPath, ROUTE_PATHS } from '../routes';
-import { loadParticipantId } from '../storage/sessionKeys';
+import { loadParticipantId, loadParticipantName } from '../storage/sessionKeys';
 import type { PlayNavigationState } from './JoinPage';
 
 export function PlayPage() {
@@ -30,13 +30,14 @@ export function PlayPage() {
   const displayName = navState?.displayName;
 
   const joinRequest = useMemo(() => {
-    if (tournamentId === undefined || displayName === undefined) {
+    const savedName = tournamentId === undefined ? undefined : loadParticipantName(tournamentId);
+    if (tournamentId === undefined || (displayName === undefined && savedName === undefined)) {
       return undefined;
     }
     return {
       kind: 'participant' as const,
       tournamentId,
-      displayName,
+      displayName: savedName ?? displayName ?? '',
       participantId: loadParticipantId(tournamentId),
     };
   }, [tournamentId, displayName]);
@@ -62,7 +63,7 @@ export function PlayPage() {
     );
   }
 
-  if (displayName === undefined) {
+  if (joinRequest === undefined) {
     return (
       <main className="app-shell">
         <h1>プレイ</h1>
@@ -93,5 +94,12 @@ export function PlayPage() {
   ) {
     return <HostRoomView connection={connection} />;
   }
-  return <ParticipantRoomView connection={connection} displayName={displayName} />;
+  return (
+    <ParticipantRoomView
+      connection={connection}
+      displayName={
+        roomState?.participants.find((p) => p.id === participantId)?.name ?? joinRequest.displayName
+      }
+    />
+  );
 }

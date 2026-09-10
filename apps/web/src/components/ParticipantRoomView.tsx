@@ -1,6 +1,7 @@
 /** Renders participant play and takeover controls while keeping the active socket mounted. */
 import type { UseRoomSocketResult } from '../hooks/useRoomSocket';
 import { AnswerForm } from './AnswerForm';
+import { RenameForm } from './RenameForm';
 import { RoomFrame } from './RoomFrame';
 import { Button } from './Button';
 import { BuzzOrderList } from './BuzzOrderList';
@@ -55,6 +56,7 @@ export function ParticipantRoomView({ connection, displayName }: ParticipantRoom
     <RoomFrame
       title="プレイ"
       connectionLabel={connectionLabel}
+      reconnecting={status === 'connecting' && roomState !== undefined && !roomClosed}
       sidebar={<p className="qw-sidebar__identity">{displayName} として参加中</p>}
       roster={
         <section className="qw-room-section" aria-label="参加者一覧">
@@ -68,6 +70,7 @@ export function ParticipantRoomView({ connection, displayName }: ParticipantRoom
       }
       actions={
         <div className="qw-room-actions">
+          <RenameForm connection={connection} />
           <Button
             type="button"
             disabled={status !== 'joined'}

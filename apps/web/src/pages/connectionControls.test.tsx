@@ -6,7 +6,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, expect, it, vi } from 'vitest';
 import { ToastProvider } from '../components/Toast';
 import { useRoomSocket, type UseRoomSocketResult } from '../hooks/useRoomSocket';
-import { saveHostToken } from '../storage/sessionKeys';
+import { saveHostToken, saveParticipantName } from '../storage/sessionKeys';
 import { HostPage } from './HostPage';
 import { PlayPage } from './PlayPage';
 vi.mock('../hooks/useRoomSocket');
@@ -41,6 +41,8 @@ function setup(
     socketError: undefined,
     roomClosed: false,
     claimHost: vi.fn(),
+    rename: vi.fn().mockResolvedValue(true),
+    renaming: false,
     clearSocketError: vi.fn(),
     leave: vi.fn(),
     buzz: vi.fn(),
@@ -150,4 +152,38 @@ it('renders the old host as a participant without giving them judge controls', (
   refresh();
   expect(screen.getByRole('button', { name: '早押し' })).toBeTruthy();
   expect(screen.queryByRole('button', { name: '大会終了' })).toBeNull();
+});
+
+it('keeps the rename form disabled during reconnect and displays a connection banner', () => {
+  const { connection, refresh } = setup('participant', 'answering');
+  fireEvent.click(screen.getByRole('button', { name: '表示名を変更' }));
+  fireEvent.change(screen.getByLabelText('新しい表示名'), { target: { value: '次郎' } });
+  connection.status = 'connecting';
+  refresh();
+  expect(screen.getByRole('alert').textContent).toContain('接続が切れました');
+  expect(screen.getByLabelText('新しい表示名').matches(':disabled')).toBe(true);
+  expect(screen.getByRole('button', { name: '変更する' }).matches(':disabled')).toBe(true);
+  connection.status = 'joined';
+  refresh();
+  expect(screen.queryByRole('alert')).toBeNull();
+  expect(screen.getByLabelText<HTMLInputElement>('新しい表示名').value).toBe('次郎');
+});
+it('shows server rejections as error toasts', () => {
+  const { connection, refresh } = setup('participant', 'idle');
+  connection.socketError = {
+    code: 'DUPLICATE_DISPLAY_NAME',
+    message: 'その表示名は既に使われています',
+  };
+  refresh();
+  expect(screen.getByRole('alert').textContent).toBe('その表示名は既に使われています');
+  expect(connection.clearSocketError).toHaveBeenCalled();
+});
+
+it('uses the saved renamed seat rather than stale navigation history on reload', () => {
+  saveParticipantName('t1', '新しい名前');
+  const { refresh } = setup('participant', 'idle');
+  expect(vi.mocked(useRoomSocket).mock.calls[0]?.[0]).toMatchObject({ displayName: '新しい名前' });
+  saveParticipantName('t1', '配信された名前');
+  refresh();
+  expect(vi.mocked(useRoomSocket).mock.lastCall?.[0]).toMatchObject({ displayName: '新しい名前' });
 });

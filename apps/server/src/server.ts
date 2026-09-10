@@ -23,6 +23,7 @@ import { registerBuzzHandlers } from './socket/buzzHandlers';
 import { registerFinishHandlers } from './socket/finishHandlers';
 import { createConnections } from './socket/connections';
 import { registerJoinHandlers } from './socket/joinHandlers';
+import { registerRenameHandlers } from './socket/renameHandlers';
 import { registerHostHandlers } from './socket/hostHandlers';
 import { registerJudgeHandlers } from './socket/judgeHandlers';
 
@@ -79,6 +80,7 @@ export function createServer(dependencies: ServerDependencies): CreatedServer {
     });
 
     registerHostHandlers(socket, { io, registry, connections, now });
+    registerRenameHandlers(socket, { io, registry, now });
 
     registerBuzzHandlers(socket, {
       io,

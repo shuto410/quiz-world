@@ -3,7 +3,7 @@
  */
 import { act, cleanup, renderHook } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
-import type { JoinResponse, RoomStateEvent } from '@quiz-world/shared';
+import type { JoinResponse, RoomStateEvent, RenameResponse } from '@quiz-world/shared';
 import {
   saveParticipantId,
   saveParticipantName,
@@ -240,4 +240,79 @@ it('claims only while synchronized and reports a lost takeover race', () => {
   }) => void;
   act(() => callback({ ok: false, code: 'INVALID_STATE', message: '他の人が引き継ぎました' }));
   expect(result.current.socketError?.message).toBe('他の人が引き継ぎました');
+});
+
+it('only sends one rename when ready, reports rejection, and cancels pending work on disconnect', async () => {
+  const { result, socket, fire, ack } = setup();
+  expect(await result.current.rename('名前')).toBe(false);
+  fire('connect');
+  ack(success);
+  fire('room:state', state);
+  let pending: Promise<boolean> = Promise.resolve(false);
+  act(() => {
+    pending = result.current.rename('名前');
+  });
+  expect(result.current.renaming).toBe(true);
+  expect(await result.current.rename('連打')).toBe(false);
+  const callback = socket.emit.mock.lastCall?.[2] as (response: RenameResponse) => void;
+  act(() =>
+    callback({
+      ok: false,
+      code: 'DUPLICATE_DISPLAY_NAME',
+      message: 'その表示名は既に使われています',
+    }),
+  );
+  expect(await pending).toBe(false);
+  expect(result.current.socketError?.code).toBe('DUPLICATE_DISPLAY_NAME');
+  act(() => {
+    pending = result.current.rename('次郎');
+  });
+  const stale = socket.emit.mock.lastCall?.[2] as typeof callback;
+  fire('disconnect');
+  expect(await pending).toBe(false);
+  expect(result.current.renaming).toBe(false);
+  fire('connect');
+  ack(success);
+  fire('room:state', state);
+  act(() => stale({ ok: true, displayName: '古い名前' }));
+  expect(loadParticipantName('t1')).not.toBe('古い名前');
+});
+it('remembers an acknowledged rename before the broadcast and uses it for reconnect', async () => {
+  const { result, socket, fire, ack } = setup();
+  fire('connect');
+  ack(success);
+  fire('room:state', state);
+  let pending: Promise<boolean> = Promise.resolve(false);
+  act(() => {
+    pending = result.current.rename('次郎');
+  });
+  const callback = socket.emit.mock.lastCall?.[2] as (response: RenameResponse) => void;
+  act(() => callback({ ok: true, displayName: '次郎' }));
+  expect(await pending).toBe(true);
+  expect(loadParticipantName('t1')).toBe('次郎');
+  expect(result.current.roomState).toEqual(state);
+  fire('disconnect');
+  fire('connect');
+  expect(socket.emit.mock.lastCall?.[1]).toMatchObject({ displayName: '次郎' });
+});
+it('times out a lost rename acknowledgement so the user can retry', async () => {
+  vi.useFakeTimers();
+  try {
+    const { result, fire, ack } = setup();
+    fire('connect');
+    ack(success);
+    fire('room:state', state);
+    let pending: Promise<boolean> = Promise.resolve(false);
+    act(() => {
+      pending = result.current.rename('名前');
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5000);
+    });
+    expect(await pending).toBe(false);
+    expect(result.current.renaming).toBe(false);
+    expect(result.current.socketError?.message).toContain('応答');
+  } finally {
+    vi.useRealTimers();
+  }
 });

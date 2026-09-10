@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import type { UseRoomSocketResult } from '../hooks/useRoomSocket';
 import type { StoredInviteDetails } from '../storage/sessionKeys';
+import { RenameForm } from './RenameForm';
 import { RoomFrame } from './RoomFrame';
 import { Button } from './Button';
 import { BuzzOrderList } from './BuzzOrderList';
@@ -46,6 +47,7 @@ export function HostRoomView({ connection, inviteDetails }: HostRoomViewProps) {
     <RoomFrame
       title={inviteDetails?.name ?? 'ホスト進行'}
       connectionLabel={connectionLabel}
+      reconnecting={status === 'connecting' && roomState !== undefined && !roomClosed}
       sidebar={
         inviteDetails !== undefined ? (
           <section className="qw-invite-panel" aria-label="招待情報">
@@ -84,6 +86,7 @@ export function HostRoomView({ connection, inviteDetails }: HostRoomViewProps) {
       }
       actions={
         <div className="qw-room-actions">
+          <RenameForm connection={connection} />
           <Button
             type="button"
             disabled={status !== 'joined'}
