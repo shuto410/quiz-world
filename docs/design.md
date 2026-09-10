@@ -560,6 +560,7 @@ export type SocketErrorCode =
   | "INVALID_STATE"           // Operation not allowed in the current status
   | "NO_NEXT_RESPONDER"       // moveToNextResponder with an empty queue
   | "STALE_CONNECTION"        // Operation from a superseded connection
+  | "RATE_LIMITED"            // Too many socket operations
   | "INTERNAL_ERROR";
 ```
 
@@ -932,6 +933,13 @@ AWSにデプロイせずに全機能を動作確認できるようにする。
 テストで使うテーブルはサーバー起動時と同じ `ensureTables` が作る。つまりリポジトリの実装と `apps/server/src/db/tables.ts` の定義がずれればテストが落ちる。
 
 ただしこれは `tables.ts` とCDKスタックの一致までは保証しない。テーブルの所有者はローカルとAWSで異なり、ローカルは `ensureTables`、AWSは `PersistentStack` である。同じキー設計を2箇所に書くことになるため、ステップ20では `tables.ts` の定義をCDK側から読むか、両者を突き合わせるテストを置く。手で同期させる状態のまま放置しない。
+
+## Socketレート制限
+
+- 全Socket操作の前に共通ミドルウェアを1箇所通す。古い接続は先に `STALE_CONNECTION` で拒否する
+- MVPは接続ごと・イベントごとに1秒の固定窓で1000回まで許可する。イベント別の閾値はサーバーの1つの設定表に集約し、フェーズ1で値を絞れるようにする
+- 拒否された試行も上限に含む。上限超過時はハンドラを呼ばず、ackを持つリクエストは失敗ack、その他は `error` イベントで `RATE_LIMITED` を返す。状態の変更・再配信はしない
+- カウンタはSocketの寿命に限定し、接続終了後に残さない。再接続ではリセットする。IP単位の制限、HTTP招待コード検索の制限、接続の作り直しを含む対策は一般公開時に扱う
 
 ## エラー表示
 

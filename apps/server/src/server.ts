@@ -22,6 +22,8 @@ import type { SocketServer } from './socket/broadcast';
 import { registerBuzzHandlers } from './socket/buzzHandlers';
 import { registerFinishHandlers } from './socket/finishHandlers';
 import { createConnections } from './socket/connections';
+import { registerRequestMiddleware } from './socket/requestMiddleware';
+import type { RateLimitOverrides } from './socket/rateLimit';
 import { registerJoinHandlers } from './socket/joinHandlers';
 import { registerRenameHandlers } from './socket/renameHandlers';
 import { registerHostHandlers } from './socket/hostHandlers';
@@ -35,6 +37,8 @@ export type ServerDependencies = AppDependencies & {
   registry: RoomRegistry;
   /** Durable recovery storage; omitted only by tests that exercise transport in isolation. */
   snapshots?: SnapshotRepository;
+  /** Overrides the loose MVP per-event limits without changing handlers. */
+  rateLimits?: RateLimitOverrides;
   /** Fresh participant ids for first-time joins. Injected so tests can pin them. */
   newParticipantId: () => string;
   /** Fresh buzz-session ids when the first press of a round opens one. */
@@ -67,6 +71,8 @@ export function createServer(dependencies: ServerDependencies): CreatedServer {
   io.on('connection', (socket) => {
     const connectionLogger = logger.child({ socketId: socket.id });
     connectionLogger.debug('socket connected');
+
+    registerRequestMiddleware(socket, { connections, now, rateLimits: dependencies.rateLimits });
 
     registerJoinHandlers(socket, {
       connections,

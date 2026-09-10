@@ -45,6 +45,8 @@ export const SOCKET_ERROR_CODES = [
   'NO_NEXT_RESPONDER',
   /** The operation came from a connection that a newer one has replaced. */
   'STALE_CONNECTION',
+  /** The socket exceeded the configured per-event request budget. */
+  'RATE_LIMITED',
   'INTERNAL_ERROR',
 ] as const;
 

@@ -62,16 +62,6 @@ export function registerJoinHandlers(
   socket: AppSocket,
   dependencies: JoinHandlerDependencies,
 ): void {
-  socket.use(([, ...args], next) => {
-    if (!dependencies.connections.isInvalidated(socket)) {
-      next();
-      return;
-    }
-    const error = failure('STALE_CONNECTION');
-    const ack: unknown = args.at(-1);
-    if (typeof ack === 'function') (ack as (response: AckFailure) => void)(error);
-    else socket.emit('error', { code: error.code, message: error.message });
-  });
   socket.on('disconnect', () => handleLeave(socket, dependencies));
   socket.on('tournament:host-join', (payload, ack) => {
     void handleHostJoin(socket, dependencies, payload, ack);
