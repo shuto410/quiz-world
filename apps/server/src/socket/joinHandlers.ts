@@ -251,15 +251,16 @@ async function handleParticipantJoin(
       return;
     }
 
+    const role = transition.state.hostId === joined.participantId ? 'host' : 'participant';
     dependencies.connections.bind(socket, {
       tournamentId: parsed.tournamentId,
       participantId: joined.participantId,
-      role: 'participant',
+      role,
     });
 
     ack({
       ok: true,
-      role: 'participant',
+      role,
       participantId: joined.participantId,
       isReconnect: joined.isReconnect,
     });

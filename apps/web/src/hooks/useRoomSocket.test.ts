@@ -4,6 +4,11 @@
 import { act, cleanup, renderHook } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import type { JoinResponse, RoomStateEvent } from '@quiz-world/shared';
+import {
+  saveParticipantId,
+  saveParticipantName,
+  loadParticipantName,
+} from '../storage/sessionKeys';
 import { createSocket } from '../socket/client';
 import { useRoomSocket, type RoomJoinRequest } from './useRoomSocket';
 
@@ -182,4 +187,57 @@ it('forwards server errors and makes leaving terminal for gameplay', () => {
   const count = socket.emit.mock.calls.length;
   act(() => result.current.buzz());
   expect(socket.emit).toHaveBeenCalledTimes(count);
+});
+
+it('rejoins an original host as the saved participant after authority moves elsewhere', () => {
+  saveParticipantId('t1', 'p1');
+  saveParticipantName('t1', 'ホスト');
+  const { result, socket, fire, ack } = setup({
+    kind: 'host',
+    tournamentId: 't1',
+    hostToken: 'original',
+  });
+  fire('connect');
+  ack({ ok: false, code: 'UNAUTHORIZED', message: '引き継ぎ済み' });
+  expect(socket.emit.mock.lastCall?.slice(0, 2)).toEqual([
+    'tournament:join',
+    { tournamentId: 't1', participantId: 'p1', displayName: 'ホスト' },
+  ]);
+  ack(success);
+  fire('room:state', {
+    ...state,
+    hostId: 'new-host',
+    participants: [{ id: 'p1', name: '元ホスト', score: 0, online: true, joinedAt: 1 }],
+  });
+  expect(result.current.status).toBe('joined');
+  expect(loadParticipantName('t1')).toBe('元ホスト');
+  fire('disconnect');
+  fire('connect');
+  expect(socket.emit.mock.lastCall?.slice(0, 2)).toEqual([
+    'tournament:join',
+    { tournamentId: 't1', participantId: 'p1', displayName: '元ホスト' },
+  ]);
+});
+
+it('claims only while synchronized and reports a lost takeover race', () => {
+  const { result, socket, fire, ack } = setup();
+  act(() => result.current.claimHost());
+  expect(socket.emit).not.toHaveBeenCalled();
+  fire('connect');
+  ack(success);
+  fire('room:state', {
+    ...state,
+    status: 'paused',
+    pausedReason: 'hostDisconnected',
+    statusBeforePause: 'idle',
+  });
+  act(() => result.current.claimHost());
+  expect(socket.emit.mock.lastCall?.slice(0, 2)).toEqual(['host:claim', {}]);
+  const callback = socket.emit.mock.lastCall?.[2] as (response: {
+    ok: false;
+    code: 'INVALID_STATE';
+    message: string;
+  }) => void;
+  act(() => callback({ ok: false, code: 'INVALID_STATE', message: '他の人が引き継ぎました' }));
+  expect(result.current.socketError?.message).toBe('他の人が引き継ぎました');
 });

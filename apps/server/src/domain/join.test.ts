@@ -47,6 +47,7 @@ describe('applyHostJoin', () => {
       state: {
         ...current,
         hostId: 'host-1',
+        initialHostId: 'host-1',
         hostOnline: true,
         participants: [
           {

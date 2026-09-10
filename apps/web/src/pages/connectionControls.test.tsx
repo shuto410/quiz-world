@@ -18,7 +18,7 @@ afterEach(() => {
 
 function setup(
   role: 'host' | 'participant',
-  roomStatus: 'idle' | 'answering' | 'result' | 'finished',
+  roomStatus: 'idle' | 'answering' | 'result' | 'finished' | 'paused',
 ) {
   saveHostToken('t1', 'test-token');
   const connection: UseRoomSocketResult = {
@@ -40,6 +40,7 @@ function setup(
     errorMessage: undefined,
     socketError: undefined,
     roomClosed: false,
+    claimHost: vi.fn(),
     clearSocketError: vi.fn(),
     leave: vi.fn(),
     buzz: vi.fn(),
@@ -121,4 +122,32 @@ it('retains final standings after room close and offers no active close action',
   refresh();
   expect(screen.getByRole('heading', { name: '最終結果' })).toBeTruthy();
   expect(screen.queryByRole('button', { name: 'ルームを閉じる' })).toBeNull();
+});
+
+it('switches a participant to host controls when the server confirms takeover', () => {
+  const { connection, refresh } = setup('participant', 'paused');
+  if (connection.roomState === undefined) throw new Error('missing room');
+  connection.roomState = {
+    ...connection.roomState,
+    hostOnline: false,
+    pausedReason: 'hostDisconnected',
+    statusBeforePause: 'idle',
+  };
+  refresh();
+  fireEvent.click(screen.getByRole('button', { name: 'ホストを引き継ぐ' }));
+  expect(connection.claimHost).toHaveBeenCalledOnce();
+  expect(screen.queryByRole('button', { name: '大会終了' })).toBeNull();
+  connection.roomState = { ...connection.roomState, status: 'idle', hostId: 'p', hostOnline: true };
+  refresh();
+  expect(screen.getByRole('button', { name: '大会終了' })).toBeTruthy();
+  expect(screen.queryByRole('button', { name: '早押し' })).toBeNull();
+});
+
+it('renders the old host as a participant without giving them judge controls', () => {
+  const { connection, refresh } = setup('host', 'idle');
+  if (connection.roomState === undefined) throw new Error('missing room');
+  connection.roomState = { ...connection.roomState, hostId: 'p' };
+  refresh();
+  expect(screen.getByRole('button', { name: '早押し' })).toBeTruthy();
+  expect(screen.queryByRole('button', { name: '大会終了' })).toBeNull();
 });

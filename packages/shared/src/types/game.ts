@@ -132,6 +132,8 @@ export type InternalRoomState = {
    * over a disconnected host, so it is not necessarily the person who created the room.
    */
   hostId: string;
+  /** Original host seat authenticated by the creation token; preserved across takeovers. */
+  initialHostId?: string;
   hostOnline: boolean;
   participants: ParticipantState[];
   /** Set while a buzz round is open, from the first buzz until the judgement. */
@@ -175,6 +177,7 @@ export const ROOM_STATE_KEYS = [
   'statusBeforePause',
   'pausedReason',
   'hostId',
+  'initialHostId',
   'hostOnline',
   'participants',
   'currentBuzzSession',

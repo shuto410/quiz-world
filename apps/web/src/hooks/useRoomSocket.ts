@@ -20,7 +20,12 @@ import type {
 } from '@quiz-world/shared';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createSocket, type AppSocket } from '../socket/client';
-import { loadParticipantId, saveParticipantId } from '../storage/sessionKeys';
+import {
+  loadParticipantId,
+  saveParticipantId,
+  loadParticipantName,
+  saveParticipantName,
+} from '../storage/sessionKeys';
 
 export type RoomJoinRequest =
   | { kind: 'host'; tournamentId: string; hostToken: string }
@@ -55,6 +60,8 @@ export type UseRoomSocketResult = {
   closeRoom: () => void;
   /** True once the host has closed the room. The socket stays down from then on. */
   roomClosed: boolean;
+  /** Requests host authority; the broadcast remains the source of truth for the role. */
+  claimHost: () => void;
 };
 
 function requestKey(request: RoomJoinRequest | undefined): string {
@@ -94,7 +101,12 @@ export function useRoomSocket(request: RoomJoinRequest | undefined): UseRoomSock
     let claimedId =
       activeRequest.kind === 'participant'
         ? (activeRequest.participantId ?? loadParticipantId(activeRequest.tournamentId))
-        : undefined;
+        : loadParticipantId(activeRequest.tournamentId);
+    let displayName =
+      activeRequest.kind === 'participant'
+        ? activeRequest.displayName
+        : loadParticipantName(activeRequest.tournamentId);
+    let rejoinAsParticipant = false;
     readyRef.current = false;
     const socket = createSocket();
     socketRef.current = socket;
@@ -119,6 +131,11 @@ export function useRoomSocket(request: RoomJoinRequest | undefined): UseRoomSock
     };
     const onState = (state: RoomStateEvent) => {
       if (!cancelled && !terminal && socket.connected) {
+        const seat = state.participants.find((p) => p.id === claimedId);
+        if (seat !== undefined) {
+          displayName = seat.name;
+          saveParticipantName(activeRequest.tournamentId, seat.name);
+        }
         receivedState = true;
         setRoomState(state);
         updateReady();
@@ -173,6 +190,18 @@ export function useRoomSocket(request: RoomJoinRequest | undefined): UseRoomSock
       setErrorMessage(undefined);
       const finishJoin = (response: JoinResponse) => {
         if (cancelled || terminal || attempt !== generation || !socket.connected) return;
+        if (
+          !response.ok &&
+          response.code === 'UNAUTHORIZED' &&
+          activeRequest.kind === 'host' &&
+          !rejoinAsParticipant &&
+          claimedId !== undefined &&
+          displayName !== undefined
+        ) {
+          rejoinAsParticipant = true;
+          joinParticipant();
+          return;
+        }
         if (!response.ok) {
           terminal = true;
           setStatus('error');
@@ -186,7 +215,18 @@ export function useRoomSocket(request: RoomJoinRequest | undefined): UseRoomSock
         acknowledged = true;
         updateReady();
       };
-      if (activeRequest.kind === 'host') {
+      const joinParticipant = () => {
+        socket.emit(
+          'tournament:join',
+          {
+            tournamentId: activeRequest.tournamentId,
+            displayName: displayName ?? '',
+            ...(claimedId === undefined ? {} : { participantId: claimedId }),
+          },
+          finishJoin,
+        );
+      };
+      if (activeRequest.kind === 'host' && !rejoinAsParticipant) {
         socket.emit(
           'tournament:host-join',
           {
@@ -197,15 +237,7 @@ export function useRoomSocket(request: RoomJoinRequest | undefined): UseRoomSock
         );
         return;
       }
-      socket.emit(
-        'tournament:join',
-        {
-          tournamentId: activeRequest.tournamentId,
-          displayName: activeRequest.displayName,
-          ...(claimedId === undefined ? {} : { participantId: claimedId }),
-        },
-        finishJoin,
-      );
+      joinParticipant();
     };
 
     socket.on('connect', join);
@@ -269,6 +301,15 @@ export function useRoomSocket(request: RoomJoinRequest | undefined): UseRoomSock
     socketRef.current.emit('room:close', {});
   }, []);
 
+  const claimHost = useCallback(() => {
+    const socket = socketRef.current;
+    if (!readyRef.current || socket === undefined || !socket.connected) return;
+    socket.emit('host:claim', {}, (response) => {
+      if (socketRef.current !== socket || !socket.connected) return;
+      if (!response.ok) setSocketError({ code: response.code, message: response.message });
+    });
+  }, []);
+
   return {
     status,
     roomState,
@@ -284,5 +325,6 @@ export function useRoomSocket(request: RoomJoinRequest | undefined): UseRoomSock
     finishTournament,
     closeRoom,
     roomClosed,
+    claimHost,
   };
 }

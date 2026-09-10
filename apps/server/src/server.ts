@@ -21,6 +21,7 @@ import { registerBuzzHandlers } from './socket/buzzHandlers';
 import { registerFinishHandlers } from './socket/finishHandlers';
 import { createConnections } from './socket/connections';
 import { registerJoinHandlers } from './socket/joinHandlers';
+import { registerHostHandlers } from './socket/hostHandlers';
 import { registerJudgeHandlers } from './socket/judgeHandlers';
 
 export type ServerDependencies = AppDependencies & {
@@ -60,6 +61,8 @@ export function createServer(dependencies: ServerDependencies): CreatedServer {
       now,
       logger: connectionLogger,
     });
+
+    registerHostHandlers(socket, { io, registry, connections, now });
 
     registerBuzzHandlers(socket, {
       io,

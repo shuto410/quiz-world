@@ -330,6 +330,8 @@ export type InternalRoomState = {
   pausedReason?: PausedReason;
   /** Participant id currently holding host authority. */
   hostId: string;
+  /** Original seat authenticated by the creation token; does not change on takeover. */
+  initialHostId?: string;
   hostOnline: boolean;
   participants: ParticipantState[];
   currentBuzzSession?: BuzzSessionState;
@@ -613,7 +615,11 @@ sequenceDiagram
 - `status` が `paused` かつ `pausedReason` が `hostDisconnected` のときのみ許可する
 - オンラインの参加者だけが実行できる
 - 最初にサーバーで受理された1件のみ有効。以降は `INVALID_STATE`
-- 成功後、`hostId` を新ホストに変更し `statusBeforePause` へ復帰する
+- 成功後、`hostId` を新ホストに変更し `statusBeforePause` へ復帰する。スコアと表示名は維持する
+- 新ホストを早押し列から除く。新ホスト本人が回答権を持っていた場合は未判定回答を破棄し、列の次の回答者へ渡す。次がいなければラウンドをクリアして `idle` へ戻す。ホストが自分自身を判定する状態を作らない
+- チャネルとSocketセッションのロールを同期的に切り替えてから状態を配信する。新ホストにだけ未判定回答を送る
+- 最初のホスト席を `initialHostId` に保持する（秘密情報ではなく履歴情報）。作成トークンはこの席専用で、別参加者への引き継ぎ後の `tournament:host-join` は `UNAUTHORIZED`。旧ホストの画面は保存済みID・表示名で `tournament:join` し、通常参加者へ切り替える
+- 新ホストは元の参加者IDで再joinしてホストに復帰できる。URLに依存せず、最新状態の `hostId` に応じて画面を切り替える
 
 `judge:submit`
 
@@ -660,7 +666,7 @@ sequenceDiagram
 - 1本のSocketで同時に複数のjoinや複数席の保持は許可しない。join処理中や参加済みのSocketからのjoinは `INVALID_STATE` とし、別席への移動は退出後に行う
 - Socketチャネルの移動と接続所有者の切り替えは、単一サーバーの同期メモリアダプタ上で状態遷移に続けて行う
 - 参加者IDごとに現在有効なSocketを記録する。古いSocketの遅れて届いた `disconnect` は、新しい接続をオフラインに戻してはならない
-- ホスト切断を検知したら `paused` にし、`statusBeforePause` に直前の状態を保存する
+- ホスト切断を検知したら `idle`・`answering`・`result` は `paused` にし、`statusBeforePause` に直前の状態を保存する。既に `paused` なら保存状態を上書きしない。`finished` は終了状態を維持し、引き継ぎはしない
 - 参加者切断時は `online: false` にし、スコアと表示名を維持する
 - ホスト変更後に旧ホストが戻った場合は通常の参加者として扱う
 

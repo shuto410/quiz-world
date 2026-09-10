@@ -66,6 +66,9 @@ export function applyHostJoin(
   current: InternalRoomState,
   input: { newParticipantId: string; now: number },
 ): JoinOutcome {
+  if (current.initialHostId !== undefined && current.initialHostId !== current.hostId) {
+    return { ok: false, code: 'UNAUTHORIZED' };
+  }
   const existingHost = findParticipant(current, current.hostId);
 
   if (existingHost !== undefined) {
@@ -96,6 +99,7 @@ export function applyHostJoin(
     state: {
       ...current,
       hostId: host.id,
+      initialHostId: host.id,
       hostOnline: true,
       participants: [...current.participants, host],
       updatedAt: input.now,
@@ -138,7 +142,7 @@ export function applyParticipantJoin(
       participantId: claimed.id,
       isReconnect: true,
       state: {
-        ...current,
+        ...(current.hostId === claimed.id ? resumeHost(current, claimed.id, input.now) : current),
         participants: current.participants.map((participant) =>
           participant.id === claimed.id
             ? { ...participant, name: input.displayName, online: true }
@@ -203,6 +207,15 @@ export function applyLeave(
 
   return accept({
     ...current,
+    ...(current.hostId === participantId &&
+    current.status !== 'paused' &&
+    current.status !== 'finished'
+      ? {
+          status: 'paused' as const,
+          statusBeforePause: current.status,
+          pausedReason: 'hostDisconnected' as const,
+        }
+      : {}),
     participants: current.participants.map((participant) =>
       participant.id === participantId ? { ...participant, online: false } : participant,
     ),
@@ -220,7 +233,11 @@ function resumeHost(
     participant.id === hostParticipantId ? { ...participant, online: true } : participant,
   );
 
-  if (current.status === 'paused' && current.statusBeforePause !== undefined) {
+  if (
+    current.status === 'paused' &&
+    current.pausedReason === 'hostDisconnected' &&
+    current.statusBeforePause !== undefined
+  ) {
     const { statusBeforePause, pausedReason, ...rest } = current;
     return {
       ...rest,

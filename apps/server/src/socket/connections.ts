@@ -28,6 +28,8 @@ export function createConnections() {
         void previous.leave(participantChannel(session.tournamentId));
         previous.emit('session:invalidated', {});
       }
+      void socket.leave(hostChannel(session.tournamentId));
+      void socket.leave(participantChannel(session.tournamentId));
       seats.set(key(session), socket);
       bindSession(socket.data as Record<string, unknown>, session);
       void socket.join(
