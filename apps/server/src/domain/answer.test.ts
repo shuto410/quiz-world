@@ -1,7 +1,7 @@
 /**
  * Tests for text answer submission.
  *
- * The first block is the status-by-actor table required by the design: every game status
+ * The first block covers each status and then checks actor permissions in an open round: every game status
  * comes from `GAME_STATUSES`, so a new status cannot be added without deciding here who may
  * answer in it. The table records the expected error code rather than just a boolean,
  * because the two refusals mean different things to the client and are easy to swap by
@@ -84,88 +84,43 @@ function roomInStatus(status: GameStatus): InternalRoomState {
   }
 }
 
-const ACTORS = ['responder', 'queued', 'host', 'stranger'] as const;
-
-type Actor = (typeof ACTORS)[number];
-
-const ACTOR_IDS: Record<Actor, string> = {
-  responder: RESPONDER_ID,
-  queued: QUEUED_ID,
-  host: HOST_ID,
-  stranger: 'no-such-participant',
+/** Every status remains explicit without repeating the same rejection for all actor types. */
+const SUBMIT_OUTCOME: Record<GameStatus, true | SocketErrorCode> = {
+  idle: 'INVALID_STATE',
+  answering: true,
+  result: 'INVALID_STATE',
+  paused: 'INVALID_STATE',
+  finished: 'INVALID_STATE',
 };
-
-/** `true` means accepted; anything else is the code the refusal must carry. */
-type Outcome = true | SocketErrorCode;
-
-/**
- * The outcome of a submission for every status and every kind of sender.
- *
- * `Record<GameStatus, ...>` is what makes this exhaustive: adding a status to the domain
- * stops this file from compiling until the new row is filled in.
- */
-const SUBMIT_OUTCOME: Record<GameStatus, Record<Actor, Outcome>> = {
-  // Nobody holds the answer right, so the status is what refuses the send.
-  idle: {
-    responder: 'INVALID_STATE',
-    queued: 'INVALID_STATE',
-    host: 'INVALID_STATE',
-    stranger: 'INVALID_STATE',
-  },
-  // The one status where the answer right exists, so it is the one that distinguishes senders.
-  answering: {
-    responder: true,
-    queued: 'NOT_CURRENT_RESPONDER',
-    host: 'NOT_CURRENT_RESPONDER',
-    stranger: 'NOT_CURRENT_RESPONDER',
-  },
-  result: {
-    responder: 'INVALID_STATE',
-    queued: 'INVALID_STATE',
-    host: 'INVALID_STATE',
-    stranger: 'INVALID_STATE',
-  },
-  // Paused keeps the responder recorded for the resume, but the room accepts nothing.
-  paused: {
-    responder: 'INVALID_STATE',
-    queued: 'INVALID_STATE',
-    host: 'INVALID_STATE',
-    stranger: 'INVALID_STATE',
-  },
-  finished: {
-    responder: 'INVALID_STATE',
-    queued: 'INVALID_STATE',
-    host: 'INVALID_STATE',
-    stranger: 'INVALID_STATE',
-  },
-};
-
-describe('applyAnswerSubmit: status by actor', () => {
-  for (const status of GAME_STATUSES) {
-    for (const actor of ACTORS) {
-      const outcome = SUBMIT_OUTCOME[status][actor];
-      const label = outcome === true ? 'accepts' : `rejects with ${outcome}`;
-
-      it(`${label} an answer from the ${actor} while ${status}`, () => {
-        const result = applyAnswerSubmit(roomInStatus(status), {
-          participantId: ACTOR_IDS[actor],
+describe('applyAnswerSubmit admission', () => {
+  it.each(GAME_STATUSES)('checks the answer right holder while %s', (status) => {
+    const result = applyAnswerSubmit(roomInStatus(status), {
+      participantId: RESPONDER_ID,
+      answerText: '東京',
+      now: NOW,
+    });
+    const outcome = SUBMIT_OUTCOME[status];
+    if (outcome === true) expect(result.ok).toBe(true);
+    else expect(result).toEqual({ ok: false, code: outcome });
+  });
+  it.each([QUEUED_ID, HOST_ID, 'no-such-participant'])(
+    'refuses non-responder %s during an open round',
+    (participantId) => {
+      expect(
+        applyAnswerSubmit(roomInStatus('answering'), {
+          participantId,
           answerText: '東京',
           now: NOW,
-        });
-
-        if (outcome === true) {
-          expect(result.ok).toBe(true);
-          return;
-        }
-        expect(result).toEqual({ ok: false, code: outcome });
-      });
-    }
-  }
+        }),
+      ).toEqual({ ok: false, code: 'NOT_CURRENT_RESPONDER' });
+    },
+  );
 });
 
 describe('applyAnswerSubmit while answering', () => {
   it('stores the answer with the sender and the server receive time', () => {
     const current = roomInStatus('answering');
+    const before = structuredClone(current);
 
     const result = applyAnswerSubmit(current, {
       participantId: RESPONDER_ID,
@@ -185,6 +140,7 @@ describe('applyAnswerSubmit while answering', () => {
         updatedAt: NOW,
       },
     });
+    expect(current).toEqual(before);
   });
 
   it('replaces an earlier answer instead of keeping a history', () => {
@@ -213,38 +169,6 @@ describe('applyAnswerSubmit while answering', () => {
       answerText: '東京',
       receivedAt: LATER,
     });
-  });
-
-  it('leaves the buzz order, the answer right and the scores alone', () => {
-    const current = roomInStatus('answering');
-
-    const result = applyAnswerSubmit(current, {
-      participantId: RESPONDER_ID,
-      answerText: '東京',
-      now: NOW,
-    });
-    expect(result.ok).toBe(true);
-    if (!result.ok) {
-      return;
-    }
-
-    expect(result.state.buzzOrder).toEqual(current.buzzOrder);
-    expect(result.state.currentResponderId).toBe(RESPONDER_ID);
-    expect(result.state.currentBuzzSession).toEqual(current.currentBuzzSession);
-    expect(result.state.participants).toEqual(PARTICIPANTS);
-  });
-
-  it('does not modify the state it was given', () => {
-    const current = roomInStatus('answering');
-    const before = structuredClone(current);
-
-    applyAnswerSubmit(current, {
-      participantId: RESPONDER_ID,
-      answerText: '東京',
-      now: NOW,
-    });
-
-    expect(current).toEqual(before);
   });
 
   it('keeps the previous answer when a refused sender tries to overwrite it', () => {

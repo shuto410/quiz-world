@@ -235,7 +235,10 @@ describe('applyJudge: who may be judged', () => {
 
 describe('applyJudge: scoring', () => {
   it.each(JUDGE_NEXT_ACTIONS)('adds the delta to the judged participant with %s', (nextAction) => {
-    const result = applyJudge(roomInStatus('answering'), judgement({ nextAction, scoreDelta: 2 }));
+    const current = roomInStatus('answering');
+    const before = structuredClone(current);
+    const result = applyJudge(current, judgement({ nextAction, scoreDelta: 2 }));
+    expect(current).toEqual(before);
     expect(result.ok).toBe(true);
     if (!result.ok) {
       return;
@@ -419,17 +422,6 @@ describe('applyJudge: moveToNextResponder', () => {
   });
 });
 
-describe('applyJudge: immutability', () => {
-  it.each(JUDGE_NEXT_ACTIONS)('does not modify the state it was given with %s', (nextAction) => {
-    const current = roomInStatus('answering');
-    const before = structuredClone(current);
-
-    applyJudge(current, judgement({ nextAction }));
-
-    expect(current).toEqual(before);
-  });
-});
-
 /** Whether closing the result screen is accepted, per status. */
 const RESET_OUTCOME: Record<GameStatus, Outcome> = {
   idle: 'INVALID_STATE',
@@ -463,7 +455,10 @@ describe('applyGameReset', () => {
   });
 
   it('reopens buzzing and drops the judgement that was on screen', () => {
-    const result = applyGameReset(roomInStatus('result'), { actorId: HOST_ID, now: NOW });
+    const current = roomInStatus('result');
+    const before = structuredClone(current);
+    const result = applyGameReset(current, { actorId: HOST_ID, now: NOW });
+    expect(current).toEqual(before);
     expect(result.ok).toBe(true);
     if (!result.ok) {
       return;
@@ -475,24 +470,6 @@ describe('applyGameReset', () => {
     expect(result.state).not.toHaveProperty('currentSubmittedAnswer');
     expect(result.state).not.toHaveProperty('currentBuzzSession');
     expect(result.state).not.toHaveProperty('currentResponderId');
-  });
-
-  it('leaves the standings alone', () => {
-    const result = applyGameReset(roomInStatus('result'), { actorId: HOST_ID, now: NOW });
-    expect(result.ok).toBe(true);
-    if (!result.ok) {
-      return;
-    }
-
     expect(result.state.participants).toEqual(PARTICIPANTS);
-  });
-
-  it('does not modify the state it was given', () => {
-    const current = roomInStatus('result');
-    const before = structuredClone(current);
-
-    applyGameReset(current, { actorId: HOST_ID, now: NOW });
-
-    expect(current).toEqual(before);
   });
 });

@@ -103,7 +103,9 @@ describe('applyTournamentFinish', () => {
   });
 
   it('clears the last round so the final screen shows standings only', () => {
-    const result = applyTournamentFinish(roomInStatus('result'), { actorId: HOST_ID, now: NOW });
+    const current = roomInStatus('result');
+    const before = structuredClone(current);
+    const result = applyTournamentFinish(current, { actorId: HOST_ID, now: NOW });
     expect(result.ok).toBe(true);
     if (!result.ok) {
       return;
@@ -115,24 +117,7 @@ describe('applyTournamentFinish', () => {
     expect(result.state).not.toHaveProperty('currentSubmittedAnswer');
     expect(result.state).not.toHaveProperty('currentBuzzSession');
     expect(result.state).not.toHaveProperty('currentResponderId');
-  });
-
-  it('keeps every score and seat, including those who left', () => {
-    const result = applyTournamentFinish(roomInStatus('idle'), { actorId: HOST_ID, now: NOW });
-    expect(result.ok).toBe(true);
-    if (!result.ok) {
-      return;
-    }
-
     expect(result.state.participants).toEqual(PARTICIPANTS);
-  });
-
-  it('does not modify the state it was given', () => {
-    const current = roomInStatus('result');
-    const before = structuredClone(current);
-
-    applyTournamentFinish(current, { actorId: HOST_ID, now: NOW });
-
     expect(current).toEqual(before);
   });
 });

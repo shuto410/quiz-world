@@ -86,16 +86,6 @@ describe('finish handlers', () => {
 
     const stored = dependencies.repository.stored()[0];
     expect(stored?.status).toBe('closed');
-  });
-
-  it('keeps everyone connected after the tournament ends', async () => {
-    const { seedRoom } = await start();
-    const room = await seedRoom('終了後接続大会');
-
-    const finished = nextRoomStateEverywhere(room);
-    room.host.emit('tournament:finish', {});
-    await finished;
-
     expect(room.host.connected).toBe(true);
     expect(room.first.connected).toBe(true);
     expect(room.second.connected).toBe(true);

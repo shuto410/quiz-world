@@ -67,14 +67,17 @@ describe('answer handlers', () => {
     expect(forBystander).not.toHaveProperty('currentSubmittedAnswer');
   });
 
-  it('refuses a participant who does not hold the answer right', async () => {
+  it('refuses a non-responder even when the payload claims the answer holder', async () => {
     const { seedRoom } = await start();
     const room = await seedRoom('回答権なし大会');
     await openRound(room);
 
     const errorPromise = nextError(room.second);
     const hostView = nextRoomState(room.host);
-    room.second.emit('answer:submit', { answerText: '横取り' });
+    room.second.emit('answer:submit', {
+      answerText: '横取り',
+      participantId: room.firstId,
+    } as AnswerSubmitPayload);
     const [error, forHost] = await Promise.all([errorPromise, hostView]);
 
     expect(error).toEqual({
@@ -82,21 +85,6 @@ describe('answer handlers', () => {
       message: '回答権のある参加者だけが回答できます',
     });
     expect(forHost.currentSubmittedAnswer).toBeUndefined();
-  });
-
-  it('resolves the sender from the session, not from the payload', async () => {
-    const { seedRoom } = await start();
-    const room = await seedRoom('なりすまし大会');
-    await openRound(room);
-
-    const errorPromise = nextError(room.second);
-    // A client that adds the responder's id to the payload must gain nothing by it.
-    room.second.emit('answer:submit', {
-      answerText: '東京',
-      participantId: room.firstId,
-    } as AnswerSubmitPayload);
-
-    await expect(errorPromise).resolves.toMatchObject({ code: 'NOT_CURRENT_RESPONDER' });
   });
 
   it('refuses the host seat, which can never hold the answer right', async () => {

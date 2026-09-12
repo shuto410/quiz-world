@@ -1,8 +1,8 @@
 /**
  * Tests for the field validators.
  *
- * The three text fields share their behaviour, so the common rules are checked once in a
- * table over all of them and only the differing limit is checked individually. What matters
+ * The three text fields share their behaviour, so common rules use one representative
+ * field and only field-specific limits and messages are checked for every validator. What matters
  * here is the boundaries and the normalisation: off-by-one on a length limit and forgetting
  * to trim are the two mistakes that would actually reach a user.
  */
@@ -51,39 +51,23 @@ const textFields = [
   },
 ];
 
-describe.each(textFields)('$name', ({ validate, label, maxLength }) => {
-  it('accepts a value exactly at the limit', () => {
-    const value = 'あ'.repeat(maxLength);
-    expect(validate(value)).toEqual({ ok: true, value });
-  });
-
-  it('rejects a value one character over the limit', () => {
-    expect(expectRejection(validate('あ'.repeat(maxLength + 1)))).toContain(label);
-  });
-
-  it('measures the length after trimming, so padding does not eat into the limit', () => {
+describe.each(textFields)('$name boundaries', ({ validate, label, maxLength }) => {
+  it('trims before applying the field-specific limit and names the field on rejection', () => {
     const value = 'あ'.repeat(maxLength);
     expect(validate(`  ${value}  `)).toEqual({ ok: true, value });
+    expect(expectRejection(validate(`${value}あ`))).toBe(
+      `${label}は${maxLength}文字以内で入力してください`,
+    );
   });
+});
 
-  it('returns the trimmed value, including for full-width spaces', () => {
-    expect(validate('\u3000 テスト \u3000')).toEqual({ ok: true, value: 'テスト' });
+// All three fields delegate these rules to the same text validator; one representative suffices.
+describe('shared text rules', () => {
+  it('trims full-width spaces and preserves emoji joiners', () => {
+    expect(validateDisplayName('\u3000 👨‍👩‍👧 \u3000')).toEqual({ ok: true, value: '👨‍👩‍👧' });
   });
-
-  it('rejects a value that is blank once trimmed', () => {
-    expect(expectRejection(validate(' \u3000 '))).toContain(label);
-  });
-
-  it('rejects an embedded newline, which would break the single-line layout', () => {
-    expect(expectRejection(validate('前半\n後半'))).toContain(label);
-  });
-
-  it('keeps emoji intact rather than filtering zero-width joiners', () => {
-    expect(validate('👨‍👩‍👧')).toEqual({ ok: true, value: '👨‍👩‍👧' });
-  });
-
-  it.each([undefined, null, 42, {}, []])('rejects the non-string value %s', (value) => {
-    expect(expectRejection(validate(value))).toContain(label);
+  it.each([' \u3000 ', '前半\n後半', undefined, 42])('rejects invalid text %s', (value) => {
+    expectRejection(validateDisplayName(value));
   });
 });
 

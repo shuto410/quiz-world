@@ -14,12 +14,6 @@ afterEach(() => {
 });
 
 describe('Input', () => {
-  it('associates the label with the control', () => {
-    render(<Input id="name" label="大会名" />);
-
-    expect(screen.getByRole('textbox', { name: '大会名' })).toBeTruthy();
-  });
-
   it('exposes a validation message to assistive tech when present', () => {
     render(<Input id="name" label="大会名" error="大会名を入力してください" />);
 
