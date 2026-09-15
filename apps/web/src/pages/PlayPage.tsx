@@ -1,8 +1,8 @@
 /**
  * Participant play screen: join with a display name, watch the roster, and press the buzzer.
  *
- * The buzzer and the answer field share the central gameplay area, both always
- * present so the layout does not move between rounds. Whether either is enabled is derived
+ * The buzzer and the answer field occupy one stable gameplay area. The active responder
+ * sees the answer field, retained during reconnect so an unsent draft is not lost. Whether either is enabled is derived
  * from the broadcast state (`canBuzz`, `canSubmitAnswer`) so a disabled control matches what
  * the server would refuse. A sent answer is not echoed back: participants are not shown an
  * unjudged answer, not even their own.

@@ -6,6 +6,7 @@
  */
 
 import type { BuzzEntry, ParticipantState } from '@quiz-world/shared';
+import { ParticipantToken } from './ParticipantToken';
 import './BuzzOrderList.css';
 
 export type BuzzOrderListProps = {
@@ -37,6 +38,7 @@ export function BuzzOrderList({ buzzOrder, participants, currentResponderId }: B
           >
             <span className="qw-buzz-order__rank">{index + 1}</span>
             <span className="qw-buzz-order__name">
+              <ParticipantToken participantId={entry.participantId} active={isResponder} />
               {displayNameFor(entry.participantId, participants)}
               {isResponder ? <span className="qw-buzz-order__tag">回答権</span> : null}
             </span>

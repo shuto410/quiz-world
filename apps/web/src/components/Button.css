@@ -1,3 +1,4 @@
+/** Buttons respond immediately, with hover limited to pointer devices and a visible keyboard focus. */
 .qw-button {
   display: inline-flex;
   align-items: center;
@@ -11,17 +12,24 @@
   font-weight: 600;
   cursor: pointer;
 }
-
-.qw-button:hover:not(:disabled) {
-  filter: brightness(1.05);
+.qw-button:active:not(:disabled):not(:focus-visible) {
+  transform: scale(0.98);
 }
-
 .qw-button:disabled {
-  opacity: 0.55;
+  opacity: 0.45;
   cursor: not-allowed;
 }
-
 .qw-button:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 2px;
+  outline: 2px solid var(--color-ink);
+  outline-offset: 3px;
+}
+@media (hover: hover) and (pointer: fine) {
+  .qw-button:hover:not(:disabled) {
+    filter: brightness(0.94);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .qw-button:active:not(:disabled):not(:focus-visible) {
+    transform: none;
+  }
 }

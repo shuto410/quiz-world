@@ -13,6 +13,48 @@ afterEach(() => {
 });
 
 describe('ParticipantList', () => {
+  it('keeps a seat color through score reordering, renaming, reconnect and remount', () => {
+    const first = { id: 'a', name: 'あおい', online: true, joinedAt: 1, score: 10 };
+    const second = { id: 'b', name: 'はる', online: true, joinedAt: 2, score: 3 };
+    const tokenFor = (name: string) => {
+      const token = screen.getByText(name).closest('li')?.querySelector('.qw-participant-token');
+      if (!token) throw new Error(`Missing token for ${name}`);
+      return token;
+    };
+    const view = render(<ParticipantList participants={[first, second]} currentResponderId="a" />);
+    const token = tokenFor('あおい');
+    const tone = token.getAttribute('data-tone');
+    expect(tone).toBeTruthy();
+    expect(tokenFor('はる').getAttribute('data-tone')).not.toBe(tone);
+    const renamed = { ...first, name: 'あお', online: false, score: -1 };
+    view.rerender(<ParticipantList participants={[second, renamed]} currentResponderId="a" />);
+    expect(screen.getAllByRole('listitem')[1]?.textContent).toContain('あお');
+    expect(tokenFor('あお')).toBe(token);
+    expect(tokenFor('あお').getAttribute('data-tone')).toBe(tone);
+    expect(tokenFor('あお').getAttribute('data-active')).toBe('true');
+    view.rerender(<ParticipantList participants={[second, renamed]} currentResponderId="b" />);
+    expect(tokenFor('あお').getAttribute('data-active')).toBe('false');
+    expect(tokenFor('はる').getAttribute('data-active')).toBe('true');
+    view.unmount();
+    render(<ParticipantList participants={[{ ...renamed, online: true }, second]} />);
+    expect(tokenFor('あお').getAttribute('data-tone')).toBe(tone);
+    expect(tokenFor('あお').getAttribute('data-active')).toBe('false');
+  });
+  it('marks the current responder independently of the viewer and score leader', () => {
+    render(
+      <ParticipantList
+        selfParticipantId="a"
+        currentResponderId="b"
+        participants={[
+          { id: 'a', name: 'あおい', online: true, joinedAt: 1, score: 10 },
+          { id: 'b', name: 'はる', online: true, joinedAt: 2, score: 3 },
+        ]}
+      />,
+    );
+    expect(screen.getByText('回答中').closest('li')?.textContent).toContain('はる');
+    expect(screen.getByText('あなた').closest('li')?.textContent).toContain('あおい');
+    expect(screen.getAllByRole('listitem')[0]?.textContent).toContain('あおい');
+  });
   it('renders names, online state and score', () => {
     render(
       <ParticipantList
@@ -28,9 +70,10 @@ describe('ParticipantList', () => {
     expect(screen.getByText('出題者A')).toBeTruthy();
     expect(screen.getByText('花子')).toBeTruthy();
     expect(screen.getByText('オフライン')).toBeTruthy();
-    expect(screen.getByText('3点')).toBeTruthy();
+    expect(screen.getByLabelText('3点')).toBeTruthy();
     expect(screen.getByText('あなた')).toBeTruthy();
-    expect(screen.getByText('ホスト')).toBeTruthy();
+    expect(screen.getByText('進行役')).toBeTruthy();
+    expect(screen.queryByText('0点')).toBeNull();
   });
 
   it('shows an empty message when nobody has joined', () => {

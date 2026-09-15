@@ -1,0 +1,36 @@
+/** Small tactile pieces echo the buzzer; active seats gain a quiet edge in their own color. */
+.qw-participant-token {
+  --token-color: #789782;
+  display: inline-block;
+  flex: 0 0 18px;
+  width: 18px;
+  height: 18px;
+  margin: 3px;
+  border-radius: 50%;
+  background: var(--token-color);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.45),
+    0 2px 0 color-mix(in srgb, var(--token-color) 72%, var(--color-ink));
+}
+.qw-participant-token[data-tone='ochre'] {
+  --token-color: #c49a4b;
+}
+.qw-participant-token[data-tone='blue'] {
+  --token-color: #7395ac;
+}
+.qw-participant-token[data-tone='rose'] {
+  --token-color: #c18685;
+}
+.qw-participant-token[data-tone='plum'] {
+  --token-color: #9583a5;
+}
+.qw-participant-token[data-tone='clay'] {
+  --token-color: #b98562;
+}
+.qw-participant-token[data-active='true'] {
+  background: color-mix(in srgb, var(--token-color) 88%, var(--color-ink));
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--token-color) 65%, var(--color-ink)),
+    inset 0 1px 0 rgb(255 255 255 / 0.3),
+    0 2px 0 color-mix(in srgb, var(--token-color) 65%, var(--color-ink));
+}
