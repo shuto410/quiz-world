@@ -49,6 +49,7 @@ export function RenameForm({ connection }: RenameFormProps) {
       <fieldset disabled={disabled} className="qw-room-controls qw-form">
         <Input
           id="rename-display-name"
+          autoFocus
           label="新しい表示名"
           value={name}
           maxLength={INPUT_CONSTRAINTS.displayName.maxLength}

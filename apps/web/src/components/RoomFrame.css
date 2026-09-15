@@ -1,0 +1,397 @@
+/** Room chrome frames a shared quiz desk with a score ledger beside the active play area. */
+.qw-workspace {
+  width: min(1440px, 100%);
+  margin: 0 auto;
+  min-height: 100dvh;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  grid-template-rows: auto 1fr;
+}
+.qw-room-toolbar {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  padding: 0 40px;
+  min-height: 64px;
+  border-bottom: 1px solid var(--color-line);
+  background: transparent;
+  position: relative;
+  z-index: 2;
+}
+.qw-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--color-ink);
+  font-weight: 750;
+  text-decoration: none;
+  font-size: 17px;
+  letter-spacing: -0.04em;
+  white-space: nowrap;
+}
+.qw-brand__mark {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  color: #fff;
+  background: var(--color-accent);
+  border-radius: 3px;
+  font:
+    700 23px/1 Arial,
+    sans-serif;
+  border-bottom: 3px solid var(--color-accent-text);
+}
+.qw-room-toolbar summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 16px 0;
+  font-size: 12px;
+  font-weight: 600;
+}
+.qw-room-toolbar summary::-webkit-details-marker {
+  display: none;
+}
+.qw-room-toolbar summary > span {
+  margin-left: 6px;
+}
+.qw-room-toolbar__actions {
+  margin-left: auto;
+}
+.qw-room-account,
+.qw-invite-panel {
+  position: absolute;
+  right: 24px;
+  top: calc(100% - 2px);
+  width: min(360px, calc(100% - 32px));
+  padding: 20px;
+  border: 1px solid var(--color-line);
+  background: var(--color-paper-raised);
+  box-shadow: var(--shadow-toast);
+  border-radius: 6px;
+}
+.qw-room-account > p {
+  margin: 0 0 16px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  overflow-wrap: anywhere;
+}
+.qw-room-account > p > span {
+  font-size: 11px;
+  color: var(--color-ink-muted);
+}
+.qw-room-actions {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.qw-room-actions > .qw-button {
+  white-space: nowrap;
+}
+.qw-room-actions .qw-button,
+.qw-tournament-actions .qw-button {
+  background: transparent;
+  border-color: var(--color-line);
+  color: var(--color-ink-muted);
+  font-size: 12px;
+}
+.qw-invite-panel {
+  display: grid;
+  gap: 14px;
+  left: 180px;
+  right: auto;
+}
+.qw-invite-panel p {
+  margin: 0;
+  font-size: 12px;
+}
+.qw-invite-panel code {
+  display: block;
+  margin-top: 12px;
+  font-size: 26px;
+  letter-spacing: 0.12em;
+  font-weight: 600;
+  color: var(--color-ink);
+}
+.qw-invite-panel__url {
+  overflow-wrap: anywhere;
+  font-size: 11px;
+  color: var(--color-ink-muted);
+}
+.qw-invite-panel .qw-button {
+  justify-self: start;
+  font-size: 12px;
+}
+.qw-stage {
+  min-width: 0;
+}
+.qw-stage__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 36px 40px 28px;
+}
+.qw-room-heading {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+.qw-room-heading h1 {
+  font-size: 22px;
+  font-weight: 650;
+  margin: 0;
+  overflow-wrap: anywhere;
+  letter-spacing: -0.025em;
+}
+.qw-room-heading p {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  font-size: 12px;
+  color: var(--color-ink-muted);
+  overflow-wrap: anywhere;
+}
+.qw-role {
+  font-size: 11px;
+}
+.qw-role::before {
+  content: '/';
+  margin-right: 12px;
+  color: var(--color-line-strong);
+}
+.qw-connection {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11px;
+  color: var(--color-ink-muted);
+  flex-shrink: 0;
+}
+.qw-connection::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--color-ink-muted);
+}
+.qw-connection[data-connected='true']::before {
+  background: #378363;
+}
+.qw-stage__content {
+  max-width: 1160px;
+  margin: auto;
+  padding: 0 40px 28px;
+}
+.qw-roster {
+  min-width: 0;
+  align-self: start;
+  margin: 36px 28px 36px 0;
+  padding: 20px;
+  background: var(--color-paper-raised);
+  border-top: 2px solid var(--color-ink);
+  border-bottom: 1px solid var(--color-line);
+}
+.qw-roster > details > summary {
+  padding: 0 0 18px;
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 15px;
+  font-weight: 650;
+}
+.qw-roster > details > summary::-webkit-details-marker {
+  display: none;
+}
+.qw-roster__count {
+  color: var(--color-ink-muted);
+  font-size: 11px;
+  font-weight: 400;
+}
+.qw-roster > details:not([open]) > summary::after {
+  content: '+';
+}
+.qw-room-controls {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.qw-tournament-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 24px;
+  font-size: 11px;
+  color: var(--color-ink-muted);
+}
+.qw-tournament-actions .qw-button {
+  min-height: 36px;
+}
+.qw-connection-banner,
+.qw-room-notice {
+  padding: 14px 18px;
+  background: #fff8e7;
+  color: #765515;
+  border-left: 3px solid #b38a36;
+  line-height: 1.6;
+}
+.qw-connection-banner {
+  margin: 0 32px 20px;
+  font-size: 13px;
+}
+.qw-room-notice {
+  margin-bottom: 20px;
+}
+.qw-room-notice h2 {
+  font-size: 16px;
+  margin-top: 0;
+}
+.qw-room-notice p {
+  font-size: 13px;
+}
+.qw-room-results {
+  padding: 28px;
+  border-top: 2px solid var(--color-accent);
+  background: var(--color-paper-raised);
+}
+.qw-room-results > h2 {
+  font-size: 32px;
+  letter-spacing: -0.03em;
+  margin: 12px 0 28px;
+}
+.qw-eyebrow {
+  color: var(--color-ink-muted);
+  font-size: 11px;
+}
+.qw-host-progress {
+  display: grid;
+  gap: 12px;
+  justify-items: start;
+  margin-top: 24px;
+}
+.qw-final-result__name,
+.qw-final-result__winner-names {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.qw-room-results .qw-final-result__row--winner,
+.qw-room-results .qw-final-result__winners {
+  background: var(--color-accent-soft);
+}
+.qw-room-results .qw-final-result__winners {
+  border: 0;
+  border-left: 3px solid var(--color-accent);
+  border-radius: 0;
+  padding: 24px;
+}
+.qw-rename-form {
+  width: 100%;
+}
+.qw-rename-form .qw-form {
+  gap: 12px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  grid-template-columns: 1fr 1fr;
+}
+.qw-rename-form .qw-input {
+  grid-column: 1 / -1;
+}
+.qw-room-actions:has(.qw-rename-form) {
+  flex-direction: column;
+}
+
+@media (max-width: 1150px) {
+  .qw-workspace {
+    grid-template-columns: minmax(0, 1fr) 290px;
+  }
+  .qw-stage__header {
+    padding: 20px 24px;
+  }
+  .qw-stage__content {
+    padding: 0 24px 24px;
+  }
+}
+@media (max-width: 900px) {
+  .qw-workspace {
+    display: flex;
+    flex-direction: column;
+  }
+  .qw-room-toolbar {
+    padding: 0 16px;
+    min-height: 56px;
+    gap: 20px;
+  }
+  .qw-brand {
+    font-size: 15px;
+  }
+  .qw-brand__mark {
+    width: 26px;
+    height: 26px;
+    font-size: 20px;
+  }
+  .qw-stage__header {
+    padding: 22px 20px;
+  }
+  .qw-stage__content {
+    padding: 0 20px 24px;
+  }
+  .qw-roster {
+    align-self: stretch;
+    margin: 0 20px 32px;
+    padding: 20px;
+  }
+  .qw-roster > details > summary {
+    padding-bottom: 12px;
+  }
+  .qw-connection-banner {
+    margin: 0 20px 16px;
+  }
+  .qw-room-account,
+  .qw-invite-panel {
+    left: auto;
+    right: 16px;
+  }
+}
+@media (max-width: 450px) {
+  .qw-room-toolbar {
+    gap: 14px;
+  }
+  .qw-room-toolbar summary {
+    font-size: 11px;
+  }
+  .qw-room-toolbar summary > span {
+    margin-left: 2px;
+  }
+  .qw-stage__header {
+    padding: 20px 16px;
+  }
+  .qw-room-heading {
+    gap: 6px 12px;
+  }
+  .qw-room-heading h1 {
+    font-size: 20px;
+  }
+  .qw-stage__content {
+    padding: 0 16px 24px;
+  }
+  .qw-role::before {
+    display: none;
+  }
+  .qw-room-results {
+    padding: 20px 16px;
+  }
+}

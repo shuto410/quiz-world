@@ -1,0 +1,206 @@
+/** A tactile buzzer and a quiet answer area give each role one clear current action. */
+.qw-buzzer-guide {
+  margin-top: 32px;
+  color: var(--color-ink-muted);
+  font-size: 12px;
+  line-height: 1.8;
+}
+.qw-buzzer-guide summary {
+  cursor: pointer;
+}
+.qw-buzzer-guide ol {
+  padding-left: 20px;
+}
+.qw-buzzer-controls {
+  display: grid;
+  place-items: center;
+  min-height: 296px;
+}
+.qw-buzzer-controls__buzz {
+  width: min(100%, 240px);
+  text-align: center;
+}
+.qw-buzzer-controls__buzz > p {
+  font-size: 12px;
+  color: var(--color-ink-muted);
+  margin: 20px 0 0;
+}
+.qw-buzzer-button {
+  flex-direction: column;
+  gap: 14px;
+  width: 100%;
+  aspect-ratio: 1;
+  min-height: 0;
+  border-radius: 50%;
+  font-size: 30px;
+  letter-spacing: 0.04em;
+  border: 1px solid rgb(128 43 24 / 0.25);
+  box-shadow:
+    0 7px 0 #8d2b1c,
+    0 10px 0 8px var(--color-disabled);
+}
+.qw-buzzer-symbol {
+  width: 44px;
+  height: 36px;
+}
+.qw-buzzer-button:active:not(:disabled):not(:focus-visible) {
+  transform: translateY(5px);
+  box-shadow:
+    0 2px 0 #8d2b1c,
+    0 5px 0 8px var(--color-disabled);
+}
+.qw-buzzer-button:disabled {
+  opacity: 1;
+  border-color: transparent;
+  box-shadow:
+    0 3px 0 var(--color-line-strong),
+    0 6px 0 8px var(--color-subtle);
+  background: var(--color-disabled);
+  color: var(--color-ink-muted);
+}
+.qw-buzzer-controls__answer {
+  width: min(100%, 520px);
+}
+.qw-buzzer-controls__answer h3 {
+  font-size: 12px;
+  font-weight: 500;
+  margin: 0 0 12px;
+}
+.qw-buzzer-controls__answer p {
+  font-size: 12px;
+  margin: 14px 0 0;
+  color: var(--color-ink-muted);
+  line-height: 1.6;
+}
+.qw-buzzer-controls__answer .qw-answer-form {
+  width: 100%;
+}
+.qw-buzzer-controls__answer .qw-input__control {
+  min-height: 64px;
+  font-size: 20px;
+  border-color: var(--color-line-strong);
+}
+.qw-buzzer-controls__answer .qw-button {
+  min-height: 64px;
+  min-width: 72px;
+  font-size: 14px;
+}
+.qw-buzzer-answer {
+  margin-top: 28px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.qw-buzzer-answer .qw-submitted-answer {
+  background: transparent;
+  border: 0;
+  border-top: 1px solid var(--color-line);
+  border-radius: 0;
+  padding: 28px 0 0;
+  margin: 20px 0 0;
+}
+.qw-buzzer-answer .qw-submitted-answer__text {
+  font-size: clamp(24px, 2.6vw, 36px);
+  font-weight: 550;
+  letter-spacing: -0.035em;
+  line-height: 1.5;
+}
+.qw-buzzer-answer .qw-submitted-answer__sender {
+  font-size: 12px;
+  margin-top: 16px;
+}
+.qw-buzzer-answer .qw-submitted-answer__empty {
+  font-size: 14px;
+  color: var(--color-ink-muted);
+  padding: 24px 0;
+  border-top: 1px solid var(--color-line);
+}
+.qw-game .qw-buzz-order {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.qw-game .qw-buzz-order__row {
+  padding: 10px 0;
+}
+.qw-game .qw-buzz-order__name {
+  flex-wrap: wrap;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 13px;
+}
+.qw-game .qw-buzz-order__rank {
+  flex-shrink: 0;
+  border-radius: 3px;
+  width: 24px;
+  height: 24px;
+  font-size: 12px;
+}
+.qw-game .qw-buzz-order__row--responder {
+  background: transparent;
+}
+.qw-game .qw-buzz-order__row--responder .qw-buzz-order__rank {
+  background: var(--color-accent);
+}
+.qw-game .qw-buzz-order__tag {
+  background: var(--color-accent-soft);
+  color: var(--color-accent-text);
+  border-radius: 2px;
+  font-size: 10px;
+}
+.qw-game .qw-buzz-order__empty {
+  font-size: 12px;
+}
+.qw-game .qw-last-result {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.qw-game .qw-last-result__verdict {
+  font-size: 32px;
+  font-weight: 650;
+}
+.qw-game .qw-last-result__delta {
+  margin-left: 4px;
+  font: 650 42px/1 var(--font-score);
+}
+.qw-game .qw-last-result__name {
+  grid-column: 1 / -1;
+  overflow-wrap: anywhere;
+  font-size: 18px;
+  color: var(--color-ink);
+}
+.qw-game[data-content-primary='true'] .qw-buzzer-answer {
+  margin-top: 0;
+}
+.qw-game .qw-last-result--correct .qw-last-result__verdict {
+  color: var(--color-correct);
+}
+.qw-game .qw-last-result--wrong .qw-last-result__verdict {
+  color: var(--color-accent-text);
+}
+@media (max-width: 620px) {
+  .qw-buzzer-controls {
+    min-height: 264px;
+  }
+  .qw-buzzer-controls__buzz {
+    width: min(100%, 208px);
+  }
+  .qw-buzzer-controls__answer .qw-input__control {
+    min-height: 60px;
+    font-size: 18px;
+  }
+  .qw-buzzer-controls__answer .qw-button {
+    min-height: 60px;
+    min-width: 60px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .qw-buzzer-button:active:not(:disabled):not(:focus-visible) {
+    transform: none;
+  }
+}

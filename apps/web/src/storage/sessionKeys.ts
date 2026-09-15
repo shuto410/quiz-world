@@ -32,11 +32,12 @@ export function loadParticipantId(tournamentId: string): string | undefined {
   return window.localStorage.getItem(participantIdKey(tournamentId)) ?? undefined;
 }
 
-/** sessionStorage key for invite code / URL shown on the host screen after creation. */
+/** Key for public invitation details, also used to read older sessionStorage entries. */
 export function inviteDetailsKey(tournamentId: string): string {
   return `qw:inviteDetails:${tournamentId}`;
 }
 
+/** Public metadata retained for the room header and invitations. */
 export type StoredInviteDetails = {
   inviteCode: string;
   inviteUrl: string;
@@ -44,11 +45,14 @@ export type StoredInviteDetails = {
 };
 
 export function saveInviteDetails(tournamentId: string, details: StoredInviteDetails): void {
-  window.sessionStorage.setItem(inviteDetailsKey(tournamentId), JSON.stringify(details));
+  window.localStorage.setItem(inviteDetailsKey(tournamentId), JSON.stringify(details));
+  saveTournamentName(tournamentId, details.name);
 }
 
 export function loadInviteDetails(tournamentId: string): StoredInviteDetails | undefined {
-  const raw = window.sessionStorage.getItem(inviteDetailsKey(tournamentId));
+  const raw =
+    window.localStorage.getItem(inviteDetailsKey(tournamentId)) ??
+    window.sessionStorage.getItem(inviteDetailsKey(tournamentId));
   if (raw === null) {
     return undefined;
   }
@@ -79,4 +83,16 @@ export function saveParticipantName(tournamentId: string, name: string): void {
 
 export function loadParticipantName(tournamentId: string): string | undefined {
   return window.localStorage.getItem(`qw:participantName:${tournamentId}`) ?? undefined;
+}
+
+/** Persists public tournament names on both creation and participant entry. */
+export function saveTournamentName(tournamentId: string, name: string): void {
+  window.localStorage.setItem(`qw:tournamentName:${tournamentId}`, name);
+}
+
+export function loadTournamentName(tournamentId: string): string | undefined {
+  return (
+    window.localStorage.getItem(`qw:tournamentName:${tournamentId}`) ??
+    loadInviteDetails(tournamentId)?.name
+  );
 }

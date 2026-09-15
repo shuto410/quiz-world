@@ -86,22 +86,22 @@ export function JudgePanel({ responderName, hasNextResponder, onJudge }: JudgePa
 
       <div className="qw-judge__verdicts" role="group" aria-label="正誤">
         <Button
-          className="qw-judge__verdict"
+          className="qw-judge__verdict qw-judge__verdict--correct"
           aria-pressed={verdict === 'correct'}
           onClick={() => {
             chooseVerdict('correct');
           }}
         >
-          正解
+          <span aria-hidden="true">○</span> 正解
         </Button>
         <Button
-          className="qw-judge__verdict"
+          className="qw-judge__verdict qw-judge__verdict--wrong"
           aria-pressed={verdict === 'wrong'}
           onClick={() => {
             chooseVerdict('wrong');
           }}
         >
-          不正解
+          <span aria-hidden="true">×</span> 不正解
         </Button>
       </div>
 
@@ -136,11 +136,13 @@ export function JudgePanel({ responderName, hasNextResponder, onJudge }: JudgePa
       </div>
 
       <div className="qw-judge__actions">
+        <p className="qw-judge__actions-label">判定を確定して進む</p>
         {NEXT_ACTIONS.map(({ action, label }) => {
           const unavailable = action === 'moveToNextResponder' && !hasNextResponder;
           return (
             <Button
               key={action}
+              className={`qw-judge__commit qw-judge__commit--${action}`}
               disabled={verdict === undefined || unavailable}
               onClick={() => {
                 judge(action);
