@@ -24,6 +24,8 @@ const everyClientToServerEvent: Record<keyof ClientToServerEvents, true> = {
   'answer:submit': true,
   'judge:submit': true,
   'game:reset': true,
+  'game:next-responder': true,
+  'game:rules-update': true,
   'tournament:finish': true,
   'room:close': true,
 };

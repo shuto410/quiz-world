@@ -1,4 +1,6 @@
 /** Validates persisted room JSON and explicitly rebuilds fields before recovery or broadcast. */
+import { DEFAULT_GAME_RULES } from '../types/rules';
+import { validateGameRules } from './gameRules';
 import { GAME_STATUSES, PAUSED_REASONS, type InternalRoomState } from '../types/game';
 
 function invalid(field: string): never {
@@ -25,9 +27,19 @@ function choice<T extends string>(value: unknown, choices: readonly T[]): T {
   return choices.find((candidate) => candidate === value) ?? invalid('enum');
 }
 
+function count(value: unknown): number {
+  if (value === undefined) return 0;
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
+    ? value
+    : invalid('count');
+}
+
 export function parseRoomState(value: unknown): InternalRoomState {
   const item = record(value);
+  const rules = validateGameRules(item['rules'] === undefined ? DEFAULT_GAME_RULES : item['rules']);
+  if (!rules.ok) return invalid('rules');
   const state: InternalRoomState = {
+    rules: rules.value,
     tournamentId: text(item['tournamentId']),
     status: choice(item['status'], GAME_STATUSES),
     hostId: text(item['hostId']),
@@ -38,6 +50,8 @@ export function parseRoomState(value: unknown): InternalRoomState {
       online: boolean(p['online']),
       joinedAt: number(p['joinedAt']),
       score: number(p['score']),
+      correctCount: count(p['correctCount']),
+      wrongCount: count(p['wrongCount']),
     })),
     buzzOrder: array(item['buzzOrder'], (p) => ({
       participantId: text(p['participantId']),

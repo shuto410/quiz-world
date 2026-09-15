@@ -14,6 +14,8 @@
  * never trusted, because buzz order has to be decided by server receive order.
  */
 
+import type { GameRules } from './rules';
+
 /** Every progress state a room can be in. Listed so that tests can enumerate them. */
 export const GAME_STATUSES = ['idle', 'answering', 'result', 'paused', 'finished'] as const;
 
@@ -38,20 +40,6 @@ export const PAUSED_REASONS = ['hostDisconnected'] as const;
  */
 export type PausedReason = (typeof PAUSED_REASONS)[number];
 
-/** Every follow-up action the host can pick when submitting a judgement. */
-export const JUDGE_NEXT_ACTIONS = ['showResult', 'resetToIdle', 'moveToNextResponder'] as const;
-
-/**
- * What happens to the room right after the host judges an answer. The host picks the
- * judgement, the score delta and the follow-up action in a single operation, so that the
- * room never sits in a half-judged state.
- *
- * - `showResult`: keep the judgement on screen and move to `result`.
- * - `resetToIdle`: discard the judgement and reopen buzzing.
- * - `moveToNextResponder`: pass the answer right to the next entry in `buzzOrder`.
- */
-export type JudgeNextAction = (typeof JUDGE_NEXT_ACTIONS)[number];
-
 /**
  * A person taking part in the tournament.
  *
@@ -69,6 +57,10 @@ export type ParticipantState = {
   joinedAt: number;
   /** Running total. Can go negative, because a wrong answer may cost points. */
   score: number;
+  /** Accepted correct judgements, counted independently of points. */
+  correctCount: number;
+  /** Accepted wrong judgements, counted independently of points. */
+  wrongCount: number;
 };
 
 /**
@@ -104,7 +96,7 @@ export type SubmittedAnswerState = {
 };
 
 /**
- * The judgement being shown on the result screen. Only the last one is kept; there is no
+ * The latest judgement, retained until the next question. Only the last one is kept; there is no
  * answer history, because the MVP does not persist tournament records.
  */
 export type LastResultState = {
@@ -135,8 +127,10 @@ export type InternalRoomState = {
   /** Original host seat authenticated by the creation token; preserved across takeovers. */
   initialHostId?: string;
   hostOnline: boolean;
+  /** Match rules fixed before the first judgement. */
+  rules: GameRules;
   participants: ParticipantState[];
-  /** Set while a buzz round is open, from the first buzz until the judgement. */
+  /** Current round, retained on the result screen for optional next-responder progression. */
   currentBuzzSession?: BuzzSessionState;
   /** Accepted buzzes of the current round, in server receive order. The index is the rank. */
   buzzOrder: BuzzEntry[];
@@ -179,6 +173,7 @@ export const ROOM_STATE_KEYS = [
   'hostId',
   'initialHostId',
   'hostOnline',
+  'rules',
   'participants',
   'currentBuzzSession',
   'buzzOrder',
@@ -200,4 +195,6 @@ export const PARTICIPANT_STATE_KEYS = [
   'online',
   'joinedAt',
   'score',
+  'correctCount',
+  'wrongCount',
 ] as const satisfies readonly (keyof ParticipantState)[];

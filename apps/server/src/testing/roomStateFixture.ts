@@ -14,12 +14,15 @@ export function createRoomStateFixture(
   overrides: Partial<InternalRoomState> = {},
 ): InternalRoomState {
   return {
+    rules: { type: 'points', correctPoints: 1, wrongPoints: 0 },
     tournamentId: 'tournament-1',
     status: 'idle',
     hostId: 'participant-1',
     hostOnline: true,
     participants: [
       {
+        correctCount: 0,
+        wrongCount: 0,
         id: 'participant-1',
         name: 'ホスト',
         online: true,

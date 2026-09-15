@@ -1,11 +1,17 @@
 /** Presents server scores as standings, keeping the host outside the competition. */
-import type { ParticipantState } from '@quiz-world/shared';
+import {
+  DEFAULT_GAME_RULES,
+  getParticipantStanding,
+  type GameRules,
+  type ParticipantState,
+} from '@quiz-world/shared';
 import { rankParticipants } from '../game/ranking';
 import { ParticipantToken } from './ParticipantToken';
 import './ParticipantList.css';
 
 /** The broadcast roster and optional viewer identity, without stored ranking fields. */
 export type ParticipantListProps = {
+  rules?: GameRules | undefined;
   participants: readonly ParticipantState[];
   selfParticipantId?: string | undefined;
   hostId?: string | undefined;
@@ -14,12 +20,13 @@ export type ParticipantListProps = {
 
 export function ParticipantList({
   participants,
+  rules = DEFAULT_GAME_RULES,
   selfParticipantId,
   hostId,
   currentResponderId,
 }: ParticipantListProps) {
   const host = participants.find((person) => person.id === hostId);
-  const ranked = rankParticipants({ participants, hostId });
+  const ranked = rankParticipants({ participants, hostId, rules });
   return (
     <div className="qw-scoreboard">
       {ranked.length === 0 ? (
@@ -56,14 +63,29 @@ export function ParticipantList({
                   </span>
                 </span>
               </div>
-              <span
-                key={participant.score}
-                className="qw-participant-list__score"
-                aria-label={`${participant.score}点`}
-              >
-                {participant.score}
-                <span>点</span>
-              </span>
+              <div className="qw-participant-list__numbers">
+                <span
+                  className="qw-participant-list__counts"
+                  aria-label={`正解${participant.correctCount}回、誤答${participant.wrongCount}回`}
+                >
+                  <span>{participant.correctCount}○</span> <span>{participant.wrongCount}×</span>
+                </span>
+                {getParticipantStanding(participant, rules) !== 'playing' ? (
+                  <span className="qw-participant-list__standing">
+                    {getParticipantStanding(participant, rules) === 'won' ? '勝ち抜け' : '失格'}
+                  </span>
+                ) : null}
+                {rules.type === 'points' ? (
+                  <span
+                    key={participant.score}
+                    className="qw-participant-list__score"
+                    aria-label={`${participant.score}点`}
+                  >
+                    {participant.score}
+                    <span>点</span>
+                  </span>
+                ) : null}
+              </div>
             </li>
           ))}
         </ol>

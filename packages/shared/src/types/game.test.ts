@@ -18,6 +18,8 @@ import type { BuzzEntry, InternalRoomState, LastResultState, ParticipantState } 
 import { PARTICIPANT_STATE_KEYS, ROOM_STATE_KEYS } from './game';
 
 const participant: Required<ParticipantState> = {
+  correctCount: 0,
+  wrongCount: 0,
   id: 'participant-1',
   name: 'Alice',
   online: true,
@@ -38,6 +40,7 @@ const lastResult: Required<LastResultState> = {
 
 /** Every optional field is populated, so the sample carries the maximal key set. */
 const roomState: Required<InternalRoomState> = {
+  rules: { type: 'points', correctPoints: 1, wrongPoints: 0 },
   tournamentId: 'tournament-1',
   status: 'result',
   statusBeforePause: 'answering',

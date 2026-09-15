@@ -5,3 +5,5 @@
 export * from './fields';
 export * from './inviteCode';
 export * from './roomState';
+
+export * from './gameRules';

@@ -1,7 +1,7 @@
 /**
  * Tests for the client-side view of the buzz queue.
  *
- * Mirrors what `applyJudge` does with `moveToNextResponder`, so that the button is disabled
+ * Mirrors what `applyNextResponder` does after a wrong judgement, so that the button is disabled
  * exactly when the server would refuse it.
  */
 

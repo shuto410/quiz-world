@@ -19,6 +19,7 @@
  */
 
 import type { BuzzEntry, InternalRoomState, ParticipantState } from '@quiz-world/shared';
+import { getParticipantStanding } from '@quiz-world/shared';
 import { accept, reject, type TransitionResult } from './transition';
 
 export type BuzzInput = {
@@ -44,7 +45,11 @@ export type BuzzInput = {
  */
 export function applyBuzz(current: InternalRoomState, input: BuzzInput): TransitionResult {
   const seat = findSeat(current.participants, input.participantId);
-  if (seat === undefined || seat.id === current.hostId) {
+  if (
+    seat === undefined ||
+    seat.id === current.hostId ||
+    getParticipantStanding(seat, current.rules) !== 'playing'
+  ) {
     return reject('INVALID_STATE');
   }
 

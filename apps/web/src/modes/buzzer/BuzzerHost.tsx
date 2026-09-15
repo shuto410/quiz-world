@@ -13,7 +13,8 @@ import './buzzer.css';
 /** Only the active connection supplies authoritative state and mode commands. */
 type BuzzerHostProps = { connection: UseRoomSocketResult };
 export function BuzzerHost({ connection }: BuzzerHostProps) {
-  const { roomState, participantId, status, roomClosed, judge, resetGame } = connection;
+  const { roomState, participantId, status, roomClosed, judge, resetGame, nextResponder } =
+    connection;
   const responder = roomState?.participants.find(
     (person) => person.id === roomState.currentResponderId,
   );
@@ -39,17 +40,38 @@ export function BuzzerHost({ connection }: BuzzerHostProps) {
             <JudgePanel
               key={responder.id}
               responderName={responder.name}
-              hasNextResponder={hasNextResponder({
-                buzzOrder: roomState.buzzOrder,
-                currentResponderId: roomState.currentResponderId,
-              })}
-              onJudge={(judgement) => judge({ participantId: responder.id, ...judgement })}
+              rules={roomState.rules}
+              onJudge={(judgement) => {
+                if (roomState.currentBuzzSession)
+                  judge({
+                    participantId: responder.id,
+                    buzzSessionId: roomState.currentBuzzSession.id,
+                    ...judgement,
+                  });
+              }}
             />
           </fieldset>
         ) : roomState?.status === 'result' ? (
-          <Button disabled={status !== 'joined' || roomClosed} onClick={resetGame}>
-            次の問題へ
-          </Button>
+          <div className="qw-buzzer-progress">
+            <Button disabled={status !== 'joined' || roomClosed} onClick={resetGame}>
+              次の問題へ
+            </Button>
+            {roomState.lastResult?.isCorrect === false ? (
+              <Button
+                disabled={
+                  status !== 'joined' ||
+                  roomClosed ||
+                  !hasNextResponder({
+                    buzzOrder: roomState.buzzOrder,
+                    currentResponderId: roomState.currentResponderId,
+                  })
+                }
+                onClick={nextResponder}
+              >
+                次の回答者へ
+              </Button>
+            ) : null}
+          </div>
         ) : undefined
       }
       supplement={
@@ -59,7 +81,9 @@ export function BuzzerHost({ connection }: BuzzerHostProps) {
             <BuzzOrderList
               buzzOrder={roomState?.buzzOrder ?? []}
               participants={roomState?.participants ?? []}
-              currentResponderId={roomState?.currentResponderId}
+              currentResponderId={
+                roomState.status === 'answering' ? roomState.currentResponderId : undefined
+              }
             />
           </section>
         ) : undefined
@@ -67,14 +91,20 @@ export function BuzzerHost({ connection }: BuzzerHostProps) {
     >
       {roomState?.status === 'answering' || roomState?.status === 'result' ? (
         <div className="qw-buzzer-answer">
-          {roomState.status === 'result' ? (
-            <LastResult result={roomState.lastResult} participants={roomState.participants} />
+          {roomState.lastResult ? (
+            <LastResult
+              rules={roomState.rules}
+              result={roomState.lastResult}
+              participants={roomState.participants}
+            />
           ) : null}
-          <SubmittedAnswer
-            showSender={false}
-            answer={roomState.currentSubmittedAnswer}
-            participants={roomState.participants}
-          />
+          {roomState.status === 'answering' || roomState.currentSubmittedAnswer ? (
+            <SubmittedAnswer
+              showSender={false}
+              answer={roomState.currentSubmittedAnswer}
+              participants={roomState.participants}
+            />
+          ) : null}
         </div>
       ) : (
         <details className="qw-buzzer-guide">
@@ -82,7 +112,7 @@ export function BuzzerHost({ connection }: BuzzerHostProps) {
           <ol>
             <li>問題を読み上げる</li>
             <li>早押しした人の回答を聞く</li>
-            <li>正誤・得点を選び、次の進行先を押す</li>
+            <li>正解・不正解を押して判定を伝える</li>
           </ol>
         </details>
       )}

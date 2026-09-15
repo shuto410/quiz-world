@@ -1,5 +1,7 @@
+/** Verdicts wrap on small screens and announce the server result accessibly. */
 .qw-last-result {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--space-3);
   margin: 0;
@@ -30,4 +32,9 @@
   margin-left: auto;
   font-variant-numeric: tabular-nums;
   font-weight: 700;
+}
+
+.qw-last-result__counts {
+  font-variant-numeric: tabular-nums;
+  font-size: 14px;
 }

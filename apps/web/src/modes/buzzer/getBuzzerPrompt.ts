@@ -1,4 +1,5 @@
 /** Derives guidance only; permissions, answer rights and scores remain server-owned. */
+import { getParticipantStanding } from '@quiz-world/shared';
 import type { RoomStateEvent } from '@quiz-world/shared';
 
 /** Mode copy passed into the shared game stage. */
@@ -16,6 +17,16 @@ export function getBuzzerPrompt(
       description: '接続が完了すると操作できるようになります。',
     };
   const isHost = participantId === room.hostId;
+  const self = room.participants.find((p) => p.id === participantId);
+  if (!isHost && self && (room.status === 'idle' || room.status === 'answering')) {
+    const standing = getParticipantStanding(self, room.rules);
+    if (standing !== 'playing')
+      return {
+        phase: standing === 'won' ? '勝ち抜け' : '失格',
+        title: standing === 'won' ? '勝ち抜けです！' : 'この試合の回答は終了しました',
+        description: 'ほかの参加者の回答と、ホストの進行をお待ちください。',
+      };
+  }
   switch (room.status) {
     case 'finished':
       return {
@@ -34,8 +45,8 @@ export function getBuzzerPrompt(
         phase: '判定結果',
         title: '判定結果',
         description: isHost
-          ? '結果を確認したら、次の問題へ進めてください。'
-          : 'ホストが次の問題へ進むまでお待ちください。',
+          ? '結果を確認したら、次の進行を選んでください。'
+          : 'ホストが次へ進めるまでお待ちください。',
       };
     case 'idle':
       if (isHost) {
@@ -58,7 +69,7 @@ export function getBuzzerPrompt(
         return {
           phase: '回答中',
           title: `${responder}さんの回答を判定`,
-          description: '声またはテキストの回答を確認し、正誤と得点を確定してください。',
+          description: '声またはテキストの回答を確認し、正解・不正解を押してください。',
         };
       if (participantId === room.currentResponderId)
         return {

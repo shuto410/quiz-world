@@ -152,7 +152,7 @@
 }
 .qw-game .qw-last-result {
   display: grid;
-  grid-template-columns: auto 1fr;
+  grid-template-columns: auto minmax(0, 1fr);
   background: transparent;
   border: 0;
   border-radius: 0;
@@ -167,6 +167,10 @@
 .qw-game .qw-last-result__delta {
   margin-left: 4px;
   font: 650 42px/1 var(--font-score);
+}
+.qw-game .qw-last-result__counts {
+  grid-column: 1 / -1;
+  font-size: 20px;
 }
 .qw-game .qw-last-result__name {
   grid-column: 1 / -1;

@@ -1,3 +1,5 @@
+<!-- Authoritative product and system specification; implementation changes must follow this document. -->
+
 # クイズ大会プラットフォーム設計プラン
 
 この文書が設計の唯一の正とする。実装で迷いが出た場合は本書に従い、本書と実装が食い違った場合は本書を先に更新してから実装を直す。要点だけを読みたい場合はリポジトリ直下の `AGENTS.md` を参照する。
@@ -180,7 +182,7 @@ infra           # AWS CDK (TypeScript)
 
 `Host` と `Participant` の2種類のみ。観戦者、共同出題者、管理者は対象外。
 
-- `Host`: 大会作成、正誤判定、得点入力、進行操作、大会終了、ルームクローズ
+- `Host`: 大会作成、ルール設定、正誤判定、進行操作、大会終了、ルームクローズ
 - `Participant`: 参加、退出、早押し、テキスト回答送信、表示名変更、ホスト引き継ぎ
 
 ### 問題管理はアプリ外
@@ -214,7 +216,7 @@ buzz session ごとに方式を選択しない。ホストが運用で使い分�
 - 招待URLは招待コードをパラメーターに持つ
 - 招待コードだけを直接入力する画面も用意する
 - 大会は作成直後から参加可能。「大会開始」という操作は存在しない
-- 途中参加と途中退出を許可する。途中参加者はスコア0から始まる
+- 途中参加と途中退出を許可する。途中参加者はスコア0・正解数0・誤答数0から始まる
 - 退出者のスコアと表示名はルーム内に残す
 - 同じ大会内で表示名の重複は許可しない
 - 再参加はブラウザ保存の参加者IDで同一人物として復帰する
@@ -250,8 +252,7 @@ export type PausedReason = "hostDisconnected";
 flowchart LR
   idle["idle"] --> answering["answering"]
   answering --> result["result"]
-  answering --> idle
-  answering --> answering2["answering: next responder"]
+  result --> answering2["answering: next responder"]
   answering2 --> result
   result --> idle
   idle --> finished["finished"]
@@ -262,9 +263,8 @@ flowchart LR
 - 最初に受理された参加者が回答権を得る
 - `answering` 中も未早押しの参加者は早押しできる。順番だけ記録される
 - 同じ `buzzSession` 内で同じ参加者の早押しは1回だけ受理する
-- ホストは `judge:submit` で正誤、得点、次アクションを1操作で確定する
-- 次アクションは `showResult`、`resetToIdle`、`moveToNextResponder` の3つ
-- `judge:submit` を受理するのは `answering` のみ。`showResult` で `result` へ移ったあと、結果表示を閉じて `idle` に戻す操作は `game:reset` という別イベントにする。`judge:submit` は必ず得点加算を伴うので、結果画面から次へ進むだけの操作に流用すると二重加点の経路ができる
+- ホストは「正解」「不正解」を押して `judge:submit` を送り、サーバーは設定済みルールで得点と○・×数を更新して `result` に移る
+- 判定後の進行は `game:reset`（次の問題へ）と、不正解時の `game:next-responder`（次の回答者へ）に分離する。どちらも得点を変更しない
 - 大会終了はホストが任意のタイミングで実行する
 
 ### 早押しの公平性
@@ -283,40 +283,44 @@ flowchart LR
 - ホスト席からの押下は受理しない。判定する側が回答権を持つ状態を作らない
 - ルームに席がない送信者の押下は受理しない
 
-### 判定と得点
+### 試合ルールと即時判定
 
-- 正誤判定はホストの手動判定のみ。自動判定は行わない
-- 得点は判定時にホストが入力する。問題側に配点を持たない
-- クイックボタン（`+1`, `0`, `-1`）と任意数値の手入力を併用する
-- 不正解時の減点も可能。スコアは負値になり得る
-- 判定後、参加者には正誤と得点変動を表示する
-- 送信済みテキスト回答は判定前はホストのみ、判定後は全員に見せる
-- 回答が未送信でもホストは判定へ進める
+- ホストはルームの「試合ルール」で、得点制または n○m× を選ぶ。既定は得点制（正解 +1 点、不正解 0 点）。7○3×プリセットを用意する
+- 得点制では正解時・不正解時の増減点をそれぞれ -999〜999 の整数で設定する。問題ごとの配点入力は行わない
+- n○m×では勝ち抜けに必要な正解数と失格になる誤答数をそれぞれ 1〜99 で設定する。7○3×は7正解で勝ち抜け、3誤答で失格。正解は +1 点、不正解は 0 点で、○数と×数を独立して記録する
+- ルールの変更は最初の判定前かつ `idle` のホストだけが行える。判定済みの大会には途中から適用しない。ルール、点数、○・×数はスナップショットから復元する
+- 正誤はホストの手動判定のみ。「正解」「不正解」を押すと直ちにサーバーへ送り、設定済みの増減点と○・×数を同期的に更新して全員へ配信する。別の確定ボタンは設けない
+- 判定は必ず `result` に移り、全員に正誤、得点変動、○・×数、勝ち抜け・失格の表示を出す。未送信の口頭回答も判定できる
+- 判定後にホストが「次の問題へ」または不正解時の「次の回答者へ」を選ぶ。進行操作は得点を変更しない。自動進行は追加しない
+- n○m×の勝ち抜け・失格条件は共有の純粋関数で定義し、サーバーが判定時と早押し受付時に適用する。クライアントは同じ条件を表示とボタン無効化に使う。勝ち抜け・失格した席の早押しはサーバーでも拒否する
+- 送信済みテキスト回答は `result` の間だけ全員へ配信する。次の回答者へ移ると破棄する。直前の正誤通知は次の回答中にも残し、新しい判定または次の問題で置き換える
+- 得点制の順位は従来どおり得点順。n○m×は勝ち抜け、競技中、失格の順で、各区分は○数降順・×数昇順。同条件は同順位。最終結果は達成者全員を「勝ち抜け」と表示し、未達成者や失格者を優勝扱いしない。勝ち抜け順や人数による自動終了は今回の対象外
+- 参考: [Nagaya Quiz Arena 3](https://penpenpng.com/nqa3/room4) の正解数・誤答数の独立表示とルール確認UI。ほかの特殊形式は追加しない
 
 ### 画面構成
 
 - UIは仲間と囲むクイズの進行卓とスコアボードを軸に、温かい紙色、墨色の文字、朱色の主操作色で統一する。ゲーム用のメインスペースは明るい面と外枠で大会情報・スコアボードから明確に区切り、その中にモード名、表示領域、操作領域、補足情報をまとめる。内部は必要な区切り線で整理する。回答者・回答内容・得点を大きく読みやすくし、待機案内は控えめにする。朱色は早押し、回答権、主操作に使い、正誤は記号と文字も併記する。
 - 大会画面はデスクトップで上部に大会情報と退出、主領域に進行操作、右に参加者一覧を配置する。上部ツールバーは紙色の背景より一段濃いサンドベージュ（`#e8dbc8`）にし、墨色の文字と朱色のロゴを載せる。招待・参加情報の操作をゲーム領域から穏やかに区切り、明るいメインスペースを主役にする。招待情報は上部の「招待する」に集約し、参加者が0人でも主領域には重複表示しない。装飾コピーや実際に切り替えられないナビゲーションは置かない。スマートフォンでは1列にし、参加者一覧は開閉可能にする。
-- 正誤選択、フォーカス、無効状態を視覚的に区別する。既存のゲームルールやSocketイベントは変更しない。
+- 正誤ボタン、フォーカス、無効状態を視覚的に区別する。
 
 - 大会作成画面: 大会名と最大参加人数を入力し、招待コードと招待URLを確認する
 - 招待コード入力画面: コードを直接入力して参加画面へ進む
 - 参加者名前入力画面: 大会名を表示し、表示名だけを入力する
 - 参加者プレイ画面: 参加者一覧、早押し順、スコアを中心に表示。中央の安定した操作領域に早押しボタンを置き、回答権を得たら回答入力へ切り替える。再接続やホスト切断による一時停止中は回答欄と入力中の文字を保持したまま操作を無効化する
 - ホスト進行画面: デスクトップでは左に回答者と回答、右に判定操作を配置し、通常の短い回答はスクロールせずに判定できるようにする。狭い画面では縦に並べる。手順説明は開閉式にする
-- 最終結果画面: 優勝者を強調表示。同点1位は全員を優勝者として表示。ホスト席は出題者なので順位に含めない
+- 最終結果画面: 得点制は優勝者を強調表示し、同点1位は全員を優勝者とする。n○m×は勝ち抜け者と○・×数、失格を表示する。ホスト席は順位に含めない
 
 参加者画面は状態が変わっても基本レイアウトを維持する。ホスト画面の操作ボタンは状態ごとに絞る。
 
-参加者一覧は得点降順のスコアボードとし、同点は同順位、次順位は人数分飛ばす。名前と等幅の得点を揃え、名前の横に小さな色付きの駒を置く。駒の色は参加者IDから決め、順位・表示名・接続状態が変わっても維持する。早押し順にも同じ駒を使う。色は装飾的な目印であり、一意な識別や回答権の判別を色だけに依存させない。現在の回答者には「回答中」の文字を表示し、駒自体を同系色でわずかに濃くして内側の縁を強調する。自分の席は「あなた」で区別する。ホストは得点を表示せず別枠にする。名前変更と退出は参加情報から開き、招待は独立して見つけやすくする。大会名と作成時の招待情報は大会ID別にブラウザに保存し、参加者も参加時に取得した大会名を再表示できる。既存のsessionStorage内の招待情報も読み取る。
+参加者一覧は設定された試合ルールの順位で並べるスコアボードとし、同条件は同順位、次順位は人数分飛ばす。名前と等幅の得点を揃え、名前の横に小さな色付きの駒を置く。駒の色は参加者IDから決め、順位・表示名・接続状態が変わっても維持する。早押し順にも同じ駒を使う。色は装飾的な目印であり、一意な識別や回答権の判別を色だけに依存させない。現在の回答者には「回答中」の文字を表示し、駒自体を同系色でわずかに濃くして内側の縁を強調する。自分の席は「あなた」で区別する。ホストは得点を表示せず別枠にする。名前変更と退出は参加情報から開き、招待は独立して見つけやすくする。大会名と作成時の招待情報は大会ID別にブラウザに保存し、参加者も参加時に取得した大会名を再表示できる。既存のsessionStorage内の招待情報も読み取る。
 
 待機中のホスト画面は参加者が0人なら「参加者を待っています」、参加後は「早押しを待っています」と表示する。回答者名は回答中に強調し、結果では正誤と得点変動を主役にする。早押しボタンは指で押せる大きさの円形とし、押下時の短い沈み込みで反応を伝える。参加者の操作領域は回答入力に切り替わっても位置を保つ。
 
 動きは回答権の通知と得点変化の短い強調に限定し、早押しの操作を待たせない。動きを減らす設定では位置・拡大縮小のアニメーションを行わない。
 
 - `idle`: スコア確認、大会終了
-- `answering`: 正誤、点数入力、次アクション選択
-- `result`: `game:reset`（次の問題へ）、大会終了
+- `answering`: 正解・不正解の即時判定
+- `result`: `game:reset`（次の問題へ）、不正解時の `game:next-responder`、大会終了
 - `paused`: 引き継ぎ・再接続状態の表示のみ
 - `finished`: 最終結果表示、ルームクローズ
 
@@ -347,6 +351,7 @@ export type InternalRoomState = {
   /** Original seat authenticated by the creation token; does not change on takeover. */
   initialHostId?: string;
   hostOnline: boolean;
+  rules: GameRules;
   participants: ParticipantState[];
   currentBuzzSession?: BuzzSessionState;
   /** Buzz entries in server-received order. Index is the rank. */
@@ -366,6 +371,8 @@ export type ParticipantState = {
   online: boolean;
   joinedAt: number;
   score: number;
+  correctCount: number;
+  wrongCount: number;
 };
 
 /**
@@ -394,7 +401,7 @@ export type SubmittedAnswerState = {
 };
 
 /**
- * Minimal judgement result kept only for the result screen.
+ * Latest judgement retained until the next question.
  */
 export type LastResultState = {
   participantId: string;
@@ -418,12 +425,12 @@ export type ParticipantRoomState = Omit<InternalRoomState, "currentSubmittedAnsw
 
 クライアントで計算できる値は `RoomState` に持たない。
 
-- 優勝者: `participants` の最高スコアから計算する。ホスト席（`hostId`）は除く
-- ランキング順位: `participants` を `score` 降順に並べて計算する。同点は同順位にする
+- 優勝者: 得点制ではホスト席を除く最高スコア。n○m×では設定された○数に達した席を勝ち抜けとして表示する
+- ランキング順位: 上記ルールに従って並べる。勝ち抜け・失格フラグや順位は状態に保存しない
 - 早押し順位: `buzzOrder` の配列インデックスから計算する
 - `isHost`: `hostId === participant.id` で計算する
 - `hasBuzzed`: `buzzOrder` に参加者IDが含まれるかで計算する
-- `isCurrentResponder`: `currentResponderId` との一致で計算する
+- `isCurrentResponder`: `answering` 中かつ `currentResponderId` との一致で計算する。`result` 中のIDは判定済みの履歴であり回答権ではない
 - 判定後の合計点: `participants[].score` を参照する
 
 ### 参加者向け変換
@@ -436,12 +443,10 @@ export type ParticipantRoomState = Omit<InternalRoomState, "currentSubmittedAnsw
 
 ### リセット規則
 
-- `showResult`: `lastResult` をセットし、`currentBuzzSession`、`buzzOrder`、`currentResponderId` をリセットして `result` へ。`currentSubmittedAnswer` は残す。結果画面で全員に見せるのが目的だから
-- `resetToIdle`: `lastResult` と `currentSubmittedAnswer` を削除し、`currentBuzzSession`、`buzzOrder`、`currentResponderId` もリセットして `idle` へ。`buzzOrder` を残すと、前の問題で押した人が次の問題で押せなくなる
-- `moveToNextResponder`: `buzzOrder` の次の参加者へ回答権を移す。`currentSubmittedAnswer` はリセットする。`currentBuzzSession` と `buzzOrder` は同じ問題の続きなので保持する。オフラインの参加者を飛ばすことはしない。飛ばす条件をサーバーが判断し始めると、ホストの進行と食い違う
-- 次候補がいない場合は `NO_NEXT_RESPONDER` エラーを返し、状態は変えない。得点も加算しない
-- `game:reset`: `result` を閉じて `idle` へ戻す。リセット範囲は `resetToIdle` と同じで、スコアには触らない
-- `tournament:finish`: `resetToIdle` と同じ範囲をリセットしてから `finished` へ。最終結果はスコアだけを見せるので、直前の判定や回答テキストを残さない
+- `judge:submit`: `lastResult` をセットして `result` へ。`currentBuzzSession`、`buzzOrder`、`currentResponderId`、`currentSubmittedAnswer` は結果確認と次候補への進行のため保持する。`result` 中の早押し・回答送信・再判定は拒否する
+- `game:next-responder`: 不正解の `result` から列の次の席へ回答権を移して `answering` へ。`currentSubmittedAnswer` は削除し、`lastResult` は正誤通知として保持する。オフラインの席は飛ばさない。次候補がいなければ `NO_NEXT_RESPONDER` で状態を変えない
+- `game:reset`: `result` から `idle` に戻し、ラウンド、早押し列、回答者、回答テキスト、直前の結果を消す。得点と○・×数、ルールは保持する
+- `tournament:finish`: `game:reset` と同じ範囲をリセットして `finished` へ
 
 ## Socketイベント設計
 
@@ -481,12 +486,20 @@ type AnswerSubmitPayload = {
 type JudgeSubmitPayload = {
   participantId: string;
   isCorrect: boolean;
-  scoreDelta: number;
-  nextAction: "showResult" | "resetToIdle" | "moveToNextResponder";
+  buzzSessionId: string;
 };
 
 /** Host closes the result screen and reopens buzzing. Carries no judgement. */
 type GameResetPayload = Record<string, never>;
+
+/** Host advances after a wrong judgement without scoring again. */
+type GameNextResponderPayload = Record<string, never>;
+
+/** Host sets the rules before the first judgement. */
+type GameRules =
+  | { type: "points"; correctPoints: number; wrongPoints: number }
+  | { type: "maruBatsu"; correctTarget: number; wrongLimit: number };
+type GameRulesUpdatePayload = { rules: GameRules };
 
 type TournamentFinishPayload = Record<string, never>;
 
@@ -519,7 +532,7 @@ type SocketErrorEvent = {
 参加・権限系のイベントだけ ack コールバックで即時結果を返す。それ以外は ack を使わず、`room:state` と `error` で伝える。
 
 - ack を使う: `tournament:host-join`、`tournament:join`、`participant:rename`、`host:claim`
-- ack を使わない: `tournament:leave`、`game:buzz`、`answer:submit`、`judge:submit`、`game:reset`、`tournament:finish`、`room:close`
+- ack を使わない: `tournament:leave`、`game:buzz`、`answer:submit`、`judge:submit`、`game:reset`、`game:next-responder`、`game:rules-update`、`tournament:finish`、`room:close`
 
 失敗形式は4イベントで共通にする。成功形式だけイベントごとに定義する。
 
@@ -572,7 +585,7 @@ export type SocketErrorCode =
   | "NOT_HOST"                // Host-only operation by a participant
   | "NOT_CURRENT_RESPONDER"   // Answer submitted without the answer right
   | "INVALID_STATE"           // Operation not allowed in the current status
-  | "NO_NEXT_RESPONDER"       // moveToNextResponder with an empty queue
+  | "NO_NEXT_RESPONDER"       // game:next-responder with an empty queue
   | "STALE_CONNECTION"        // Operation from a superseded connection
   | "RATE_LIMITED"            // Too many socket operations
   | "INTERNAL_ERROR";
@@ -633,7 +646,7 @@ sequenceDiagram
 - オンラインの参加者だけが実行できる
 - 最初にサーバーで受理された1件のみ有効。以降は `INVALID_STATE`
 - 成功後、`hostId` を新ホストに変更し `statusBeforePause` へ復帰する。スコアと表示名は維持する
-- 新ホストを早押し列から除く。新ホスト本人が回答権を持っていた場合は未判定回答を破棄し、列の次の回答者へ渡す。次がいなければラウンドをクリアして `idle` へ戻す。ホストが自分自身を判定する状態を作らない
+- 新ホストを未判定の早押し列から除く。ただし `result` で既に判定された本人が引き継ぐ場合、その席のエントリは次候補を特定する履歴として保持する（回答権はない）。新ホスト本人が回答権を持っていた場合は未判定回答を破棄し、列の次の回答者へ渡す。次がいなければラウンドをクリアして `idle` へ戻す。ホストが自分自身を判定する状態を作らない
 - チャネルとSocketセッションのロールを同期的に切り替えてから状態を配信する。新ホストにだけ未判定回答を送る
 - 最初のホスト席を `initialHostId` に保持する（秘密情報ではなく履歴情報）。作成トークンはこの席専用で、別参加者への引き継ぎ後の `tournament:host-join` は `UNAUTHORIZED`。旧ホストの画面は保存済みID・表示名で `tournament:join` し、通常参加者へ切り替える
 - 新ホストは元の参加者IDで再joinしてホストに復帰できる。URLに依存せず、最新状態の `hostId` に応じて画面を切り替える
@@ -643,7 +656,17 @@ sequenceDiagram
 - ホストのみ。ホスト席以外からの送信は `NOT_HOST`
 - 受理するのは `answering` のみ。それ以外は `INVALID_STATE`。有効な `currentBuzzSession` があるのはこの状態だけである
 - ペイロードの `participantId` は判定対象であり送信者ではない。`currentResponderId` と一致しない場合は `INVALID_STATE` を返す。ホスト画面が古い状態のまま判定したとき、回答権が移ったあとの参加者に得点が入るのを防ぐため
-- `scoreDelta` を対象参加者の `score` に加算する。`isCorrect` とは独立に扱い、正解に0点、不正解に減点も許す
+- `buzzSessionId` は現在のラウンドIDと一致すること。同じ回答者が後の問題で再び回答中でも、遅延した判定を拒否する
+- `scoreDelta` と○・×数はルームに保存したルールからサーバーが決める。クライアントが送った増減点や次アクションは受け付けない
+
+`game:rules-update`
+
+- ホストのみ。`idle` かつ全員の得点・○・×数が0のときだけ受理する。旧スナップショットで既に得点がある場合もルールは固定する
+- 共有バリデーションを通して既知フィールドだけを保存し、`broadcastRoomState()` で全員へ配信する
+
+`game:next-responder`
+
+- ホストのみ。不正解の `result` で次候補がいる場合だけ受理する。得点は変更しない
 
 `game:reset`
 
@@ -878,7 +901,7 @@ MVPでは2テーブル構成にする。
 
 - DynamoDB: 大会設定の永続化と、復旧用スナップショット
 - Socketサーバー: 早押し順、回答権、スコア、状態遷移。ゲームの正しさに関わる全て
-- クライアント: 順位、優勝者、早押し済み表示などの派生値の計算
+- クライアント: 共有ルールに基づく順位・勝ち抜け表示、早押し済み表示などの派生値の計算
 
 ゲーム結果を変えるロジックはクライアントに置かない。
 
@@ -1104,14 +1127,14 @@ AWSにデプロイせずに全機能を動作確認できるようにする。
 - 確認: 回答権のある人だけ送信でき、ホスト画面にだけ内容が出る
 
 **ステップ12: 判定ロジック**（強いモデル推奨）
-- 成果物: `judge:submit` の3つの `nextAction`、スコア加算、リセット規則の純粋関数 + テスト
-- 成果物: 状態 × `nextAction` の表形式テスト
+- 当初の成果物: 判定と次アクション、スコア加算、リセット規則の純粋関数 + テスト。後述のゲーム機能改訂で、即時判定と別イベントによる進行に置き換え済み
+- 成果物: 状態 × 判定・進行イベントのテスト
 - 制約: ステップ9と同じく同期の純粋関数として実装する
-- レビュー観点: `showResult` / `resetToIdle` / `moveToNextResponder` のリセット範囲、次候補なしの扱い
+- レビュー観点: 判定と進行のリセット範囲、次候補なしの扱い
 - 確認: テストのみ
 
 **ステップ13: ホスト進行画面**
-- 成果物: `judge:submit` と `game:reset` のハンドラ、ホスト進行画面、判定UI（正誤・点数・次アクションを1操作で確定）、状態別のボタン出し分け
+- 成果物: `judge:submit` と `game:reset` のハンドラ、ホスト進行画面、判定UI（改訂後は正誤ボタンで即時判定し、進行は別操作）、状態別のボタン出し分け
 - 成果物: 判定結果の表示（正誤と得点変動、および判定後の回答テキスト）を参加者画面にも出す
 - レビュー観点: 誤操作しにくいUIか、状態ごとに不要なボタンが消えているか
 - 確認: **判定するとスコアが全員の画面で更新される**
@@ -1153,6 +1176,16 @@ AWSにデプロイせずに全機能を動作確認できるようにする。
 - 確認: テストのみ
 
 ---
+
+### ゲーム機能の改訂: 試合ルールと即時判定（1ステップ）
+
+ステップ19までの実装後、インフラ実装の前に行う、ユーザー要望によるゲーム仕様の改訂。旧ステップ12・13の「点数と次アクションを判定時に選択」は上記の「試合ルールと即時判定」に置き換える。
+
+- 成果物: 得点制・n○m×の共有型と検証、7○3×プリセット、ホストの事前設定UI
+- 成果物: サーバーでの得点・○・×更新、勝ち抜け・失格者の早押し拒否、判定と進行の分離
+- 成果物: 参加者への即時正誤表示、○・×表示、ルール対応の最終結果、スナップショット検証と旧形式の既定値補完
+- 旧形式で○・×数がない場合は0、ルールがない場合は既定の得点制に補完する。過去の得点から○・×数を推測しない
+- 確認: 純粋関数の境界・権限・二重判定テスト、実Socketで全員への配信と回答秘匿、ブラウザから正誤ボタン1回での結果表示、`npm run check`
 
 ### 第5部: インフラ（3ステップ）
 

@@ -60,8 +60,7 @@ async function playOneQuestion(room: SeededRoom): Promise<void> {
   room.host.emit('judge:submit', {
     participantId: room.firstId,
     isCorrect: true,
-    scoreDelta: 1,
-    nextAction: 'showResult',
+    buzzSessionId: 'buzz-session-1',
   });
   await judged;
 }

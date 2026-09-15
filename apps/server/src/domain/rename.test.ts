@@ -5,8 +5,16 @@ import { createRoomStateFixture } from '../testing/roomStateFixture';
 import { applyRename } from './rename';
 const state = createRoomStateFixture({
   participants: [
-    { id: 'h', name: 'ホスト', online: true, score: 0, joinedAt: 1 },
-    { id: 'p', name: '太郎', online: true, score: 3, joinedAt: 2 },
+    {
+      correctCount: 0,
+      wrongCount: 0,
+      id: 'h',
+      name: 'ホスト',
+      online: true,
+      score: 0,
+      joinedAt: 1,
+    },
+    { correctCount: 0, wrongCount: 0, id: 'p', name: '太郎', online: true, score: 3, joinedAt: 2 },
   ],
   hostId: 'h',
   currentResponderId: 'p',

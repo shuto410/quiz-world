@@ -14,8 +14,16 @@ afterEach(() => {
 
 describe('SubmittedAnswer', () => {
   const participants = [
-    { id: 'p1', name: 'ホスト', online: true, joinedAt: 1, score: 0 },
-    { id: 'p2', name: '太郎', online: true, joinedAt: 2, score: 0 },
+    {
+      correctCount: 0,
+      wrongCount: 0,
+      id: 'p1',
+      name: 'ホスト',
+      online: true,
+      joinedAt: 1,
+      score: 0,
+    },
+    { correctCount: 0, wrongCount: 0, id: 'p2', name: '太郎', online: true, joinedAt: 2, score: 0 },
   ];
 
   it('shows the answer and who sent it', () => {

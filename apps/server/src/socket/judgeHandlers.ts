@@ -1,179 +1,96 @@
 /**
- * Socket handlers for the host's progression controls: `judge:submit` and `game:reset`.
- *
- * Both resolve the actor from the socket session and hand a synchronous transition to
- * `RoomRegistry.update()`, so the host's authority is checked against the room state rather
- * than against what the client claims to be. Hiding the buttons is not the control; the
- * domain refusing a non-host is.
- *
- * The judgement payload is the only one in the app that carries a participant id, and it
- * names the person being judged rather than the sender. It is validated here for shape only:
- * whether that person actually holds the answer right is a question about the room, so the
- * domain answers it.
- *
- * `judge:submit` changes scores, and scores are add-only. A payload that fails validation is
- * therefore refused before the state is read, and a refused transition rebroadcasts so that
- * a host acting on a stale screen is pulled back in sync rather than retrying blindly.
+ * Host judgement, rule settings and progression all commit through the room registry.
+ * The actor is resolved from the session; accepted and refused transitions share the
+ * sole broadcast path, which also removes private answers for participants.
  */
-
 import type {
   ClientToServerEvents,
-  JudgeNextAction,
-  JudgeSubmitPayload,
   ServerToClientEvents,
+  InternalRoomState,
 } from '@quiz-world/shared';
-import { JUDGE_NEXT_ACTIONS, validateScoreDelta } from '@quiz-world/shared';
+import { validateGameRules } from '@quiz-world/shared';
 import type { Socket } from 'socket.io';
-import { applyGameReset, applyJudge } from '../domain/judge';
+import { applyGameReset, applyJudge, applyNextResponder } from '../domain/judge';
+import { applyRulesUpdate } from '../domain/rules';
+import type { TransitionResult } from '../domain/transition';
 import { isRecord } from '../guards';
 import type { RoomRegistry } from '../rooms/roomRegistry';
 import { broadcastRoomState, type SocketServer } from './broadcast';
 import { socketErrorMessage } from './errorMessages';
-import { readSession, type SocketSession } from './session';
+import { readSession } from './session';
 
+/** Infrastructure remains outside the synchronous transition functions. */
 export type JudgeHandlerDependencies = {
   io: SocketServer;
   registry: RoomRegistry;
   now: () => number;
 };
-
+/** Socket event types are shared with the browser. */
 type AppSocket = Socket<ClientToServerEvents, ServerToClientEvents>;
 
-/** Registers the host progression handlers on a newly connected socket. */
 export function registerJudgeHandlers(
   socket: AppSocket,
   dependencies: JudgeHandlerDependencies,
 ): void {
+  const update = (
+    transition: (state: InternalRoomState, actorId: string, now: number) => TransitionResult,
+  ) => {
+    const session = readSession(socket.data);
+    if (!session) {
+      emitError(socket, 'INVALID_STATE');
+      return;
+    }
+    const handle = dependencies.registry.find(session.tournamentId);
+    if (!handle) {
+      emitError(socket, 'TOURNAMENT_NOT_FOUND');
+      return;
+    }
+    const result = handle.update((current) =>
+      transition(current, session.participantId, dependencies.now()),
+    );
+    if (!result.ok) emitError(socket, result.code);
+    broadcastRoomState(dependencies.io, handle);
+  };
+
   socket.on('judge:submit', (payload) => {
-    handleJudgeSubmit(socket, dependencies, payload);
+    if (
+      !isRecord(payload) ||
+      typeof payload['participantId'] !== 'string' ||
+      !payload['participantId'] ||
+      typeof payload['buzzSessionId'] !== 'string' ||
+      !payload['buzzSessionId'] ||
+      typeof payload['isCorrect'] !== 'boolean' ||
+      'scoreDelta' in payload ||
+      'nextAction' in payload
+    ) {
+      emitError(socket, 'VALIDATION_ERROR');
+      return;
+    }
+    update((state, actorId, now) =>
+      applyJudge(state, {
+        actorId,
+        now,
+        targetParticipantId: payload.participantId,
+        buzzSessionId: payload.buzzSessionId,
+        isCorrect: payload.isCorrect,
+      }),
+    );
   });
-
-  socket.on('game:reset', () => {
-    handleGameReset(socket, dependencies);
+  socket.on('game:reset', () =>
+    update((state, actorId, now) => applyGameReset(state, { actorId, now })),
+  );
+  socket.on('game:next-responder', () =>
+    update((state, actorId, now) => applyNextResponder(state, { actorId, now })),
+  );
+  socket.on('game:rules-update', (payload) => {
+    const parsed = validateGameRules(isRecord(payload) ? payload['rules'] : undefined);
+    if (!parsed.ok) {
+      socket.emit('error', { code: 'VALIDATION_ERROR', message: parsed.message });
+      return;
+    }
+    update((state, actorId, now) => applyRulesUpdate(state, { actorId, now, rules: parsed.value }));
   });
 }
-
-function handleJudgeSubmit(
-  socket: AppSocket,
-  dependencies: JudgeHandlerDependencies,
-  payload: JudgeSubmitPayload,
-): void {
-  const session = requireSession(socket);
-  if (session === undefined) {
-    return;
-  }
-
-  const parsed = parseJudgePayload(payload);
-  if (!parsed.ok) {
-    socket.emit('error', { code: 'VALIDATION_ERROR', message: parsed.message });
-    return;
-  }
-
-  const handle = dependencies.registry.find(session.tournamentId);
-  if (handle === undefined) {
-    emitError(socket, 'TOURNAMENT_NOT_FOUND');
-    return;
-  }
-
-  const result = handle.update((current) =>
-    applyJudge(current, {
-      actorId: session.participantId,
-      targetParticipantId: parsed.targetParticipantId,
-      isCorrect: parsed.isCorrect,
-      scoreDelta: parsed.scoreDelta,
-      nextAction: parsed.nextAction,
-      now: dependencies.now(),
-    }),
-  );
-
-  if (!result.ok) {
-    emitError(socket, result.code);
-  }
-
-  broadcastRoomState(dependencies.io, handle);
-}
-
-function handleGameReset(socket: AppSocket, dependencies: JudgeHandlerDependencies): void {
-  const session = requireSession(socket);
-  if (session === undefined) {
-    return;
-  }
-
-  const handle = dependencies.registry.find(session.tournamentId);
-  if (handle === undefined) {
-    emitError(socket, 'TOURNAMENT_NOT_FOUND');
-    return;
-  }
-
-  const result = handle.update((current) =>
-    applyGameReset(current, {
-      actorId: session.participantId,
-      now: dependencies.now(),
-    }),
-  );
-
-  if (!result.ok) {
-    emitError(socket, result.code);
-  }
-
-  broadcastRoomState(dependencies.io, handle);
-}
-
-function requireSession(socket: AppSocket): SocketSession | undefined {
-  const session = readSession(socket.data);
-  if (session === undefined) {
-    emitError(socket, 'INVALID_STATE');
-    return undefined;
-  }
-  return session;
-}
-
 function emitError(socket: AppSocket, code: Parameters<typeof socketErrorMessage>[0]): void {
   socket.emit('error', { code, message: socketErrorMessage(code) });
-}
-
-type ParsedJudge =
-  | {
-      ok: true;
-      targetParticipantId: string;
-      isCorrect: boolean;
-      scoreDelta: number;
-      nextAction: JudgeNextAction;
-    }
-  | { ok: false; message: string };
-
-function parseJudgePayload(payload: JudgeSubmitPayload): ParsedJudge {
-  if (!isRecord(payload)) {
-    return { ok: false, message: socketErrorMessage('VALIDATION_ERROR') };
-  }
-
-  const targetParticipantId = payload['participantId'];
-  const isCorrect = payload['isCorrect'];
-  const nextAction = payload['nextAction'];
-
-  if (
-    typeof targetParticipantId !== 'string' ||
-    targetParticipantId === '' ||
-    typeof isCorrect !== 'boolean' ||
-    !isJudgeNextAction(nextAction)
-  ) {
-    return { ok: false, message: socketErrorMessage('VALIDATION_ERROR') };
-  }
-
-  const scoreDelta = validateScoreDelta(payload['scoreDelta']);
-  if (!scoreDelta.ok) {
-    return { ok: false, message: scoreDelta.message };
-  }
-
-  return {
-    ok: true,
-    targetParticipantId,
-    isCorrect,
-    scoreDelta: scoreDelta.value,
-    nextAction,
-  };
-}
-
-function isJudgeNextAction(value: unknown): value is JudgeNextAction {
-  return JUDGE_NEXT_ACTIONS.some((action) => action === value);
 }

@@ -1,3 +1,4 @@
+/** Final standings support both points and independent correct/wrong counts. */
 .qw-final-result {
   display: grid;
   gap: var(--space-4);

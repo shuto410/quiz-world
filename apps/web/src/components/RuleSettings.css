@@ -1,0 +1,90 @@
+/** A compact rule summary expands into a responsive form without obscuring the game. */
+.qw-rules {
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-control);
+  margin-bottom: 20px;
+  background: var(--color-paper-raised);
+}
+.qw-rules summary {
+  cursor: pointer;
+  padding: 16px 20px;
+  font-size: 12px;
+  line-height: 1.7;
+}
+.qw-rules summary > span:first-child {
+  margin-right: 16px;
+  color: var(--color-ink-muted);
+}
+.qw-rules summary strong {
+  font-weight: 550;
+}
+.qw-rules__action {
+  float: right;
+  color: var(--color-accent-text);
+  margin-left: 12px;
+}
+.qw-rules__body {
+  padding: 0 20px 20px;
+  font-size: 13px;
+  line-height: 1.7;
+}
+.qw-rules__body > p {
+  margin: 0 0 16px;
+}
+.qw-rules fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.qw-rules legend {
+  font-weight: 600;
+  padding: 0 0 12px;
+}
+.qw-rules__presets,
+.qw-rules__save {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+.qw-rules__presets button {
+  background: var(--color-paper-raised);
+  color: var(--color-ink);
+  border-color: var(--color-line-strong);
+}
+.qw-rules__presets button[aria-pressed='true'] {
+  color: var(--color-accent-text);
+  border-color: var(--color-accent);
+  background: var(--color-accent-soft);
+}
+.qw-rules__fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  max-width: 520px;
+  margin: 20px 0;
+}
+.qw-rules__fields input {
+  width: 100%;
+  min-width: 0;
+  font-variant-numeric: tabular-nums;
+}
+.qw-rules__note {
+  color: var(--color-ink-muted);
+  font-size: 12px;
+  margin: 0;
+}
+@media (max-width: 520px) {
+  .qw-rules summary strong {
+    display: block;
+    padding-top: 4px;
+  }
+  .qw-rules__action {
+    float: none;
+    margin-left: 0;
+  }
+  .qw-rules__fields {
+    gap: 10px;
+  }
+}

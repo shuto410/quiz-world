@@ -11,6 +11,7 @@
  * joins) cannot interleave inside a transition.
  */
 
+import { DEFAULT_GAME_RULES } from '@quiz-world/shared';
 import type {
   InternalRoomState,
   ParticipantState,
@@ -47,6 +48,7 @@ export function createInitialRoomState(tournamentId: string, now: number): Inter
   return {
     tournamentId,
     status: 'idle',
+    rules: { ...DEFAULT_GAME_RULES },
     hostId: '',
     hostOnline: false,
     participants: [],
@@ -85,6 +87,8 @@ export function applyHostJoin(
   }
 
   const host: ParticipantState = {
+    correctCount: 0,
+    wrongCount: 0,
     id: input.newParticipantId,
     name: DEFAULT_HOST_DISPLAY_NAME,
     online: true,
@@ -170,6 +174,8 @@ export function applyParticipantJoin(
   }
 
   const joiner: ParticipantState = {
+    correctCount: 0,
+    wrongCount: 0,
     id: input.newParticipantId,
     name: input.displayName,
     online: true,

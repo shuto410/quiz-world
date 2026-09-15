@@ -4,12 +4,15 @@ import type { RoomStateEvent } from '@quiz-world/shared';
 import { getBuzzerPrompt } from './getBuzzerPrompt';
 
 const room: RoomStateEvent = {
+  rules: { type: 'points', correctPoints: 1, wrongPoints: 0 },
   tournamentId: 't',
   status: 'answering',
   hostId: 'h',
   hostOnline: true,
   updatedAt: 1,
-  participants: [{ id: 'a', name: '太郎', online: true, score: 0, joinedAt: 1 }],
+  participants: [
+    { correctCount: 0, wrongCount: 0, id: 'a', name: '太郎', online: true, score: 0, joinedAt: 1 },
+  ],
   currentResponderId: 'a',
   buzzOrder: [
     { participantId: 'a', receivedAt: 1 },
@@ -19,7 +22,15 @@ const room: RoomStateEvent = {
 
 describe('getBuzzerPrompt', () => {
   it('waits for participants before suggesting that the host read a question', () => {
-    const host = { id: 'h', name: 'ホスト', online: true, score: 0, joinedAt: 0 };
+    const host = {
+      correctCount: 0,
+      wrongCount: 0,
+      id: 'h',
+      name: 'ホスト',
+      online: true,
+      score: 0,
+      joinedAt: 0,
+    };
     const emptyRoom = { ...room, status: 'idle' as const, participants: [host] };
     expect(getBuzzerPrompt(emptyRoom, 'h', true).title).toBe('参加者を待っています');
     expect(

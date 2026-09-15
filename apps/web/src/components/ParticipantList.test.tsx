@@ -14,8 +14,24 @@ afterEach(() => {
 
 describe('ParticipantList', () => {
   it('keeps a seat color through score reordering, renaming, reconnect and remount', () => {
-    const first = { id: 'a', name: 'あおい', online: true, joinedAt: 1, score: 10 };
-    const second = { id: 'b', name: 'はる', online: true, joinedAt: 2, score: 3 };
+    const first = {
+      correctCount: 0,
+      wrongCount: 0,
+      id: 'a',
+      name: 'あおい',
+      online: true,
+      joinedAt: 1,
+      score: 10,
+    };
+    const second = {
+      correctCount: 0,
+      wrongCount: 0,
+      id: 'b',
+      name: 'はる',
+      online: true,
+      joinedAt: 2,
+      score: 3,
+    };
     const tokenFor = (name: string) => {
       const token = screen.getByText(name).closest('li')?.querySelector('.qw-participant-token');
       if (!token) throw new Error(`Missing token for ${name}`);
@@ -46,8 +62,24 @@ describe('ParticipantList', () => {
         selfParticipantId="a"
         currentResponderId="b"
         participants={[
-          { id: 'a', name: 'あおい', online: true, joinedAt: 1, score: 10 },
-          { id: 'b', name: 'はる', online: true, joinedAt: 2, score: 3 },
+          {
+            correctCount: 0,
+            wrongCount: 0,
+            id: 'a',
+            name: 'あおい',
+            online: true,
+            joinedAt: 1,
+            score: 10,
+          },
+          {
+            correctCount: 0,
+            wrongCount: 0,
+            id: 'b',
+            name: 'はる',
+            online: true,
+            joinedAt: 2,
+            score: 3,
+          },
         ]}
       />,
     );
@@ -61,8 +93,24 @@ describe('ParticipantList', () => {
         hostId="p1"
         selfParticipantId="p2"
         participants={[
-          { id: 'p1', name: '出題者A', online: true, joinedAt: 1, score: 0 },
-          { id: 'p2', name: '花子', online: false, joinedAt: 2, score: 3 },
+          {
+            correctCount: 0,
+            wrongCount: 0,
+            id: 'p1',
+            name: '出題者A',
+            online: true,
+            joinedAt: 1,
+            score: 0,
+          },
+          {
+            correctCount: 0,
+            wrongCount: 0,
+            id: 'p2',
+            name: '花子',
+            online: false,
+            joinedAt: 2,
+            score: 3,
+          },
         ]}
       />,
     );

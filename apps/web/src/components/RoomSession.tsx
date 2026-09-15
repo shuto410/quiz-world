@@ -11,6 +11,7 @@ import { ConfirmButton } from './ConfirmButton';
 import { FinalResult } from './FinalResult';
 import { ParticipantList } from './ParticipantList';
 import { RenameForm } from './RenameForm';
+import { RuleSettings } from './RuleSettings';
 import { RoomFrame } from './RoomFrame';
 import { useToast } from './Toast';
 
@@ -73,6 +74,7 @@ export function RoomSession({
       rosterCount={players.length}
       roster={
         <ParticipantList
+          rules={roomState?.rules}
           participants={roomState?.participants ?? []}
           selfParticipantId={participantId}
           hostId={roomState?.hostId}
@@ -96,6 +98,7 @@ export function RoomSession({
         </div>
       }
     >
+      <RuleSettings connection={connection} />
       {roomState?.status === 'paused' &&
       roomState.pausedReason === 'hostDisconnected' &&
       !isHost ? (
@@ -111,7 +114,11 @@ export function RoomSession({
         <section className="qw-room-results" aria-label="最終結果">
           <p className="qw-eyebrow">大会終了</p>
           <h2>最終結果</h2>
-          <FinalResult participants={roomState.participants} hostId={roomState.hostId} />
+          <FinalResult
+            rules={roomState.rules}
+            participants={roomState.participants}
+            hostId={roomState.hostId}
+          />
           {isHost ? (
             <fieldset disabled={status !== 'joined'} className="qw-room-controls qw-host-progress">
               {roomClosed ? (

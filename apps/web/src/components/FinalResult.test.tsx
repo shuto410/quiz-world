@@ -16,7 +16,15 @@ afterEach(() => {
   cleanup();
 });
 
-const host = { id: 'p1', name: 'ホスト', online: true, joinedAt: 1, score: 0 };
+const host = {
+  correctCount: 0,
+  wrongCount: 0,
+  id: 'p1',
+  name: 'ホスト',
+  online: true,
+  joinedAt: 1,
+  score: 0,
+};
 
 describe('FinalResult', () => {
   it('names the winner and lists everyone with their score', () => {
@@ -25,8 +33,24 @@ describe('FinalResult', () => {
         hostId="p1"
         participants={[
           host,
-          { id: 'p2', name: '太郎', online: true, joinedAt: 2, score: 5 },
-          { id: 'p3', name: '花子', online: false, joinedAt: 3, score: 2 },
+          {
+            correctCount: 0,
+            wrongCount: 0,
+            id: 'p2',
+            name: '太郎',
+            online: true,
+            joinedAt: 2,
+            score: 5,
+          },
+          {
+            correctCount: 0,
+            wrongCount: 0,
+            id: 'p3',
+            name: '花子',
+            online: false,
+            joinedAt: 3,
+            score: 2,
+          },
         ]}
       />,
     );
@@ -48,8 +72,24 @@ describe('FinalResult', () => {
         hostId="p1"
         participants={[
           host,
-          { id: 'p2', name: '太郎', online: true, joinedAt: 2, score: 3 },
-          { id: 'p3', name: '花子', online: true, joinedAt: 3, score: 3 },
+          {
+            correctCount: 0,
+            wrongCount: 0,
+            id: 'p2',
+            name: '太郎',
+            online: true,
+            joinedAt: 2,
+            score: 3,
+          },
+          {
+            correctCount: 0,
+            wrongCount: 0,
+            id: 'p3',
+            name: '花子',
+            online: true,
+            joinedAt: 3,
+            score: 3,
+          },
         ]}
       />,
     );

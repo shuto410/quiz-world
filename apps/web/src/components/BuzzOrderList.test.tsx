@@ -14,9 +14,17 @@ afterEach(() => {
 
 describe('BuzzOrderList', () => {
   const participants = [
-    { id: 'p1', name: 'ホスト', online: true, joinedAt: 1, score: 0 },
-    { id: 'p2', name: '太郎', online: true, joinedAt: 2, score: 0 },
-    { id: 'p3', name: '花子', online: true, joinedAt: 3, score: 0 },
+    {
+      correctCount: 0,
+      wrongCount: 0,
+      id: 'p1',
+      name: 'ホスト',
+      online: true,
+      joinedAt: 1,
+      score: 0,
+    },
+    { correctCount: 0, wrongCount: 0, id: 'p2', name: '太郎', online: true, joinedAt: 2, score: 0 },
+    { correctCount: 0, wrongCount: 0, id: 'p3', name: '花子', online: true, joinedAt: 3, score: 0 },
   ];
 
   it('renders ranks and marks the current responder', () => {

@@ -34,7 +34,12 @@ export function applyHostClaim(
     hostId: actorId,
     hostOnline: true,
     updatedAt: now,
-    buzzOrder: current.buzzOrder.filter((entry) => entry.participantId !== actorId),
+    // A judged cursor is history, not an answer right; preserve it for next-responder lookup.
+    buzzOrder: current.buzzOrder.filter(
+      (entry) =>
+        entry.participantId !== actorId ||
+        (previousStatus === 'result' && current.currentResponderId === actorId),
+    ),
   };
   if (previousStatus !== 'answering' || current.currentResponderId !== actorId)
     return accept(resumed);

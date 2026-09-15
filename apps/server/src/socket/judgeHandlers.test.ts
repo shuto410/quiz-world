@@ -1,294 +1,210 @@
-/**
- * Integration tests for `judge:submit` and `game:reset` over a real Socket.io server.
- *
- * The judgement is where the audience split flips: before it, only the host may read the
- * answer; on the result screen everyone may. Both directions of that flip are checked on the
- * wire, because a handler that emitted state itself would pass a unit test and still leak.
- *
- * The rest guards the property that makes judging different from every other operation: a
- * score can only ever be added to. Refusals — wrong sender, empty queue, malformed score —
- * must leave the standings exactly as they were.
- */
-
-import type { JudgeSubmitPayload } from '@quiz-world/shared';
+/** Real sockets verify immediate verdict delivery, server scoring, privacy and host-only rules. */
 import { afterEach, describe, expect, it } from 'vitest';
-import { TEST_NOW } from '../testing/appDependencies';
+import {
+  SEVEN_MARU_THREE_BATSU,
+  type GameRules,
+  type JudgeSubmitPayload,
+} from '@quiz-world/shared';
 import {
   nextError,
   nextRoomState,
   startSocketTestHarness,
-  type AppClient,
-  type SeededRoom,
   type SocketTestHarness,
+  type SeededRoom,
+  type AppClient,
 } from '../testing/socketTestHarness';
-
 let harness: SocketTestHarness | undefined;
-
-async function start(): Promise<SocketTestHarness> {
+afterEach(async () => {
+  await harness?.stop();
+});
+async function start() {
   harness = await startSocketTestHarness();
   return harness;
 }
-
-afterEach(async () => {
-  await harness?.stop();
-  harness = undefined;
-});
-
-/**
- * Waits for the broadcast every connection receives from one accepted change.
- *
- * All three have to be consumed, even when a test only asserts on one of them: an
- * unclaimed broadcast would be picked up by the next listener and shift that test's
- * assertions onto the previous state.
- */
-function nextRoomStateEverywhere(room: SeededRoom) {
-  return Promise.all([
-    nextRoomState(room.host),
-    nextRoomState(room.first),
-    nextRoomState(room.second),
-  ]);
+function everywhere(room: SeededRoom) {
+  return Promise.all([room.host, room.first, room.second].map(nextRoomState));
 }
-
-/** Lets the given participants buzz in order, waiting for each broadcast to land. */
-async function buzzIn(room: SeededRoom, clients: AppClient[]): Promise<void> {
+async function setRules(room: SeededRoom, rules: GameRules) {
+  const seen = everywhere(room);
+  room.host.emit('game:rules-update', { rules });
+  const views = await seen;
+  for (const state of views) expect(state.rules).toEqual(rules);
+}
+async function buzz(room: SeededRoom, clients: AppClient[] = [room.first]) {
+  let sessionId = '';
   for (const client of clients) {
-    const seen = nextRoomStateEverywhere(room);
+    const seen = everywhere(room);
     client.emit('game:buzz', {});
-    await seen;
+    const [state] = await seen;
+    sessionId = state?.currentBuzzSession?.id ?? '';
   }
+  expect(sessionId).not.toBe('');
+  return sessionId;
 }
-
-/** Buzzes with the first participant and has them submit an answer. */
-async function openRoundWithAnswer(room: SeededRoom): Promise<void> {
-  await buzzIn(room, [room.first]);
-  const seen = nextRoomStateEverywhere(room);
-  room.first.emit('answer:submit', { answerText: '東京' });
+async function judge(room: SeededRoom, buzzSessionId: string, isCorrect: boolean) {
+  const seen = everywhere(room);
+  room.host.emit('judge:submit', { participantId: room.firstId, buzzSessionId, isCorrect });
+  return seen;
+}
+async function reset(room: SeededRoom) {
+  const seen = everywhere(room);
+  room.host.emit('game:reset', {});
   await seen;
 }
 
-function scoreOf(
-  state: { participants: readonly { id: string; score: number }[] },
-  participantId: string,
-): number | undefined {
-  return state.participants.find((participant) => participant.id === participantId)?.score;
-}
-
 describe('judge handlers', () => {
-  it('scores the responder and reveals the answer to everyone on the result screen', async () => {
-    const { seedRoom } = await start();
-    const room = await seedRoom('判定大会');
-    await openRoundWithAnswer(room);
-
-    const hostView = nextRoomState(room.host);
-    const responderView = nextRoomState(room.first);
-    const bystanderView = nextRoomState(room.second);
-    room.host.emit('judge:submit', {
-      participantId: room.firstId,
-      isCorrect: true,
-      scoreDelta: 2,
-      nextAction: 'showResult',
-    });
-    const views = await Promise.all([hostView, responderView, bystanderView]);
-
+  it('publishes configured points and verdict to everyone immediately, then progresses without rescoring', async () => {
+    const room = await (await start()).seedRoom('即時判定');
+    await setRules(room, { type: 'points', correctPoints: 2, wrongPoints: -1 });
+    const id = await buzz(room, [room.first, room.second]);
+    const answered = everywhere(room);
+    room.first.emit('answer:submit', { answerText: '東京' });
+    const [host, ...players] = await answered;
+    expect(host?.currentSubmittedAnswer?.answerText).toBe('東京');
+    for (const state of players) expect(state).not.toHaveProperty('currentSubmittedAnswer');
+    const views = await judge(room, id, false);
     for (const state of views) {
       expect(state.status).toBe('result');
-      expect(scoreOf(state, room.firstId)).toBe(2);
       expect(state.lastResult).toEqual({
         participantId: room.firstId,
-        isCorrect: true,
-        scoreDelta: 2,
+        isCorrect: false,
+        scoreDelta: -1,
       });
-      // The judgement is what lets participants read the answer at last.
-      expect(state.currentSubmittedAnswer).toEqual({
-        participantId: room.firstId,
-        answerText: '東京',
-        receivedAt: TEST_NOW,
+      expect(state.participants.find((p) => p.id === room.firstId)).toMatchObject({
+        score: -1,
+        correctCount: 0,
+        wrongCount: 1,
       });
-      expect(state.buzzOrder).toEqual([]);
+      expect(state.currentSubmittedAnswer?.answerText).toBe('東京');
     }
-  });
-
-  it('passes the answer right to the next buzzer and hides the answer again', async () => {
-    const { seedRoom } = await start();
-    const room = await seedRoom('次の回答者大会');
-    await buzzIn(room, [room.first, room.second]);
-    const answered = nextRoomStateEverywhere(room);
-    room.first.emit('answer:submit', { answerText: '大阪' });
-    await answered;
-
-    const hostView = nextRoomState(room.host);
-    const bystanderView = nextRoomState(room.second);
+    const repeated = nextError(room.host);
+    const resync = everywhere(room);
     room.host.emit('judge:submit', {
       participantId: room.firstId,
+      buzzSessionId: id,
       isCorrect: false,
-      scoreDelta: -1,
-      nextAction: 'moveToNextResponder',
     });
-    const [forHost, forBystander] = await Promise.all([hostView, bystanderView]);
-
-    expect(forHost.status).toBe('answering');
-    expect(forHost.currentResponderId).toBe(room.secondId);
-    expect(scoreOf(forHost, room.firstId)).toBe(-1);
-    // The wrong answer is cleared for the host too: it belonged to the previous responder.
-    expect(forHost.currentSubmittedAnswer).toBeUndefined();
-    expect(forBystander).not.toHaveProperty('currentSubmittedAnswer');
+    expect((await repeated).code).toBe('INVALID_STATE');
+    await resync;
+    const next = everywhere(room);
+    room.host.emit('game:next-responder', {});
+    for (const state of await next) {
+      expect(state.currentResponderId).toBe(room.secondId);
+      expect(state.status).toBe('answering');
+      expect(state.lastResult?.isCorrect).toBe(false);
+      expect(state).not.toHaveProperty('currentSubmittedAnswer');
+      expect(state.participants.find((p) => p.id === room.firstId)?.score).toBe(-1);
+    }
+    const nextAnswer = everywhere(room);
+    room.second.emit('answer:submit', { answerText: '京都' });
+    const [, ...participantViews] = await nextAnswer;
+    for (const state of participantViews)
+      expect(state).not.toHaveProperty('currentSubmittedAnswer');
   });
-
-  it('refuses to move on when nobody else buzzed, without banking the points', async () => {
-    const { seedRoom } = await start();
-    const room = await seedRoom('次候補なし大会');
-    await buzzIn(room, [room.first]);
-
-    const errorPromise = nextError(room.host);
-    const resync = nextRoomState(room.host);
-    room.host.emit('judge:submit', {
-      participantId: room.firstId,
-      isCorrect: false,
-      scoreDelta: -1,
-      nextAction: 'moveToNextResponder',
-    });
-    const [error, state] = await Promise.all([errorPromise, resync]);
-
-    expect(error).toEqual({ code: 'NO_NEXT_RESPONDER', message: '次の回答者がいません' });
-    expect(state.status).toBe('answering');
-    expect(scoreOf(state, room.firstId)).toBe(0);
-  });
-
-  it('refuses a judgement sent by a participant', async () => {
-    const { seedRoom } = await start();
-    const room = await seedRoom('参加者判定大会');
-    await buzzIn(room, [room.first]);
-
-    const errorPromise = nextError(room.second);
-    const hostView = nextRoomState(room.host);
-    room.second.emit('judge:submit', {
-      participantId: room.secondId,
-      isCorrect: true,
-      scoreDelta: 99,
-      nextAction: 'showResult',
-    });
-    const [error, state] = await Promise.all([errorPromise, hostView]);
-
-    expect(error).toEqual({ code: 'NOT_HOST', message: 'ホストのみが実行できる操作です' });
-    expect(scoreOf(state, room.secondId)).toBe(0);
-    expect(state.status).toBe('answering');
-  });
-
-  it('refuses a score that is not a whole number in range', async () => {
-    const { seedRoom } = await start();
-    const room = await seedRoom('不正な得点大会');
-    await buzzIn(room, [room.first]);
-
-    const errorPromise = nextError(room.host);
-    room.host.emit('judge:submit', {
-      participantId: room.firstId,
-      isCorrect: true,
-      scoreDelta: 1.5,
-      nextAction: 'showResult',
-    });
-
-    await expect(errorPromise).resolves.toEqual({
-      code: 'VALIDATION_ERROR',
-      message: '得点は-999〜999の整数で入力してください',
-    });
-  });
-
-  it('refuses a follow-up action it does not recognise', async () => {
-    const { seedRoom } = await start();
-    const room = await seedRoom('未知アクション大会');
-    await buzzIn(room, [room.first]);
-
-    const errorPromise = nextError(room.host);
-    // A client built against a different version of the contract, or a hand-crafted payload.
-    room.host.emit('judge:submit', {
-      participantId: room.firstId,
-      isCorrect: true,
-      scoreDelta: 1,
-      nextAction: 'finishTournament',
-    } as unknown as JudgeSubmitPayload);
-
-    await expect(errorPromise).resolves.toEqual({
-      code: 'VALIDATION_ERROR',
-      message: '入力内容を確認してください',
-    });
-  });
-
-  it('refuses a judgement aimed at somebody who does not hold the answer right', async () => {
-    const { seedRoom } = await start();
-    const room = await seedRoom('対象違い大会');
-    await buzzIn(room, [room.first, room.second]);
-
-    const errorPromise = nextError(room.host);
-    const resync = nextRoomState(room.host);
-    room.host.emit('judge:submit', {
-      participantId: room.secondId,
-      isCorrect: true,
-      scoreDelta: 1,
-      nextAction: 'showResult',
-    });
-    const [error, state] = await Promise.all([errorPromise, resync]);
-
-    expect(error.code).toBe('INVALID_STATE');
-    expect(scoreOf(state, room.secondId)).toBe(0);
-    expect(state.currentResponderId).toBe(room.firstId);
-  });
-
-  it('reopens buzzing on game:reset and takes the answer back off the participants view', async () => {
-    const { seedRoom } = await start();
-    const room = await seedRoom('リセット大会');
-    await openRoundWithAnswer(room);
-
-    const judged = nextRoomStateEverywhere(room);
-    room.host.emit('judge:submit', {
-      participantId: room.firstId,
-      isCorrect: true,
-      scoreDelta: 1,
-      nextAction: 'showResult',
-    });
-    await judged;
-
-    const hostView = nextRoomState(room.host);
-    const bystanderView = nextRoomState(room.second);
+  it('accepts a correct verdict without submitted text and removes the result on reset', async () => {
+    const room = await (await start()).seedRoom('口頭判定');
+    await setRules(room, { type: 'points', correctPoints: 2, wrongPoints: 0 });
+    const views = await judge(room, await buzz(room), true);
+    expect(views[1]?.lastResult?.scoreDelta).toBe(2);
+    const next = everywhere(room);
     room.host.emit('game:reset', {});
-    const [forHost, forBystander] = await Promise.all([hostView, bystanderView]);
-
-    for (const state of [forHost, forBystander]) {
+    for (const state of await next) {
       expect(state.status).toBe('idle');
       expect(state.lastResult).toBeUndefined();
-      expect(state.currentSubmittedAnswer).toBeUndefined();
-      // The points awarded a moment ago stay: a reset is not an undo.
-      expect(scoreOf(state, room.firstId)).toBe(1);
+      expect(state.currentBuzzSession).toBeUndefined();
+      expect(state.participants.find((p) => p.id === room.firstId)).toMatchObject({
+        score: 2,
+        correctCount: 1,
+      });
+    }
+    const locked = nextError(room.host);
+    const resync = everywhere(room);
+    room.host.emit('game:rules-update', { rules: SEVEN_MARU_THREE_BATSU });
+    expect((await locked).code).toBe('INVALID_STATE');
+    await resync;
+  });
+  it.each([true, false])('enforces a full 7○3× match, correct=%s', async (isCorrect) => {
+    const room = await (await start()).seedRoom('7○3×');
+    await setRules(room, SEVEN_MARU_THREE_BATSU);
+    for (let count = 1; count <= (isCorrect ? 7 : 3); count++) {
+      const views = await judge(room, await buzz(room), isCorrect);
+      for (const state of views)
+        expect(state.participants.find((p) => p.id === room.firstId)).toMatchObject({
+          correctCount: isCorrect ? count : 0,
+          wrongCount: isCorrect ? 0 : count,
+        });
+      await reset(room);
+    }
+    const blocked = nextError(room.first);
+    room.first.emit('game:buzz', {});
+    expect((await blocked).code).toBe('INVALID_STATE');
+  });
+  it('refuses stale rounds and wrong targets while leaving the live responder untouched', async () => {
+    const room = await (await start()).seedRoom('古い判定');
+    const oldId = await buzz(room);
+    await judge(room, oldId, true);
+    await reset(room);
+    const id = await buzz(room);
+    for (const payload of [
+      { participantId: room.firstId, buzzSessionId: oldId, isCorrect: true },
+      { participantId: room.secondId, buzzSessionId: id, isCorrect: true },
+    ]) {
+      const error = nextError(room.host);
+      const seen = everywhere(room);
+      room.host.emit('judge:submit', payload);
+      expect((await error).code).toBe('INVALID_STATE');
+      expect((await seen)[0]?.participants.find((p) => p.id === room.firstId)?.score).toBe(1);
     }
   });
-
-  it('refuses game:reset from a participant and while no result is on screen', async () => {
-    const { seedRoom } = await start();
-    const room = await seedRoom('リセット権限大会');
-
-    const participantError = nextError(room.first);
-    room.first.emit('game:reset', {});
-    await expect(participantError).resolves.toMatchObject({ code: 'NOT_HOST' });
-
-    const hostError = nextError(room.host);
-    room.host.emit('game:reset', {});
-    await expect(hostError).resolves.toMatchObject({ code: 'INVALID_STATE' });
-  });
-
-  it('refuses both operations from a connection that never joined', async () => {
-    const { openClient } = await start();
-    const stranger = await openClient();
-
-    const judgeError = nextError(stranger);
-    stranger.emit('judge:submit', {
-      participantId: 'participant-1',
-      isCorrect: true,
-      scoreDelta: 1,
-      nextAction: 'showResult',
+  it('rejects client-supplied points, follow-up actions and malformed verdicts', async () => {
+    const room = await (await start()).seedRoom('不正ペイロード');
+    const id = await buzz(room);
+    for (const extra of [
+      { scoreDelta: 999 },
+      { nextAction: 'resetToIdle' },
+      { isCorrect: 'true' },
+      { buzzSessionId: '' },
+      { participantId: '' },
+    ]) {
+      const error = nextError(room.host);
+      room.host.emit('judge:submit', {
+        participantId: room.firstId,
+        buzzSessionId: id,
+        isCorrect: true,
+        ...extra,
+      } as unknown as JudgeSubmitPayload);
+      expect((await error).code).toBe('VALIDATION_ERROR');
+    }
+    const error = nextError(room.host);
+    room.host.emit('game:rules-update', {
+      rules: { type: 'points', correctPoints: 1.5, wrongPoints: 0 },
     });
-    await expect(judgeError).resolves.toMatchObject({ code: 'INVALID_STATE' });
-
-    const resetError = nextError(stranger);
-    stranger.emit('game:reset', {});
-    await expect(resetError).resolves.toMatchObject({ code: 'INVALID_STATE' });
+    expect((await error).code).toBe('VALIDATION_ERROR');
+  });
+  it('requires a session and current host authority for all four operations', async () => {
+    const test = await start();
+    const room = await test.seedRoom('権限');
+    const stranger = await test.openClient();
+    for (const [client, code] of [
+      [room.first, 'NOT_HOST'],
+      [stranger, 'INVALID_STATE'],
+    ] as const) {
+      const operations = [
+        () =>
+          client.emit('judge:submit', {
+            participantId: room.firstId,
+            buzzSessionId: 'round',
+            isCorrect: true,
+          }),
+        () => client.emit('game:rules-update', { rules: SEVEN_MARU_THREE_BATSU }),
+        () => client.emit('game:next-responder', {}),
+        () => client.emit('game:reset', {}),
+      ];
+      for (const send of operations) {
+        const error = nextError(client);
+        send();
+        expect((await error).code).toBe(code);
+      }
+    }
   });
 });

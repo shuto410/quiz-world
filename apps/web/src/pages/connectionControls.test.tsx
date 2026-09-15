@@ -25,17 +25,35 @@ function setup(
     status: 'joined',
     participantId: role === 'host' ? 'h' : 'p',
     roomState: {
+      rules: { type: 'points', correctPoints: 1, wrongPoints: 0 },
       tournamentId: 't1',
       status: roomStatus,
       hostId: 'h',
       hostOnline: true,
       updatedAt: 1,
       participants: [
-        { id: 'h', name: 'ホスト', score: 0, online: true, joinedAt: 1 },
-        { id: 'p', name: '太郎', score: 5, online: true, joinedAt: 1 },
+        {
+          correctCount: 0,
+          wrongCount: 0,
+          id: 'h',
+          name: 'ホスト',
+          score: 0,
+          online: true,
+          joinedAt: 1,
+        },
+        {
+          correctCount: 0,
+          wrongCount: 0,
+          id: 'p',
+          name: '太郎',
+          score: 5,
+          online: true,
+          joinedAt: 1,
+        },
       ],
       buzzOrder: [],
       currentResponderId: 'p',
+      currentBuzzSession: { id: 'round', startedAt: 1 },
     },
     errorMessage: undefined,
     socketError: undefined,
@@ -49,6 +67,8 @@ function setup(
     submitAnswer: vi.fn(),
     judge: vi.fn(),
     resetGame: vi.fn(),
+    nextResponder: vi.fn(),
+    updateRules: vi.fn(),
     finishTournament: vi.fn(),
     closeRoom: vi.fn(),
   };
@@ -73,7 +93,6 @@ it.each(['idle', 'answering', 'result', 'finished'] as const)(
   'disables host controls during reconnect in %s, including an armed confirmation',
   (status) => {
     const { connection, refresh } = setup('host', status);
-    if (status === 'answering') fireEvent.click(screen.getByRole('button', { name: '正解' }));
     if (status === 'idle' || status === 'result')
       fireEvent.click(screen.getByRole('button', { name: '大会終了' }));
     if (status === 'finished')
@@ -86,8 +105,7 @@ it.each(['idle', 'answering', 'result', 'finished'] as const)(
     expect(screen.getAllByText('太郎').length).toBeGreaterThan(0);
     connection.status = 'joined';
     refresh();
-    const action =
-      status === 'answering' ? '結果を表示' : status === 'finished' ? '閉じる' : '終了する';
+    const action = status === 'answering' ? '正解' : status === 'finished' ? '閉じる' : '終了する';
     fireEvent.click(screen.getByRole('button', { name: action }));
     const callback =
       status === 'answering'
