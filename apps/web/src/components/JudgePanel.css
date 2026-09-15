@@ -56,7 +56,8 @@
   flex-wrap: wrap;
 }
 .qw-judge__score-field {
-  width: 72px;
+  /* Reserve room for the signed three-digit range, padding and native number controls. */
+  width: 112px;
   gap: 8px;
 }
 .qw-judge__score-field .qw-input__label {
