@@ -1,25 +1,29 @@
+/** A submitted answer reads as a large quotation on a light row. */
 .qw-submitted-answer {
   margin: 0;
-  padding: var(--space-4);
-  border: 1px solid var(--color-line);
-  border-radius: calc(var(--radius-control) + 0.25rem);
-  background: var(--color-paper-raised);
+  padding: var(--space-5);
+  border-radius: var(--radius-lg);
+  background: var(--surface-row);
 }
 
 .qw-submitted-answer__empty {
   margin: 0;
-  color: var(--color-ink-muted);
+  color: var(--ink-muted);
+  font-size: 15px;
+  font-weight: 800;
 }
 
 .qw-submitted-answer__text {
   margin: 0;
   font-family: var(--font-display);
-  font-size: 1.35rem;
+  font-size: 22px;
+  line-height: 1.5;
   overflow-wrap: anywhere;
 }
 
 .qw-submitted-answer__sender {
   margin-top: var(--space-2);
-  font-size: 0.85rem;
-  color: var(--color-ink-muted);
+  color: var(--ink-muted);
+  font-size: 13px;
+  font-weight: 800;
 }

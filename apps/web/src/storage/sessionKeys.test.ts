@@ -16,6 +16,9 @@ import {
   saveParticipantId,
   saveParticipantName,
   loadParticipantName,
+  loadTournamentName,
+  saveTournamentName,
+  inviteDetailsKey,
 } from './sessionKeys';
 
 afterEach(() => {
@@ -43,6 +46,8 @@ describe('sessionKeys', () => {
       name: 'テスト大会',
     });
 
+    window.sessionStorage.clear();
+    expect(loadTournamentName('tournament-1')).toBe('テスト大会');
     expect(loadInviteDetails('tournament-1')).toEqual({
       inviteCode: 'ABCD2345',
       inviteUrl: 'https://quiz.example.com/join?code=ABCD2345',
@@ -58,4 +63,19 @@ it('keeps reconnect names isolated by tournament', () => {
   expect(loadParticipantName('t1')).toBe('旧ホスト');
   expect(loadParticipantName('t2')).toBe('太郎');
   expect(loadParticipantName('t3')).toBeUndefined();
+});
+
+it('reads legacy invitation data and keeps participant tournament names isolated', () => {
+  window.sessionStorage.setItem(
+    inviteDetailsKey('legacy'),
+    JSON.stringify({
+      inviteCode: 'ABCD2345',
+      inviteUrl: 'https://quiz.example.com/join?code=ABCD2345',
+      name: '以前の大会',
+    }),
+  );
+  expect(loadInviteDetails('legacy')?.name).toBe('以前の大会');
+  saveTournamentName('participant-room', '参加中の大会');
+  expect(loadTournamentName('participant-room')).toBe('参加中の大会');
+  expect(loadTournamentName('missing')).toBeUndefined();
 });

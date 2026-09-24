@@ -59,6 +59,7 @@ const success: JoinResponse = {
   isReconnect: false,
 };
 const state: RoomStateEvent = {
+  rules: { type: 'points', correctPoints: 1, wrongPoints: 0 },
   tournamentId: 't1',
   status: 'idle',
   hostId: 'h',
@@ -85,6 +86,8 @@ it('requires ack and fresh state on every connection and reuses the issued id', 
     result.current.closeRoom();
     result.current.submitAnswer('回答');
     result.current.resetGame();
+    result.current.nextResponder();
+    result.current.updateRules({ type: 'maruBatsu', correctTarget: 7, wrongLimit: 3 });
   });
   expect(socket.emit).toHaveBeenCalledTimes(count);
   fire('connect');
@@ -138,10 +141,11 @@ it('rejoins hosts and stops all gameplay sends until the new handshake completes
     result.current.judge({
       participantId: 'p1',
       isCorrect: true,
-      scoreDelta: 1,
-      nextAction: 'showResult',
+      buzzSessionId: 'buzz-session-1',
     });
     result.current.resetGame();
+    result.current.nextResponder();
+    result.current.updateRules({ type: 'maruBatsu', correctTarget: 7, wrongLimit: 3 });
     result.current.finishTournament();
     result.current.closeRoom();
     result.current.submitAnswer('回答');
@@ -150,6 +154,8 @@ it('rejoins hosts and stops all gameplay sends until the new handshake completes
     'tournament:host-join',
     'judge:submit',
     'game:reset',
+    'game:next-responder',
+    'game:rules-update',
     'tournament:finish',
     'room:close',
     'answer:submit',
@@ -207,7 +213,17 @@ it('rejoins an original host as the saved participant after authority moves else
   fire('room:state', {
     ...state,
     hostId: 'new-host',
-    participants: [{ id: 'p1', name: '元ホスト', score: 0, online: true, joinedAt: 1 }],
+    participants: [
+      {
+        correctCount: 0,
+        wrongCount: 0,
+        id: 'p1',
+        name: '元ホスト',
+        score: 0,
+        online: true,
+        joinedAt: 1,
+      },
+    ],
   });
   expect(result.current.status).toBe('joined');
   expect(loadParticipantName('t1')).toBe('元ホスト');

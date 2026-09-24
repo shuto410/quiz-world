@@ -33,6 +33,7 @@ export const INPUT_CONSTRAINTS = {
   answerText: { maxLength: 200 },
   maxParticipants: { min: 2, max: 50 },
   scoreDelta: { min: -999, max: 999 },
+  maruBatsuCount: { min: 1, max: 99 },
 } as const;
 
 /** C0 and C1 control characters, which includes newlines and tabs. */
@@ -119,7 +120,7 @@ export function validateMaxParticipants(value: unknown): ValidationResult<number
 }
 
 /**
- * Validates the points the host awards when judging an answer.
+ * Validates the points configured for a correct or wrong judgement.
  *
  * Zero and negative values are ordinary: the host may award nothing for a correct answer, or
  * deduct for a wrong one. The bounds are a safeguard rather than a game rule. Scores are only

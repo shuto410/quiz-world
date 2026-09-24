@@ -19,7 +19,8 @@
  * types, so the same definitions type both the server and the browser client.
  */
 
-import type { HostRoomState, JudgeNextAction, ParticipantRoomState } from './game';
+import type { HostRoomState, ParticipantRoomState } from './game';
+import type { GameRules } from './rules';
 
 /** Which side of the room a connection is on. */
 export type ParticipantRole = 'host' | 'participant';
@@ -41,7 +42,7 @@ export const SOCKET_ERROR_CODES = [
   'NOT_CURRENT_RESPONDER',
   /** The operation is not allowed while the room is in its current status. */
   'INVALID_STATE',
-  /** `moveToNextResponder` was requested but nobody is left in the buzz queue. */
+  /** `game:next-responder` was requested but nobody is left in the buzz queue. */
   'NO_NEXT_RESPONDER',
   /** The operation came from a connection that a newer one has replaced. */
   'STALE_CONNECTION',
@@ -106,20 +107,18 @@ export type AnswerSubmitPayload = {
   answerText: string;
 };
 
-/**
- * Host judges the current answer.
- *
- * Correctness, score change and what happens next are decided in one operation so that the
- * room never rests between a judgement and its follow-up. `participantId` here identifies
- * the person being judged, not the sender.
- */
+/** Host judges the exact displayed answer; scoring comes from server-owned rules. */
 export type JudgeSubmitPayload = {
   participantId: string;
+  buzzSessionId: string;
   isCorrect: boolean;
-  /** Added to the participant's score. May be negative or zero. */
-  scoreDelta: number;
-  nextAction: JudgeNextAction;
 };
+
+/** Host changes the room rules before the first judgement. */
+export type GameRulesUpdatePayload = { rules: GameRules };
+
+/** Host continues the current question after a wrong judgement, without scoring again. */
+export type GameNextResponderPayload = Record<string, never>;
 
 /**
  * Host closes the result screen and reopens buzzing.
@@ -235,6 +234,8 @@ export type ClientToServerEvents = {
   'answer:submit': (payload: AnswerSubmitPayload) => void;
   'judge:submit': (payload: JudgeSubmitPayload) => void;
   'game:reset': (payload: GameResetPayload) => void;
+  'game:next-responder': (payload: GameNextResponderPayload) => void;
+  'game:rules-update': (payload: GameRulesUpdatePayload) => void;
   'tournament:finish': (payload: TournamentFinishPayload) => void;
   'room:close': (payload: RoomClosePayload) => void;
 };
@@ -263,6 +264,8 @@ export const CLIENT_TO_SERVER_EVENT_NAMES = [
   'answer:submit',
   'judge:submit',
   'game:reset',
+  'game:next-responder',
+  'game:rules-update',
   'tournament:finish',
   'room:close',
 ] as const satisfies readonly (keyof ClientToServerEvents)[];

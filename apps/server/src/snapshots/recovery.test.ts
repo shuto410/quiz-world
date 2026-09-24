@@ -96,15 +96,20 @@ it('recovers scores, pending answers and finished results, then permanently clos
   await views;
   const both = () => Promise.all([nextRoomState(host), nextRoomState(player)]);
   views = both();
-  player.emit('game:buzz', {});
+  host.emit('game:rules-update', { rules: { type: 'points', correctPoints: 3, wrongPoints: 0 } });
   await views;
+  views = both();
+  player.emit('game:buzz', {});
+  const [buzzed] = await views;
   views = both();
   host.emit('judge:submit', {
     participantId: joined.participantId,
     isCorrect: true,
-    scoreDelta: 3,
-    nextAction: 'resetToIdle',
+    buzzSessionId: buzzed?.currentBuzzSession?.id ?? '',
   });
+  await views;
+  views = both();
+  host.emit('game:reset', {});
   await views;
   views = both();
   player.emit('game:buzz', {});
@@ -130,12 +135,17 @@ it('recovers scores, pending answers and finished results, then permanently clos
     currentResponderId: joined.participantId,
   });
   expect(paused).not.toHaveProperty('currentSubmittedAnswer');
-  expect(paused.participants.find((p) => p.id === joined.participantId)?.score).toBe(3);
+  expect(paused.participants.find((p) => p.id === joined.participantId)).toMatchObject({
+    score: 3,
+    correctCount: 1,
+    wrongCount: 0,
+  });
   host = await open();
   views = both();
   await emitHostJoin(host, test);
   const [restored] = await views;
   expect(restored).toMatchObject({
+    rules: { type: 'points', correctPoints: 3, wrongPoints: 0 },
     status: 'answering',
     currentSubmittedAnswer: { answerText: '未判定の回答' },
   });
@@ -143,8 +153,7 @@ it('recovers scores, pending answers and finished results, then permanently clos
   host.emit('judge:submit', {
     participantId: joined.participantId,
     isCorrect: false,
-    scoreDelta: 0,
-    nextAction: 'showResult',
+    buzzSessionId: restored?.currentBuzzSession?.id ?? '',
   });
   await views;
   views = both();

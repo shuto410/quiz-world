@@ -5,9 +5,9 @@ import { applyLeave, applyHostJoin, applyParticipantJoin } from './join';
 import { applyHostClaim } from './host';
 
 const participants = [
-  { id: 'h', name: 'ホスト', online: true, score: 0, joinedAt: 1 },
-  { id: 'a', name: '太郎', online: true, score: 5, joinedAt: 1 },
-  { id: 'b', name: '花子', online: true, score: 2, joinedAt: 1 },
+  { correctCount: 0, wrongCount: 0, id: 'h', name: 'ホスト', online: true, score: 0, joinedAt: 1 },
+  { correctCount: 0, wrongCount: 0, id: 'a', name: '太郎', online: true, score: 5, joinedAt: 1 },
+  { correctCount: 0, wrongCount: 0, id: 'b', name: '花子', online: true, score: 2, joinedAt: 1 },
 ];
 function paused() {
   return createRoomStateFixture({
@@ -140,5 +140,23 @@ describe('host disconnect and takeover', () => {
         claimedParticipantId: 'h',
       }),
     ).toMatchObject({ state: { hostId: 'b', hostOnline: false, status: 'paused' } });
+  });
+});
+
+it('retains the judged cursor when that participant takes over on a result screen', () => {
+  const current = {
+    ...paused(),
+    statusBeforePause: 'result' as const,
+    lastResult: { participantId: 'a', isCorrect: false, scoreDelta: 0 },
+  };
+  const result = applyHostClaim(current, 'a', 10);
+  expect(result).toMatchObject({
+    ok: true,
+    state: {
+      status: 'result',
+      currentResponderId: 'a',
+      buzzOrder: current.buzzOrder,
+      lastResult: current.lastResult,
+    },
   });
 });

@@ -1,59 +1,228 @@
+/**
+ * Buzz order ("押した順"): rows on a card with a rank badge (gold with a crown for the first
+ * press), the name with the current score beneath it, and an accent pill on the responder.
+ * Compact by default; the host's judge screen uses the large size.
+ */
 .qw-buzz-order {
+  --crown: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M3 9l4.5 3.5L12 5l4.5 7.5L21 9l-2 10H5z' fill='%23F8D56A' stroke='%232E2010' stroke-width='1.8' stroke-linejoin='round'/%3E%3C/svg%3E");
+  display: grid;
+  gap: 6px;
   margin: 0;
   padding: 0;
   list-style: none;
-  border: 1px solid var(--color-line);
-  border-radius: calc(var(--radius-control) + 0.25rem);
-  background: var(--color-paper-raised);
-  overflow: hidden;
 }
 
 .qw-buzz-order__empty {
   margin: 0;
-  color: var(--color-ink-muted);
+  padding: 6px 0;
+  color: var(--ink-muted);
+  font-size: 13px;
+  font-weight: 800;
 }
 
 .qw-buzz-order__row {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
-  border-top: 1px solid var(--color-line);
-}
-
-.qw-buzz-order__row:first-child {
-  border-top: 0;
+  gap: 10px;
+  padding: 6px 12px 6px 6px;
+  border-radius: 14px;
+  background: var(--surface-row);
 }
 
 .qw-buzz-order__row--responder {
-  background: rgb(15 118 110 / 0.08);
+  background: var(--surface-card);
+  box-shadow: var(--ring-answering);
 }
 
 .qw-buzz-order__rank {
+  position: relative;
   display: inline-flex;
+  flex-shrink: 0;
   align-items: center;
   justify-content: center;
-  width: 1.75rem;
-  height: 1.75rem;
-  border-radius: 999px;
-  background: var(--color-ink);
-  color: var(--color-paper-raised);
-  font-size: 0.85rem;
-  font-weight: 700;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--surface-sunken);
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 15px;
+  line-height: 1;
+}
+
+.qw-buzz-order__row:first-child .qw-buzz-order__rank {
+  background: var(--gold);
+  box-shadow: var(--badge-gold);
+}
+
+.qw-buzz-order__row:first-child .qw-buzz-order__rank::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: -10px;
+  width: 15px;
+  height: 15px;
+  background: var(--crown) center / contain no-repeat;
+  transform: translateX(-50%) rotate(-10deg);
 }
 
 .qw-buzz-order__name {
-  display: inline-flex;
+  flex: 1 1 auto;
+  display: flex;
   align-items: center;
   gap: var(--space-2);
-  font-weight: 600;
+  min-width: 0;
+}
+
+.qw-buzz-order__name .qw-participant-token {
+  flex-basis: 12px;
+  width: 12px;
+  height: 12px;
+  margin: 0 0 2px;
+}
+
+.qw-buzz-order__who {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.qw-buzz-order__who > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.qw-buzz-order__score {
+  color: var(--ink-muted);
+  font-size: 11px;
+  font-weight: 700;
 }
 
 .qw-buzz-order__tag {
-  padding: 0.1rem 0.4rem;
-  border-radius: 999px;
-  background: var(--color-accent);
-  color: var(--color-accent-ink);
-  font-size: 0.75rem;
-  font-weight: 600;
+  flex-shrink: 0;
+  padding: 3px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+/* Time behind the first buzz: text on the right, bar (large size only) in between. */
+.qw-buzz-order__bar {
+  display: none;
+}
+.qw-buzz-order__gap {
+  flex-shrink: 0;
+  width: 76px;
+  text-align: right;
+  color: var(--wrong-ink);
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.qw-buzz-order__gap[data-first='true'] {
+  color: var(--ink-muted);
+}
+.qw-game--split .qw-buzz-order__name {
+  flex: 0 0 210px;
+}
+.qw-game--split .qw-buzz-order__bar {
+  display: block;
+  flex: 1 1 auto;
+  height: 14px;
+  border-radius: var(--radius-pill);
+  background: var(--overlay-ink-10);
+  overflow: hidden;
+}
+.qw-game--split .qw-buzz-order__bar > span {
+  display: block;
+  min-width: 14px;
+  height: 100%;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+}
+.qw-game--split .qw-buzz-order__gap {
+  width: 120px;
+  font-size: 26px;
+}
+
+/* Large size: the host's judge screen. */
+.qw-game--split .qw-buzz-order {
+  --crown-size: 24px;
+  gap: 10px;
+}
+.qw-game--split .qw-buzz-order__row {
+  gap: 18px;
+  padding: 12px 18px 12px 10px;
+  border-radius: 18px;
+}
+.qw-game--split .qw-buzz-order__rank {
+  width: 48px;
+  height: 48px;
+  font-size: 24px;
+}
+.qw-game--split .qw-buzz-order__row:first-child .qw-buzz-order__rank::after {
+  top: -17px;
+  width: 24px;
+  height: 24px;
+}
+.qw-game--split .qw-buzz-order__name .qw-participant-token {
+  flex-basis: 16px;
+  width: 16px;
+  height: 16px;
+}
+.qw-game--split .qw-buzz-order__who > span {
+  font-size: 24px;
+}
+.qw-game--split .qw-buzz-order__score {
+  font-size: 14px;
+}
+.qw-game--split .qw-buzz-order__tag {
+  padding: 6px 12px;
+  font-size: 14px;
+}
+.qw-game--split .qw-buzz-order__empty {
+  font-size: 16px;
+}
+@media (max-width: 720px) {
+  .qw-game--split .qw-buzz-order__row {
+    gap: 10px;
+    padding: 6px 12px 6px 6px;
+    border-radius: 14px;
+  }
+  .qw-game--split .qw-buzz-order__rank {
+    width: 30px;
+    height: 30px;
+    font-size: 15px;
+  }
+  .qw-game--split .qw-buzz-order__row:first-child .qw-buzz-order__rank::after {
+    top: -10px;
+    width: 15px;
+    height: 15px;
+  }
+  .qw-game--split .qw-buzz-order__who > span {
+    font-size: 15px;
+  }
+  .qw-game--split .qw-buzz-order__score,
+  .qw-game--split .qw-buzz-order__tag {
+    font-size: 11px;
+  }
+  .qw-game--split .qw-buzz-order__name {
+    flex: 1 1 auto;
+  }
+  .qw-game--split .qw-buzz-order__bar {
+    display: none;
+  }
+  .qw-game--split .qw-buzz-order__gap {
+    width: 76px;
+    font-size: 15px;
+  }
 }

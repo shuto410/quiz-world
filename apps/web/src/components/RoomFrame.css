@@ -1,0 +1,558 @@
+/**
+ * Room chrome, following the screen templates: 32/48px page padding, a 64px header (logo,
+ * centred mode chip, and on the right the invite code, the rule settings gear and the
+ * viewer's seat), then the game area with the score ranking panel beside it. On phones the
+ * logo is dropped, and the buzz order and the ranking share one slot switched by tabs.
+ */
+.qw-workspace {
+  width: min(1440px, 100%);
+  min-height: 100dvh;
+  margin: 0 auto;
+  padding: var(--space-8) var(--space-12);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  grid-template-rows: auto 1fr;
+  gap: var(--space-6);
+}
+.qw-workspace:has(.qw-game--split) {
+  grid-template-columns: minmax(0, 1fr) 380px;
+}
+
+/* Header */
+.qw-room-toolbar {
+  grid-column: 1 / -1;
+  position: relative;
+  z-index: 3;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-6);
+  min-height: 64px;
+}
+.qw-room-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  max-width: 560px;
+  margin: 0;
+  padding: 10px 20px;
+  border-radius: var(--radius-pill);
+  background: var(--accent-chip);
+  font-family: var(--font-sans);
+  font-size: 17px;
+  font-weight: 800;
+  line-height: 24px;
+  white-space: nowrap;
+}
+.qw-room-title__icon {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.qw-room-title__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.qw-room-title__mode + .qw-room-title__name::before {
+  content: '・';
+  margin-right: 6px;
+}
+.qw-room-toolbar__end {
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+.qw-room-toolbar summary {
+  cursor: pointer;
+  list-style: none;
+}
+.qw-room-toolbar summary::-webkit-details-marker {
+  display: none;
+}
+
+/* Invite code (host) */
+.qw-room-info > summary {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  padding: 4px 8px;
+  border-radius: var(--radius-md);
+}
+.qw-room-info[open] > summary {
+  background: var(--overlay-ink-10);
+}
+.qw-room-info__label {
+  font-size: 13px;
+  font-weight: 700;
+}
+.qw-room-info__code {
+  font-family: var(--font-display);
+  font-size: 26px;
+  line-height: 1.2;
+  letter-spacing: 0.08em;
+}
+
+/* Viewer's seat */
+.qw-room-toolbar__actions > summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 8px 20px 8px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--overlay-ink-10);
+}
+.qw-room-toolbar__actions[open] > summary {
+  background: var(--surface-panel);
+}
+.qw-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--surface-avatar);
+  font-size: 18px;
+  font-weight: 800;
+}
+.qw-account-summary {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.qw-account-summary__name {
+  max-width: 12em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 16px;
+  font-weight: 800;
+}
+.qw-account-summary__detail {
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* Header popovers */
+.qw-room-account,
+.qw-invite-panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + var(--space-2));
+  width: min(380px, calc(100vw - 32px));
+  padding: var(--space-5);
+  border-radius: var(--radius-xl);
+  background: var(--surface-card);
+  box-shadow: var(--shadow-float);
+}
+.qw-room-account > p {
+  margin: 0 0 var(--space-4);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 18px;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+.qw-room-account > p > span {
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-panel);
+  font-size: 13px;
+}
+.qw-room-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+.qw-room-actions > .qw-button {
+  white-space: nowrap;
+}
+.qw-room-actions .qw-button,
+.qw-tournament-actions .qw-button {
+  min-height: 42px;
+  font-size: 14px;
+}
+.qw-invite-panel {
+  display: grid;
+  gap: var(--space-3);
+}
+.qw-invite-panel p {
+  margin: 0;
+  color: var(--ink-muted);
+  font-size: 15px;
+  font-weight: 800;
+}
+.qw-invite-panel code {
+  display: block;
+  margin-top: var(--space-2);
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 34px;
+  line-height: 44px;
+  letter-spacing: 0.12em;
+}
+.qw-invite-panel__url {
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  background: var(--surface-row);
+  overflow-wrap: anywhere;
+  font-size: 13px;
+  line-height: 18px;
+}
+.qw-invite-panel .qw-button {
+  justify-self: start;
+}
+
+/* Game area */
+.qw-stage {
+  grid-column: 1;
+  grid-row: 2;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.qw-connection {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 6px 12px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-panel);
+  font-size: 13px;
+  font-weight: 800;
+}
+.qw-connection::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--wrong-ink);
+}
+/* While connected the indicator is only announced, not drawn. */
+.qw-connection[data-connected='true'] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.qw-stage__content {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  min-width: 0;
+}
+.qw-stage__content > .qw-game {
+  flex-grow: 1;
+}
+
+/* Score ranking panel */
+.qw-roster {
+  grid-column: 2;
+  grid-row: 2;
+  min-width: 0;
+  padding: 14px;
+  border-radius: 22px;
+  background: var(--surface-panel);
+}
+.qw-workspace:has(.qw-game--split) .qw-roster {
+  padding: var(--space-6);
+  border-radius: var(--radius-xl);
+}
+.qw-roster > details > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: 0 0 6px;
+  cursor: pointer;
+  list-style: none;
+  font-size: 13px;
+  font-weight: 800;
+}
+.qw-workspace:has(.qw-game--split) .qw-roster > details > summary {
+  padding-bottom: var(--space-2);
+  font-size: 16px;
+}
+.qw-roster > details > summary::-webkit-details-marker {
+  display: none;
+}
+.qw-roster__count {
+  font-size: 13px;
+  font-weight: 800;
+}
+
+/* Phone tabs (hidden on wider screens) */
+.qw-room-tabs {
+  display: none;
+}
+
+/* Room-level blocks inside the game area */
+.qw-room-controls {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.qw-tournament-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+}
+.qw-tournament-actions .qw-confirm {
+  max-width: 440px;
+}
+.qw-connection-banner,
+.qw-room-notice {
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-lg);
+  background: var(--gold-soft);
+  color: var(--ink);
+  font-weight: 800;
+  line-height: 1.6;
+}
+.qw-connection-banner {
+  font-size: 15px;
+}
+.qw-room-notice h2 {
+  margin: 0 0 var(--space-2);
+  font-family: var(--font-display);
+  font-size: 22px;
+  line-height: 28px;
+}
+.qw-room-notice p {
+  margin: 0 0 var(--space-4);
+  font-size: 15px;
+}
+.qw-room-results {
+  padding: 28px;
+  border-radius: var(--radius-2xl);
+  background: var(--surface-card);
+}
+.qw-room-results > h2 {
+  margin: var(--space-3) 0 var(--space-6);
+  font-family: var(--font-display);
+  font-size: 34px;
+  line-height: 44px;
+}
+.qw-eyebrow {
+  display: inline-block;
+  margin: 0;
+  padding: 4px 12px;
+  border-radius: var(--radius-pill);
+  background: var(--accent-chip);
+  font-size: 13px;
+  font-weight: 800;
+}
+.qw-host-progress {
+  display: grid;
+  gap: var(--space-3);
+  justify-items: start;
+  margin-top: var(--space-6);
+}
+.qw-host-progress > p {
+  margin: 0;
+  font-weight: 800;
+}
+.qw-rename-form {
+  width: 100%;
+}
+.qw-rename-form .qw-form {
+  gap: var(--space-3);
+  padding: 0;
+  border: 0;
+  grid-template-columns: 1fr 1fr;
+}
+.qw-rename-form .qw-input {
+  grid-column: 1 / -1;
+}
+.qw-room-actions:has(.qw-rename-form) {
+  flex-direction: column;
+}
+
+@media (max-width: 1100px) {
+  .qw-workspace {
+    padding: var(--space-6);
+    grid-template-columns: minmax(0, 1fr) 300px;
+  }
+  .qw-workspace:has(.qw-game--split) {
+    grid-template-columns: minmax(0, 1fr) 320px;
+  }
+  .qw-room-toolbar {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+  .qw-room-title {
+    justify-self: center;
+  }
+}
+
+/*
+ * Phones: one column. The stage wrappers dissolve so the header, the game panel, the tab
+ * strip and the tabbed slot (buzz order or ranking) can be ordered as siblings.
+ */
+@media (max-width: 720px) {
+  .qw-workspace,
+  .qw-workspace:has(.qw-game--split) {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: var(--space-5) var(--space-4);
+  }
+  .qw-stage,
+  .qw-stage__content {
+    display: contents;
+  }
+  .qw-room-toolbar {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: var(--space-2) var(--space-3);
+    min-height: 0;
+  }
+  .qw-room-toolbar .qw-wordmark {
+    display: none;
+  }
+  .qw-room-title {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
+    max-width: 100%;
+    padding: 8px 14px;
+    font-size: 13px;
+    line-height: 18px;
+  }
+  .qw-room-title__icon {
+    width: 14px;
+    height: 14px;
+    stroke-width: 2.6;
+  }
+  /* Narrow chip: the tournament name wins; the mode name is still announced. */
+  .qw-room-title__mode {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .qw-room-title__mode + .qw-room-title__name::before {
+    content: none;
+  }
+  .qw-room-toolbar__end {
+    display: contents;
+  }
+  .qw-room-toolbar__actions {
+    grid-column: 1;
+    grid-row: 1;
+    min-width: 0;
+    max-width: 45vw;
+  }
+  .qw-rules {
+    grid-column: 3;
+    grid-row: 1;
+  }
+  .qw-rules > summary {
+    width: 40px;
+    height: 40px;
+    background-size: 22px;
+  }
+  .qw-room-info {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+  .qw-room-info > summary {
+    justify-content: flex-start;
+  }
+  .qw-room-info > summary {
+    flex-direction: row;
+    align-items: baseline;
+    gap: var(--space-2);
+    padding: 0;
+  }
+  .qw-room-toolbar__actions > summary {
+    padding: 0;
+    gap: 10px;
+    background: transparent;
+  }
+  .qw-account-summary__name {
+    max-width: 100%;
+  }
+  .qw-room-toolbar__actions[open] > summary {
+    background: transparent;
+  }
+  .qw-avatar {
+    width: 40px;
+    height: 40px;
+    font-size: 16px;
+  }
+  .qw-account-summary__name {
+    font-size: 15px;
+  }
+  .qw-account-summary__detail {
+    font-size: 12px;
+  }
+  .qw-room-info__code {
+    font-size: 20px;
+  }
+  .qw-room-tabs {
+    order: 1;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+    padding: 5px;
+    border-radius: var(--radius-md);
+    background: var(--surface-panel);
+  }
+  .qw-room-tabs button {
+    min-height: 44px;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    font-weight: 800;
+    cursor: pointer;
+  }
+  .qw-room-tabs button[aria-selected='true'] {
+    background: var(--surface-card);
+  }
+  .qw-roster {
+    order: 2;
+  }
+  .qw-tournament-actions {
+    order: 3;
+  }
+  .qw-workspace[data-mobile-tab='order'] .qw-roster,
+  .qw-workspace[data-mobile-tab='score'] .qw-game__supplement {
+    display: none;
+  }
+  .qw-room-results {
+    padding: var(--space-5) var(--space-4);
+  }
+  .qw-room-results > h2 {
+    font-size: 28px;
+    line-height: 36px;
+  }
+}

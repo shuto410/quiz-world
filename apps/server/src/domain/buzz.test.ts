@@ -32,9 +32,33 @@ const LATER = 1_700_000_001_400;
 const NEW_SESSION_ID = 'buzz-session-2';
 
 const PARTICIPANTS: ParticipantState[] = [
-  { id: HOST_ID, name: 'ホスト', online: true, joinedAt: JOINED_AT, score: 0 },
-  { id: RESPONDER_ID, name: '太郎', online: true, joinedAt: JOINED_AT, score: 3 },
-  { id: LATECOMER_ID, name: '花子', online: true, joinedAt: JOINED_AT, score: 1 },
+  {
+    correctCount: 0,
+    wrongCount: 0,
+    id: HOST_ID,
+    name: 'ホスト',
+    online: true,
+    joinedAt: JOINED_AT,
+    score: 0,
+  },
+  {
+    correctCount: 0,
+    wrongCount: 0,
+    id: RESPONDER_ID,
+    name: '太郎',
+    online: true,
+    joinedAt: JOINED_AT,
+    score: 3,
+  },
+  {
+    correctCount: 0,
+    wrongCount: 0,
+    id: LATECOMER_ID,
+    name: '花子',
+    online: true,
+    joinedAt: JOINED_AT,
+    score: 1,
+  },
 ];
 
 /**

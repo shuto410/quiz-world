@@ -13,8 +13,8 @@ afterEach(() => {
 });
 
 const participants = [
-  { id: 'p1', name: 'ホスト', online: true, joinedAt: 1, score: 0 },
-  { id: 'p2', name: '太郎', online: true, joinedAt: 2, score: 2 },
+  { correctCount: 0, wrongCount: 0, id: 'p1', name: 'ホスト', online: true, joinedAt: 1, score: 0 },
+  { correctCount: 0, wrongCount: 0, id: 'p2', name: '太郎', online: true, joinedAt: 2, score: 2 },
 ];
 
 describe('LastResult', () => {
@@ -27,7 +27,7 @@ describe('LastResult', () => {
     );
 
     expect(screen.getByText('太郎')).toBeTruthy();
-    expect(screen.getByText('正解')).toBeTruthy();
+    expect(screen.getByText('○ 正解')).toBeTruthy();
     expect(screen.getByText('+2点')).toBeTruthy();
   });
 
@@ -39,7 +39,7 @@ describe('LastResult', () => {
       />,
     );
 
-    expect(screen.getByText('不正解')).toBeTruthy();
+    expect(screen.getByText('× 不正解')).toBeTruthy();
     expect(screen.getByText('-1点')).toBeTruthy();
   });
 

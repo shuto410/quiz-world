@@ -11,7 +11,7 @@
  * `npm run check` self-contained.
  */
 
-import type { DynamoDBClient } from '@aws-sdk/client-dynamodb';
+import { waitUntilTableExists, type DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import type { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
 import dynalite from 'dynalite';
 import { createDocumentClient, createDynamoDbClient } from '../db/client';
@@ -27,8 +27,7 @@ export type TestDynamoDb = {
 
 /** Starts a server on an ephemeral port and creates the application's tables. */
 export async function startTestDynamoDb(): Promise<TestDynamoDb> {
-  // Table creation is normally asynchronous; making it instant means tests do not have to
-  // wait for a table to leave the CREATING state before writing to it.
+  // A zero delay keeps startup fast, but dynalite still activates tables asynchronously.
   const server = dynalite({ createTableMs: 0 });
 
   await new Promise<void>((resolve, reject) => {
@@ -50,6 +49,11 @@ export async function startTestDynamoDb(): Promise<TestDynamoDb> {
 
   const snapshotsTable = 'test-room-snapshots';
   await ensureTables(client, { tournaments: tournamentsTable, snapshots: snapshotsTable });
+  await Promise.all(
+    [tournamentsTable, snapshotsTable].map((TableName) =>
+      waitUntilTableExists({ client, maxWaitTime: 5, minDelay: 1, maxDelay: 1 }, { TableName }),
+    ),
+  );
 
   return {
     client,

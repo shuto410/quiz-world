@@ -14,9 +14,17 @@ afterEach(() => {
 
 describe('BuzzOrderList', () => {
   const participants = [
-    { id: 'p1', name: 'ホスト', online: true, joinedAt: 1, score: 0 },
-    { id: 'p2', name: '太郎', online: true, joinedAt: 2, score: 0 },
-    { id: 'p3', name: '花子', online: true, joinedAt: 3, score: 0 },
+    {
+      correctCount: 0,
+      wrongCount: 0,
+      id: 'p1',
+      name: 'ホスト',
+      online: true,
+      joinedAt: 1,
+      score: 0,
+    },
+    { correctCount: 0, wrongCount: 0, id: 'p2', name: '太郎', online: true, joinedAt: 2, score: 0 },
+    { correctCount: 0, wrongCount: 0, id: 'p3', name: '花子', online: true, joinedAt: 3, score: 0 },
   ];
 
   it('renders ranks and marks the current responder', () => {
@@ -36,6 +44,21 @@ describe('BuzzOrderList', () => {
     expect(screen.getByText('太郎')).toBeTruthy();
     expect(screen.getByText('花子')).toBeTruthy();
     expect(screen.getByText('回答権')).toBeTruthy();
+  });
+
+  it('shows how far behind the first buzz each later buzz reached the server', () => {
+    render(
+      <BuzzOrderList
+        participants={participants}
+        buzzOrder={[
+          { participantId: 'p2', receivedAt: 1_000 },
+          { participantId: 'p3', receivedAt: 1_730 },
+        ]}
+      />,
+    );
+
+    expect(screen.getByText('太郎').closest('li')?.textContent).toContain('1着');
+    expect(screen.getByText('花子').closest('li')?.textContent).toContain('+0.73秒');
   });
 
   it('shows an empty message when nobody has buzzed', () => {

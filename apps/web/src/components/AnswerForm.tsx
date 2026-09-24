@@ -1,8 +1,8 @@
 /**
  * Text answer field on the participant play screen.
  *
- * Always on screen, disabled unless the viewer holds the answer right, so that the bottom of
- * the screen does not jump between rounds. Whether it is enabled comes from
+ * Mounted while the viewer holds the answer right, and retained but disabled during
+ * reconnect so that an unsent draft survives transient connection loss. Whether it is enabled comes from
  * `canSubmitAnswer`, which mirrors the server rule; the server still decides, and a refusal
  * arrives as a toast.
  *

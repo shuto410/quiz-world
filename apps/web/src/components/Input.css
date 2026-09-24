@@ -1,32 +1,60 @@
+/** Text fields: a light row inside a sunken 2px frame that turns buzzer red on focus. */
 .qw-input {
   display: grid;
   gap: var(--space-2);
 }
 
 .qw-input__label {
-  font-weight: 600;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 22px;
 }
 
 .qw-input__control {
-  min-height: 2.75rem;
-  padding: 0 var(--space-3);
-  border: 1px solid var(--color-line);
-  border-radius: var(--radius-control);
-  background: var(--color-paper-raised);
-  color: var(--color-ink);
+  width: 100%;
+  min-height: 60px;
+  padding: 0 18px;
+  border: 2px solid var(--surface-sunken);
+  border-radius: var(--radius-md);
+  background: var(--surface-row);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.qw-input__control::placeholder {
+  color: var(--ink-muted);
+  opacity: 0.8;
 }
 
 .qw-input__control:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 2px;
-  border-color: var(--color-accent);
+  outline: 0;
+  border-color: var(--buzzer);
+}
+
+.qw-input__control:disabled {
+  background: var(--surface-panel);
+  color: var(--ink-muted);
+  cursor: not-allowed;
 }
 
 .qw-input__control[aria-invalid='true'] {
-  border-color: var(--color-danger);
+  border-color: var(--wrong-ink);
 }
 
 .qw-input__error {
-  color: var(--color-danger);
-  font-size: 0.9rem;
+  color: var(--wrong-ink);
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 18px;
+}
+
+/* Invite code: large display numerals, spaced and centred. */
+.qw-input--code .qw-input__control {
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 400;
+  letter-spacing: 0.2em;
+  text-align: center;
 }

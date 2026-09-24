@@ -17,7 +17,7 @@ function participant(
   score: number,
   joinedAt = 1_700_000_000_000,
 ): ParticipantState {
-  return { id, name, online: true, joinedAt, score };
+  return { id, name, online: true, joinedAt, score, correctCount: 0, wrongCount: 0 };
 }
 
 const HOST_ID = 'p1';
@@ -104,5 +104,35 @@ describe('rankParticipants', () => {
     expect(
       rankParticipants({ participants: [participant(HOST_ID, 'ホスト', 0)], hostId: HOST_ID }),
     ).toEqual([]);
+  });
+});
+
+describe('n○m× standings', () => {
+  const rules = { type: 'maruBatsu', correctTarget: 7, wrongLimit: 3 } as const;
+  it('keeps eliminated players below active players and recognizes only threshold winners', () => {
+    const ranked = rankParticipants({
+      rules,
+      hostId: HOST_ID,
+      participants: [
+        { ...participant('lost', '失格', 6), correctCount: 6, wrongCount: 3 },
+        { ...participant('playing', '競技中', 2), correctCount: 2, wrongCount: 1 },
+        { ...participant('won', '勝ち抜け', 7), correctCount: 7, wrongCount: 2 },
+        { ...participant('won2', '勝ち抜け2', 7), correctCount: 7, wrongCount: 0 },
+      ],
+    });
+    expect(ranked.map((p) => [p.participant.id, p.isWinner])).toEqual([
+      ['won2', true],
+      ['won', true],
+      ['playing', false],
+      ['lost', false],
+    ]);
+  });
+  it('does not invent a winner when nobody reaches the target', () => {
+    const ranked = rankParticipants({
+      rules,
+      hostId: HOST_ID,
+      participants: [participant('a', 'A', 6)],
+    });
+    expect(ranked[0]?.isWinner).toBe(false);
   });
 });

@@ -44,8 +44,7 @@ it('invalidates every operation on the old socket and ignores its late disconnec
       room.first.emit(event, {
         participantId: room.firstId,
         isCorrect: true,
-        scoreDelta: 1,
-        nextAction: 'showResult',
+        buzzSessionId: 'buzz-session-1',
       });
     else room.first.emit(event, {});
     await expect(error).resolves.toMatchObject({ code: 'STALE_CONNECTION' });
@@ -68,6 +67,11 @@ it('invalidates every operation on the old socket and ignores its late disconnec
 it('marks a disconnected seat offline and restores its score, including after finish', async () => {
   harness = await startSocketTestHarness();
   const room = await harness.seedRoom('復帰');
+  const configured = nextRoomState(room.host);
+  room.host.emit('game:rules-update', {
+    rules: { type: 'points', correctPoints: 5, wrongPoints: 0 },
+  });
+  await configured;
   let state = nextRoomState(room.host);
   room.first.emit('game:buzz', {});
   await state;
@@ -75,8 +79,7 @@ it('marks a disconnected seat offline and restores its score, including after fi
   room.host.emit('judge:submit', {
     participantId: room.firstId,
     isCorrect: true,
-    scoreDelta: 5,
-    nextAction: 'showResult',
+    buzzSessionId: 'buzz-session-1',
   });
   await state;
   state = nextRoomState(room.host);

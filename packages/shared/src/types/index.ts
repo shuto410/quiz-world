@@ -10,3 +10,5 @@ export * from './game';
 export * from './socket';
 export * from './tournament';
 export * from './validation';
+
+export * from './rules';

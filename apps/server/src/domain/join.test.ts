@@ -23,6 +23,7 @@ const LATER = 1_700_000_000_200;
 describe('createInitialRoomState', () => {
   it('starts empty with no host seated yet', () => {
     expect(createInitialRoomState('tournament-1', NOW)).toEqual({
+      rules: { type: 'points', correctPoints: 1, wrongPoints: 0 },
       tournamentId: 'tournament-1',
       status: 'idle',
       hostId: '',
@@ -51,6 +52,8 @@ describe('applyHostJoin', () => {
         hostOnline: true,
         participants: [
           {
+            correctCount: 0,
+            wrongCount: 0,
             id: 'host-1',
             name: DEFAULT_HOST_DISPLAY_NAME,
             online: true,
@@ -69,6 +72,8 @@ describe('applyHostJoin', () => {
       hostOnline: false,
       participants: [
         {
+          correctCount: 0,
+          wrongCount: 0,
           id: 'host-1',
           name: DEFAULT_HOST_DISPLAY_NAME,
           online: false,
@@ -103,6 +108,8 @@ describe('applyHostJoin', () => {
       currentResponderId: 'participant-2',
       participants: [
         {
+          correctCount: 0,
+          wrongCount: 0,
           id: 'participant-1',
           name: DEFAULT_HOST_DISPLAY_NAME,
           online: false,
@@ -110,6 +117,8 @@ describe('applyHostJoin', () => {
           score: 0,
         },
         {
+          correctCount: 0,
+          wrongCount: 0,
           id: 'participant-2',
           name: '太郎',
           online: true,
@@ -137,6 +146,8 @@ describe('applyHostJoin', () => {
       ...current,
       participants: [
         {
+          correctCount: 0,
+          wrongCount: 0,
           id: 'guest-1',
           name: DEFAULT_HOST_DISPLAY_NAME,
           online: true,
@@ -177,6 +188,8 @@ describe('applyParticipantJoin', () => {
         participants: [
           ...current.participants,
           {
+            correctCount: 0,
+            wrongCount: 0,
             id: 'participant-2',
             name: '花子',
             online: true,
@@ -212,7 +225,17 @@ describe('applyParticipantJoin', () => {
   it('restores an existing seat even when the persisted tournament is closed', () => {
     const current = createRoomStateFixture({
       status: 'finished',
-      participants: [{ id: 'p', name: '太郎', online: false, score: 5, joinedAt: NOW }],
+      participants: [
+        {
+          correctCount: 0,
+          wrongCount: 0,
+          id: 'p',
+          name: '太郎',
+          online: false,
+          score: 5,
+          joinedAt: NOW,
+        },
+      ],
     });
     const outcome = applyParticipantJoin(current, {
       ...baseInput,
@@ -226,7 +249,9 @@ describe('applyParticipantJoin', () => {
       isReconnect: true,
       state: {
         status: 'finished',
-        participants: [{ id: 'p', name: '太郎', score: 5, online: true }],
+        participants: [
+          { correctCount: 0, wrongCount: 0, id: 'p', name: '太郎', score: 5, online: true },
+        ],
       },
     });
   });
@@ -236,13 +261,23 @@ describe('applyParticipantJoin', () => {
       status: 'finished',
       participants: [
         {
+          correctCount: 0,
+          wrongCount: 0,
           id: 'participant-1',
           name: DEFAULT_HOST_DISPLAY_NAME,
           online: true,
           joinedAt: NOW,
           score: 0,
         },
-        { id: 'participant-2', name: '花子', online: false, joinedAt: NOW, score: 4 },
+        {
+          correctCount: 0,
+          wrongCount: 0,
+          id: 'participant-2',
+          name: '花子',
+          online: false,
+          joinedAt: NOW,
+          score: 4,
+        },
       ],
     });
 
@@ -263,6 +298,8 @@ describe('applyParticipantJoin', () => {
     const current = createRoomStateFixture({
       participants: [
         {
+          correctCount: 0,
+          wrongCount: 0,
           id: 'participant-1',
           name: DEFAULT_HOST_DISPLAY_NAME,
           online: true,
@@ -270,6 +307,8 @@ describe('applyParticipantJoin', () => {
           score: 0,
         },
         {
+          correctCount: 0,
+          wrongCount: 0,
           id: 'participant-2',
           name: '太郎',
           online: true,
@@ -297,6 +336,8 @@ describe('applyParticipantJoin', () => {
     const current = createRoomStateFixture({
       participants: [
         {
+          correctCount: 0,
+          wrongCount: 0,
           id: 'participant-1',
           name: DEFAULT_HOST_DISPLAY_NAME,
           online: true,
@@ -304,6 +345,8 @@ describe('applyParticipantJoin', () => {
           score: 0,
         },
         {
+          correctCount: 0,
+          wrongCount: 0,
           id: 'participant-2',
           name: '旧名',
           online: false,
@@ -329,6 +372,8 @@ describe('applyParticipantJoin', () => {
     expect(result.state.participants).toEqual([
       current.participants[0],
       {
+        correctCount: 0,
+        wrongCount: 0,
         id: 'participant-2',
         name: '新名',
         online: true,
@@ -358,6 +403,8 @@ describe('applyParticipantJoin', () => {
     const current = createRoomStateFixture({
       participants: [
         {
+          correctCount: 0,
+          wrongCount: 0,
           id: 'participant-1',
           name: DEFAULT_HOST_DISPLAY_NAME,
           online: true,
@@ -365,6 +412,8 @@ describe('applyParticipantJoin', () => {
           score: 0,
         },
         {
+          correctCount: 0,
+          wrongCount: 0,
           id: 'participant-2',
           name: '太郎',
           online: false,
@@ -372,6 +421,8 @@ describe('applyParticipantJoin', () => {
           score: 0,
         },
         {
+          correctCount: 0,
+          wrongCount: 0,
           id: 'participant-3',
           name: '花子',
           online: true,
@@ -396,6 +447,8 @@ describe('applyLeave', () => {
     const current = createRoomStateFixture({
       participants: [
         {
+          correctCount: 0,
+          wrongCount: 0,
           id: 'participant-1',
           name: DEFAULT_HOST_DISPLAY_NAME,
           online: true,
@@ -403,6 +456,8 @@ describe('applyLeave', () => {
           score: 0,
         },
         {
+          correctCount: 0,
+          wrongCount: 0,
           id: 'participant-2',
           name: '太郎',
           online: true,
@@ -421,6 +476,8 @@ describe('applyLeave', () => {
         participants: [
           current.participants[0],
           {
+            correctCount: 0,
+            wrongCount: 0,
             id: 'participant-2',
             name: '太郎',
             online: false,

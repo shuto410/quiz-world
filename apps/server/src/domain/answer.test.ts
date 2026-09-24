@@ -35,17 +35,40 @@ const NOW = 1_700_000_001_000;
 const LATER = 1_700_000_001_400;
 
 const PARTICIPANTS: ParticipantState[] = [
-  { id: HOST_ID, name: 'ホスト', online: true, joinedAt: JOINED_AT, score: 0 },
-  { id: RESPONDER_ID, name: '太郎', online: true, joinedAt: JOINED_AT, score: 3 },
-  { id: QUEUED_ID, name: '花子', online: true, joinedAt: JOINED_AT, score: 1 },
+  {
+    correctCount: 0,
+    wrongCount: 0,
+    id: HOST_ID,
+    name: 'ホスト',
+    online: true,
+    joinedAt: JOINED_AT,
+    score: 0,
+  },
+  {
+    correctCount: 0,
+    wrongCount: 0,
+    id: RESPONDER_ID,
+    name: '太郎',
+    online: true,
+    joinedAt: JOINED_AT,
+    score: 3,
+  },
+  {
+    correctCount: 0,
+    wrongCount: 0,
+    id: QUEUED_ID,
+    name: '花子',
+    online: true,
+    joinedAt: JOINED_AT,
+    score: 1,
+  },
 ];
 
 /**
  * A plausible room in the requested status.
  *
- * Only `answering` carries a responder. That is not a shortcut for the test: `showResult`
- * clears `currentResponderId`, and the other statuses never set it, so a room where somebody
- * holds the answer right outside `answering` is not a state the server can produce.
+ * Result and pause fixtures retain a responder as history. Only answering grants the
+ * answer right, so the status gate must refuse new text even when the id still matches.
  */
 function roomInStatus(status: GameStatus): InternalRoomState {
   switch (status) {
@@ -66,6 +89,7 @@ function roomInStatus(status: GameStatus): InternalRoomState {
       return createRoomStateFixture({
         participants: PARTICIPANTS,
         status: 'result',
+        currentResponderId: RESPONDER_ID,
         lastResult: { participantId: RESPONDER_ID, isCorrect: true, scoreDelta: 1 },
       });
     case 'paused':

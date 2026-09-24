@@ -72,8 +72,7 @@ it('resumes the round, delivers the secret only to the winner, and demotes the o
   room.second.emit('judge:submit', {
     participantId: room.firstId,
     isCorrect: true,
-    scoreDelta: 1,
-    nextAction: 'showResult',
+    buzzSessionId: 'buzz-session-1',
   });
   expect((await judged).participants.find((p) => p.id === room.firstId)?.score).toBe(1);
 });

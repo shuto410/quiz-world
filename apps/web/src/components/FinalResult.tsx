@@ -6,17 +6,27 @@
  * broken by a rule the players never agreed to.
  */
 
-import type { ParticipantState } from '@quiz-world/shared';
+import {
+  DEFAULT_GAME_RULES,
+  getParticipantStanding,
+  type GameRules,
+  type ParticipantState,
+} from '@quiz-world/shared';
 import { rankParticipants } from '../game/ranking';
 import './FinalResult.css';
 
 export type FinalResultProps = {
+  rules?: GameRules | undefined;
   participants: readonly ParticipantState[];
   hostId: string | undefined;
 };
 
-export function FinalResult({ participants, hostId }: FinalResultProps) {
-  const ranked = rankParticipants({ participants, hostId });
+export function FinalResult({
+  participants,
+  hostId,
+  rules = DEFAULT_GAME_RULES,
+}: FinalResultProps) {
+  const ranked = rankParticipants({ participants, hostId, rules });
 
   if (ranked.length === 0) {
     return <p className="qw-final-result__empty">参加者がいないまま終了しました</p>;
@@ -28,12 +38,14 @@ export function FinalResult({ participants, hostId }: FinalResultProps) {
     <div className="qw-final-result">
       <p className="qw-final-result__winners">
         <span className="qw-final-result__crown" aria-hidden="true">
-          優勝
+          {rules.type === 'points' ? '優勝' : '勝ち抜け'}
         </span>
         <span className="qw-final-result__winner-names">
-          {winners.map((entry) => entry.participant.name).join('、')}
+          {winners.length
+            ? winners.map((entry) => entry.participant.name).join('、')
+            : '勝ち抜け者なし'}
         </span>
-        {winners.length > 1 ? (
+        {rules.type === 'points' && winners.length > 1 ? (
           <span className="qw-final-result__tie">{winners.length}名が同点1位</span>
         ) : null}
       </p>
@@ -52,7 +64,11 @@ export function FinalResult({ participants, hostId }: FinalResultProps) {
           >
             <span className="qw-final-result__rank">{rank}位</span>
             <span className="qw-final-result__name">{participant.name}</span>
-            <span className="qw-final-result__score">{participant.score}点</span>
+            <span className="qw-final-result__score">
+              {rules.type === 'points'
+                ? `${participant.score}点`
+                : `${participant.correctCount}○ ${participant.wrongCount}×${getParticipantStanding(participant, rules) === 'lost' ? ' · 失格' : ''}`}
+            </span>
           </li>
         ))}
       </ol>

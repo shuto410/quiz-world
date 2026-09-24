@@ -25,9 +25,33 @@ const EARLIER = 1_700_000_000_500;
 const NOW = 1_700_000_001_000;
 
 const PARTICIPANTS: ParticipantState[] = [
-  { id: HOST_ID, name: 'ホスト', online: true, joinedAt: JOINED_AT, score: 0 },
-  { id: RESPONDER_ID, name: '太郎', online: true, joinedAt: JOINED_AT, score: 5 },
-  { id: OTHER_ID, name: '花子', online: false, joinedAt: JOINED_AT, score: 5 },
+  {
+    correctCount: 0,
+    wrongCount: 0,
+    id: HOST_ID,
+    name: 'ホスト',
+    online: true,
+    joinedAt: JOINED_AT,
+    score: 0,
+  },
+  {
+    correctCount: 0,
+    wrongCount: 0,
+    id: RESPONDER_ID,
+    name: '太郎',
+    online: true,
+    joinedAt: JOINED_AT,
+    score: 5,
+  },
+  {
+    correctCount: 0,
+    wrongCount: 0,
+    id: OTHER_ID,
+    name: '花子',
+    online: false,
+    joinedAt: JOINED_AT,
+    score: 5,
+  },
 ];
 
 function roomInStatus(status: GameStatus): InternalRoomState {

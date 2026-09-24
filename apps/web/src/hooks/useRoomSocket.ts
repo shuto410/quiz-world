@@ -13,6 +13,7 @@
  */
 
 import type {
+  GameRules,
   JoinResponse,
   JudgeSubmitPayload,
   RoomStateEvent,
@@ -54,6 +55,10 @@ export type UseRoomSocketResult = {
   judge: (judgement: JudgeSubmitPayload) => void;
   /** Host only. Closes the result screen and reopens buzzing. */
   resetGame: () => void;
+  /** Host advances the current question after a wrong verdict. */
+  nextResponder: () => void;
+  /** Host publishes validated rules before play. */
+  updateRules: (rules: GameRules) => void;
   /** Host only. Ends the tournament and moves everyone to the final result. */
   finishTournament: () => void;
   /** Host only. Closes the room, which disconnects everyone including the caller. */
@@ -341,6 +346,15 @@ export function useRoomSocket(request: RoomJoinRequest | undefined): UseRoomSock
     socketRef.current.emit('game:reset', {});
   }, []);
 
+  const nextResponder = useCallback(() => {
+    if (!readyRef.current || !socketRef.current?.connected) return;
+    socketRef.current.emit('game:next-responder', {});
+  }, []);
+  const updateRules = useCallback((rules: GameRules) => {
+    if (!readyRef.current || !socketRef.current?.connected) return;
+    socketRef.current.emit('game:rules-update', { rules });
+  }, []);
+
   const finishTournament = useCallback(() => {
     if (!readyRef.current || !socketRef.current?.connected) return;
     socketRef.current.emit('tournament:finish', {});
@@ -379,6 +393,8 @@ export function useRoomSocket(request: RoomJoinRequest | undefined): UseRoomSock
     submitAnswer,
     judge,
     resetGame,
+    nextResponder,
+    updateRules,
     finishTournament,
     closeRoom,
     roomClosed,

@@ -1,0 +1,125 @@
+/** Participant buzzer and text-answer controls share a stable stage across round transitions. */
+import { getParticipantStanding } from '@quiz-world/shared';
+import type { UseRoomSocketResult } from '../../hooks/useRoomSocket';
+import { AnswerForm } from '../../components/AnswerForm';
+import { Button } from '../../components/Button';
+import { BuzzOrderList } from '../../components/BuzzOrderList';
+import { GamePanel } from '../../components/GamePanel';
+import { LastResult } from '../../components/LastResult';
+import { SubmittedAnswer } from '../../components/SubmittedAnswer';
+import { useToast } from '../../components/Toast';
+import { canBuzz } from '../../game/canBuzz';
+import { canSubmitAnswer } from '../../game/canSubmitAnswer';
+import { getBuzzerPrompt } from './getBuzzerPrompt';
+import './buzzer.css';
+
+/** Mode commands and the viewer's server-assigned seat. */
+type BuzzerParticipantProps = { connection: UseRoomSocketResult };
+export function BuzzerParticipant({ connection }: BuzzerParticipantProps) {
+  const { roomState, participantId, status, roomClosed, buzz, submitAnswer } = connection;
+  const toast = useToast();
+  const showAnswerInput =
+    (roomState?.status === 'answering' ||
+      (roomState?.status === 'paused' && roomState.statusBeforePause === 'answering')) &&
+    participantId !== undefined &&
+    participantId === roomState.currentResponderId;
+  const connected = status === 'joined' && !roomClosed;
+  const self = roomState?.participants.find((p) => p.id === participantId);
+  const standing = self && roomState ? getParticipantStanding(self, roomState.rules) : 'playing';
+  const buzzEnabled =
+    connected &&
+    standing === 'playing' &&
+    canBuzz({
+      status: roomState?.status,
+      participantId,
+      hostId: roomState?.hostId,
+      buzzOrder: roomState?.buzzOrder,
+    });
+  const answerEnabled =
+    connected &&
+    canSubmitAnswer({
+      status: roomState?.status,
+      participantId,
+      currentResponderId: roomState?.currentResponderId,
+    });
+  return (
+    <GamePanel
+      modeName="早押しクイズ"
+      contentPrimary={roomState?.status === 'result'}
+      highlighted={answerEnabled}
+      prominentTitle={answerEnabled}
+      {...getBuzzerPrompt(roomState, participantId, connected)}
+      controls={
+        roomState?.status === 'result' ? undefined : (
+          <div className="qw-buzzer-controls" data-answering={showAnswerInput}>
+            {showAnswerInput ? (
+              <div className="qw-buzzer-controls__answer">
+                <h3>テキストで回答</h3>
+                <AnswerForm
+                  disabled={!answerEnabled}
+                  onSubmit={(answerText) => {
+                    submitAnswer(answerText);
+                    toast.show('回答を送信しました');
+                  }}
+                />
+                <p>回答は判定までホストだけに表示されます。</p>
+              </div>
+            ) : (
+              <div className="qw-buzzer-controls__buzz">
+                <Button className="qw-buzzer-button" disabled={!buzzEnabled} onClick={buzz}>
+                  <span className="qw-buzzer-button__face">
+                    <span className="qw-buzzer-button__push" aria-hidden="true">
+                      PUSH
+                    </span>
+                    <span className="qw-buzzer-button__label">早押し</span>
+                  </span>
+                </Button>
+                <p>
+                  {standing === 'won'
+                    ? '勝ち抜けです。ほかの参加者の結果をお待ちください。'
+                    : standing === 'lost'
+                      ? '失格です。ほかの参加者の結果をお待ちください。'
+                      : buzzEnabled
+                        ? '回答は声でもテキストでも'
+                        : '現在は早押しできません'}
+                </p>
+              </div>
+            )}
+          </div>
+        )
+      }
+      supplement={
+        roomState !== undefined ? (
+          <section aria-label="早押し順">
+            <h3>押した順</h3>
+            <BuzzOrderList
+              rules={roomState.rules}
+              buzzOrder={roomState?.buzzOrder ?? []}
+              participants={roomState?.participants ?? []}
+              currentResponderId={
+                roomState.status === 'answering' ? roomState.currentResponderId : undefined
+              }
+            />
+          </section>
+        ) : undefined
+      }
+    >
+      {roomState?.lastResult ? (
+        <div className="qw-buzzer-answer">
+          <LastResult
+            rules={roomState.rules}
+            result={roomState.lastResult}
+            participants={roomState.participants}
+          />
+          {roomState.status === 'result' && roomState.currentSubmittedAnswer ? (
+            <SubmittedAnswer
+              showSender={false}
+              answer={roomState.currentSubmittedAnswer}
+              participants={roomState.participants}
+            />
+          ) : null}
+        </div>
+      ) : null}
+    </GamePanel>
+  );
+}
