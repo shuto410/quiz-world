@@ -1,226 +1,314 @@
-/** Room chrome frames a shared quiz desk with a score ledger beside the active play area. */
+/**
+ * Room chrome, following the screen templates: 32/48px page padding, a 64px header (logo,
+ * centred mode chip, and on the right the invite code, the rule settings gear and the
+ * viewer's seat), then the game area with the score ranking panel beside it. On phones the
+ * logo is dropped, and the buzz order and the ranking share one slot switched by tabs.
+ */
 .qw-workspace {
   width: min(1440px, 100%);
-  margin: 0 auto;
   min-height: 100dvh;
+  margin: 0 auto;
+  padding: var(--space-8) var(--space-12);
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 320px;
+  grid-template-columns: minmax(0, 1fr) 340px;
   grid-template-rows: auto 1fr;
+  gap: var(--space-6);
 }
+.qw-workspace:has(.qw-game--split) {
+  grid-template-columns: minmax(0, 1fr) 380px;
+}
+
+/* Header */
 .qw-room-toolbar {
   grid-column: 1 / -1;
+  position: relative;
+  z-index: 3;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-6);
+  min-height: 64px;
+}
+.qw-room-title {
   display: flex;
   align-items: center;
-  gap: 28px;
-  padding: 0 40px;
-  min-height: 64px;
-  border-bottom: 1px solid var(--color-line);
-  background: var(--color-toolbar);
-  position: relative;
-  z-index: 2;
-}
-.qw-brand {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  color: var(--color-ink);
-  font-weight: 750;
-  text-decoration: none;
+  gap: var(--space-2);
+  min-width: 0;
+  max-width: 560px;
+  margin: 0;
+  padding: 10px 20px;
+  border-radius: var(--radius-pill);
+  background: var(--accent-chip);
+  font-family: var(--font-sans);
   font-size: 17px;
-  letter-spacing: -0.04em;
+  font-weight: 800;
+  line-height: 24px;
   white-space: nowrap;
 }
-.qw-brand__mark {
-  display: grid;
-  place-items: center;
-  width: 30px;
-  height: 30px;
-  color: #fff;
-  background: var(--color-accent);
-  border-radius: 3px;
-  font:
-    700 23px/1 Arial,
-    sans-serif;
-  border-bottom: 3px solid var(--color-accent-text);
+.qw-room-title__icon {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.qw-room-title__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.qw-room-title__mode + .qw-room-title__name::before {
+  content: '・';
+  margin-right: 6px;
+}
+.qw-room-toolbar__end {
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
 }
 .qw-room-toolbar summary {
   cursor: pointer;
   list-style: none;
-  padding: 16px 0;
-  font-size: 12px;
-  font-weight: 600;
 }
 .qw-room-toolbar summary::-webkit-details-marker {
   display: none;
 }
-.qw-room-toolbar summary > span {
-  margin-left: 6px;
+
+/* Invite code (host) */
+.qw-room-info > summary {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  padding: 4px 8px;
+  border-radius: var(--radius-md);
 }
-.qw-room-toolbar__actions {
-  margin-left: auto;
+.qw-room-info[open] > summary {
+  background: var(--overlay-ink-10);
 }
+.qw-room-info__label {
+  font-size: 13px;
+  font-weight: 700;
+}
+.qw-room-info__code {
+  font-family: var(--font-display);
+  font-size: 26px;
+  line-height: 1.2;
+  letter-spacing: 0.08em;
+}
+
+/* Viewer's seat */
+.qw-room-toolbar__actions > summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 8px 20px 8px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--overlay-ink-10);
+}
+.qw-room-toolbar__actions[open] > summary {
+  background: var(--surface-panel);
+}
+.qw-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--surface-avatar);
+  font-size: 18px;
+  font-weight: 800;
+}
+.qw-account-summary {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.qw-account-summary__name {
+  max-width: 12em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 16px;
+  font-weight: 800;
+}
+.qw-account-summary__detail {
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* Header popovers */
 .qw-room-account,
 .qw-invite-panel {
   position: absolute;
-  right: 24px;
-  top: calc(100% - 2px);
-  width: min(360px, calc(100% - 32px));
-  padding: 20px;
-  border: 1px solid var(--color-line);
-  background: var(--color-paper-raised);
-  box-shadow: var(--shadow-toast);
-  border-radius: 6px;
+  right: 0;
+  top: calc(100% + var(--space-2));
+  width: min(380px, calc(100vw - 32px));
+  padding: var(--space-5);
+  border-radius: var(--radius-xl);
+  background: var(--surface-card);
+  box-shadow: var(--shadow-float);
 }
 .qw-room-account > p {
-  margin: 0 0 16px;
+  margin: 0 0 var(--space-4);
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
+  font-size: 18px;
+  font-weight: 800;
   overflow-wrap: anywhere;
 }
 .qw-room-account > p > span {
-  font-size: 11px;
-  color: var(--color-ink-muted);
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-panel);
+  font-size: 13px;
 }
 .qw-room-actions {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-start;
-  gap: 8px;
+  gap: var(--space-3);
 }
 .qw-room-actions > .qw-button {
   white-space: nowrap;
 }
 .qw-room-actions .qw-button,
 .qw-tournament-actions .qw-button {
-  background: transparent;
-  border-color: var(--color-line);
-  color: var(--color-ink-muted);
-  font-size: 12px;
+  min-height: 42px;
+  font-size: 14px;
 }
 .qw-invite-panel {
   display: grid;
-  gap: 14px;
-  left: 180px;
-  right: auto;
+  gap: var(--space-3);
 }
 .qw-invite-panel p {
   margin: 0;
-  font-size: 12px;
+  color: var(--ink-muted);
+  font-size: 15px;
+  font-weight: 800;
 }
 .qw-invite-panel code {
   display: block;
-  margin-top: 12px;
-  font-size: 26px;
+  margin-top: var(--space-2);
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 34px;
+  line-height: 44px;
   letter-spacing: 0.12em;
-  font-weight: 600;
-  color: var(--color-ink);
 }
 .qw-invite-panel__url {
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  background: var(--surface-row);
   overflow-wrap: anywhere;
-  font-size: 11px;
-  color: var(--color-ink-muted);
+  font-size: 13px;
+  line-height: 18px;
 }
 .qw-invite-panel .qw-button {
   justify-self: start;
-  font-size: 12px;
 }
+
+/* Game area */
 .qw-stage {
-  min-width: 0;
-}
-.qw-stage__header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16px;
-  padding: 36px 40px 28px;
-}
-.qw-room-heading {
+  grid-column: 1;
+  grid-row: 2;
   min-width: 0;
   display: flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: 8px 16px;
-}
-.qw-room-heading h1 {
-  font-size: 22px;
-  font-weight: 650;
-  margin: 0;
-  overflow-wrap: anywhere;
-  letter-spacing: -0.025em;
-}
-.qw-room-heading p {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin: 0;
-  font-size: 12px;
-  color: var(--color-ink-muted);
-  overflow-wrap: anywhere;
-}
-.qw-role {
-  font-size: 11px;
-}
-.qw-role::before {
-  content: '/';
-  margin-right: 12px;
-  color: var(--color-line-strong);
+  flex-direction: column;
+  gap: var(--space-4);
 }
 .qw-connection {
-  display: flex;
+  align-self: flex-start;
+  display: inline-flex;
   align-items: center;
-  gap: 7px;
-  font-size: 11px;
-  color: var(--color-ink-muted);
-  flex-shrink: 0;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 6px 12px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-panel);
+  font-size: 13px;
+  font-weight: 800;
 }
 .qw-connection::before {
   content: '';
-  width: 5px;
-  height: 5px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
-  background: var(--color-ink-muted);
+  background: var(--wrong-ink);
 }
-.qw-connection[data-connected='true']::before {
-  background: #378363;
+/* While connected the indicator is only announced, not drawn. */
+.qw-connection[data-connected='true'] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 .qw-stage__content {
-  max-width: 1160px;
-  margin: auto;
-  padding: 0 40px 28px;
-}
-.qw-roster {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
   min-width: 0;
-  align-self: start;
-  margin: 36px 28px 36px 0;
-  padding: 20px;
-  background: var(--color-paper-raised);
-  border-top: 2px solid var(--color-ink);
-  border-bottom: 1px solid var(--color-line);
+}
+.qw-stage__content > .qw-game {
+  flex-grow: 1;
+}
+
+/* Score ranking panel */
+.qw-roster {
+  grid-column: 2;
+  grid-row: 2;
+  min-width: 0;
+  padding: 14px;
+  border-radius: 22px;
+  background: var(--surface-panel);
+}
+.qw-workspace:has(.qw-game--split) .qw-roster {
+  padding: var(--space-6);
+  border-radius: var(--radius-xl);
 }
 .qw-roster > details > summary {
-  padding: 0 0 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: 0 0 6px;
   cursor: pointer;
   list-style: none;
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-  font-size: 15px;
-  font-weight: 650;
+  font-size: 13px;
+  font-weight: 800;
+}
+.qw-workspace:has(.qw-game--split) .qw-roster > details > summary {
+  padding-bottom: var(--space-2);
+  font-size: 16px;
 }
 .qw-roster > details > summary::-webkit-details-marker {
   display: none;
 }
 .qw-roster__count {
-  color: var(--color-ink-muted);
-  font-size: 11px;
-  font-weight: 400;
+  font-size: 13px;
+  font-weight: 800;
 }
-.qw-roster > details:not([open]) > summary::after {
-  content: '+';
+
+/* Phone tabs (hidden on wider screens) */
+.qw-room-tabs {
+  display: none;
 }
+
+/* Room-level blocks inside the game area */
 .qw-room-controls {
   min-width: 0;
   margin: 0;
@@ -232,79 +320,70 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: flex-end;
-  gap: 12px;
-  margin-top: 24px;
-  font-size: 11px;
-  color: var(--color-ink-muted);
+  gap: var(--space-3);
 }
-.qw-tournament-actions .qw-button {
-  min-height: 36px;
+.qw-tournament-actions .qw-confirm {
+  max-width: 440px;
 }
 .qw-connection-banner,
 .qw-room-notice {
-  padding: 14px 18px;
-  background: #fff8e7;
-  color: #765515;
-  border-left: 3px solid #b38a36;
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-lg);
+  background: var(--gold-soft);
+  color: var(--ink);
+  font-weight: 800;
   line-height: 1.6;
 }
 .qw-connection-banner {
-  margin: 0 32px 20px;
-  font-size: 13px;
-}
-.qw-room-notice {
-  margin-bottom: 20px;
+  font-size: 15px;
 }
 .qw-room-notice h2 {
-  font-size: 16px;
-  margin-top: 0;
+  margin: 0 0 var(--space-2);
+  font-family: var(--font-display);
+  font-size: 22px;
+  line-height: 28px;
 }
 .qw-room-notice p {
-  font-size: 13px;
+  margin: 0 0 var(--space-4);
+  font-size: 15px;
 }
 .qw-room-results {
   padding: 28px;
-  border-top: 2px solid var(--color-accent);
-  background: var(--color-paper-raised);
+  border-radius: var(--radius-2xl);
+  background: var(--surface-card);
 }
 .qw-room-results > h2 {
-  font-size: 32px;
-  letter-spacing: -0.03em;
-  margin: 12px 0 28px;
+  margin: var(--space-3) 0 var(--space-6);
+  font-family: var(--font-display);
+  font-size: 34px;
+  line-height: 44px;
 }
 .qw-eyebrow {
-  color: var(--color-ink-muted);
-  font-size: 11px;
+  display: inline-block;
+  margin: 0;
+  padding: 4px 12px;
+  border-radius: var(--radius-pill);
+  background: var(--accent-chip);
+  font-size: 13px;
+  font-weight: 800;
 }
 .qw-host-progress {
   display: grid;
-  gap: 12px;
+  gap: var(--space-3);
   justify-items: start;
-  margin-top: 24px;
+  margin-top: var(--space-6);
 }
-.qw-final-result__name,
-.qw-final-result__winner-names {
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-.qw-room-results .qw-final-result__row--winner,
-.qw-room-results .qw-final-result__winners {
-  background: var(--color-accent-soft);
-}
-.qw-room-results .qw-final-result__winners {
-  border: 0;
-  border-left: 3px solid var(--color-accent);
-  border-radius: 0;
-  padding: 24px;
+.qw-host-progress > p {
+  margin: 0;
+  font-weight: 800;
 }
 .qw-rename-form {
   width: 100%;
 }
 .qw-rename-form .qw-form {
-  gap: 12px;
+  gap: var(--space-3);
   padding: 0;
   border: 0;
-  background: transparent;
   grid-template-columns: 1fr 1fr;
 }
 .qw-rename-form .qw-input {
@@ -314,84 +393,166 @@
   flex-direction: column;
 }
 
-@media (max-width: 1150px) {
+@media (max-width: 1100px) {
   .qw-workspace {
-    grid-template-columns: minmax(0, 1fr) 290px;
+    padding: var(--space-6);
+    grid-template-columns: minmax(0, 1fr) 300px;
   }
-  .qw-stage__header {
-    padding: 20px 24px;
+  .qw-workspace:has(.qw-game--split) {
+    grid-template-columns: minmax(0, 1fr) 320px;
   }
-  .qw-stage__content {
-    padding: 0 24px 24px;
+  .qw-room-toolbar {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+  .qw-room-title {
+    justify-self: center;
   }
 }
-@media (max-width: 900px) {
-  .qw-workspace {
+
+/*
+ * Phones: one column. The stage wrappers dissolve so the header, the game panel, the tab
+ * strip and the tabbed slot (buzz order or ranking) can be ordered as siblings.
+ */
+@media (max-width: 720px) {
+  .qw-workspace,
+  .qw-workspace:has(.qw-game--split) {
     display: flex;
     flex-direction: column;
+    gap: 14px;
+    padding: var(--space-5) var(--space-4);
+  }
+  .qw-stage,
+  .qw-stage__content {
+    display: contents;
   }
   .qw-room-toolbar {
-    padding: 0 16px;
-    min-height: 56px;
-    gap: 20px;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: var(--space-2) var(--space-3);
+    min-height: 0;
   }
-  .qw-brand {
+  .qw-room-toolbar .qw-wordmark {
+    display: none;
+  }
+  .qw-room-title {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
+    max-width: 100%;
+    padding: 8px 14px;
+    font-size: 13px;
+    line-height: 18px;
+  }
+  .qw-room-title__icon {
+    width: 14px;
+    height: 14px;
+    stroke-width: 2.6;
+  }
+  /* Narrow chip: the tournament name wins; the mode name is still announced. */
+  .qw-room-title__mode {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .qw-room-title__mode + .qw-room-title__name::before {
+    content: none;
+  }
+  .qw-room-toolbar__end {
+    display: contents;
+  }
+  .qw-room-toolbar__actions {
+    grid-column: 1;
+    grid-row: 1;
+    min-width: 0;
+    max-width: 45vw;
+  }
+  .qw-rules {
+    grid-column: 3;
+    grid-row: 1;
+  }
+  .qw-rules > summary {
+    width: 40px;
+    height: 40px;
+    background-size: 22px;
+  }
+  .qw-room-info {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+  .qw-room-info > summary {
+    justify-content: flex-start;
+  }
+  .qw-room-info > summary {
+    flex-direction: row;
+    align-items: baseline;
+    gap: var(--space-2);
+    padding: 0;
+  }
+  .qw-room-toolbar__actions > summary {
+    padding: 0;
+    gap: 10px;
+    background: transparent;
+  }
+  .qw-account-summary__name {
+    max-width: 100%;
+  }
+  .qw-room-toolbar__actions[open] > summary {
+    background: transparent;
+  }
+  .qw-avatar {
+    width: 40px;
+    height: 40px;
+    font-size: 16px;
+  }
+  .qw-account-summary__name {
     font-size: 15px;
   }
-  .qw-brand__mark {
-    width: 26px;
-    height: 26px;
+  .qw-account-summary__detail {
+    font-size: 12px;
+  }
+  .qw-room-info__code {
     font-size: 20px;
   }
-  .qw-stage__header {
-    padding: 22px 20px;
+  .qw-room-tabs {
+    order: 1;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+    padding: 5px;
+    border-radius: var(--radius-md);
+    background: var(--surface-panel);
   }
-  .qw-stage__content {
-    padding: 0 20px 24px;
+  .qw-room-tabs button {
+    min-height: 44px;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    font-weight: 800;
+    cursor: pointer;
+  }
+  .qw-room-tabs button[aria-selected='true'] {
+    background: var(--surface-card);
   }
   .qw-roster {
-    align-self: stretch;
-    margin: 0 20px 32px;
-    padding: 20px;
+    order: 2;
   }
-  .qw-roster > details > summary {
-    padding-bottom: 12px;
+  .qw-tournament-actions {
+    order: 3;
   }
-  .qw-connection-banner {
-    margin: 0 20px 16px;
-  }
-  .qw-room-account,
-  .qw-invite-panel {
-    left: auto;
-    right: 16px;
-  }
-}
-@media (max-width: 450px) {
-  .qw-room-toolbar {
-    gap: 14px;
-  }
-  .qw-room-toolbar summary {
-    font-size: 11px;
-  }
-  .qw-room-toolbar summary > span {
-    margin-left: 2px;
-  }
-  .qw-stage__header {
-    padding: 20px 16px;
-  }
-  .qw-room-heading {
-    gap: 6px 12px;
-  }
-  .qw-room-heading h1 {
-    font-size: 20px;
-  }
-  .qw-stage__content {
-    padding: 0 16px 24px;
-  }
-  .qw-role::before {
+  .qw-workspace[data-mobile-tab='order'] .qw-roster,
+  .qw-workspace[data-mobile-tab='score'] .qw-game__supplement {
     display: none;
   }
   .qw-room-results {
-    padding: 20px 16px;
+    padding: var(--space-5) var(--space-4);
+  }
+  .qw-room-results > h2 {
+    font-size: 28px;
+    line-height: 36px;
   }
 }

@@ -1,137 +1,261 @@
-/** Scoreboard rows emphasize points and names, with host and connection status kept secondary. */
+/**
+ * Score ranking ("得点ランキング"): one line per seat — rank badge (gold with a crown for first
+ * place, ink for the viewer), name, and score. The viewer's row is gold and the current
+ * responder is outlined in accent. Compact by default; larger beside the host's judge screen.
+ * In the points format the ○× counts and the online text are kept for assistive technology
+ * but not drawn, matching the template.
+ */
 .qw-participant-list {
+  display: grid;
+  gap: 5px;
   list-style: none;
   margin: 0;
   padding: 0;
 }
 .qw-participant-list__empty {
   margin: 0;
-  padding: 20px 0;
-  color: var(--color-ink-muted);
-  font-size: 12px;
+  padding: var(--space-3);
+  border-radius: 12px;
+  background: rgb(46 32 16 / 0.07);
+  color: var(--ink-muted);
+  font-size: 13px;
+  font-weight: 800;
 }
 .qw-participant-list__row {
-  display: grid;
-  grid-template-columns: 20px minmax(0, 1fr) auto;
-  gap: 10px;
-  align-items: center;
-  padding: 22px 0;
-  border-top: 1px solid var(--color-line);
+  --crown: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M3 9l4.5 3.5L12 5l4.5 7.5L21 9l-2 10H5z' fill='%23F8D56A' stroke='%232E2010' stroke-width='1.8' stroke-linejoin='round'/%3E%3C/svg%3E");
   position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 12px 5px 6px;
+  border-radius: 12px;
+  background: rgb(46 32 16 / 0.07);
+}
+.qw-participant-list__row[data-self='true'] {
+  background: var(--gold);
+}
+.qw-participant-list__row[data-responding='true'] {
+  background: var(--surface-card);
+  box-shadow: var(--ring-answering);
 }
 .qw-participant-list__rank {
-  font: 500 14px/1 var(--font-score);
-  color: var(--color-ink-muted);
+  position: relative;
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--surface-card);
+  font-family: var(--font-display);
+  font-size: 14px;
+  line-height: 1;
+}
+.qw-participant-list__row[data-first='true'] .qw-participant-list__rank {
+  background: var(--gold);
+  box-shadow: var(--badge-gold);
+}
+.qw-participant-list__row[data-first='true'] .qw-participant-list__rank::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: -10px;
+  width: 14px;
+  height: 14px;
+  background: var(--crown) center / contain no-repeat;
+  transform: translateX(-50%) rotate(-10deg);
+}
+.qw-participant-list__row[data-self='true'] .qw-participant-list__rank {
+  background: var(--ink);
+  box-shadow: none;
+  color: var(--gold);
 }
 .qw-participant-list__identity {
+  flex: 1 1 auto;
   min-width: 0;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  column-gap: 6px;
 }
 .qw-participant-list__name {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 16px;
-  font-weight: 600;
-  overflow-wrap: anywhere;
+  gap: 6px;
+  min-width: 0;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.4;
 }
 .qw-participant-list__name > span:last-child {
   min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.qw-participant-list__name .qw-participant-token {
+  flex-basis: 12px;
+  width: 12px;
+  height: 12px;
+  margin: 0 0 2px;
 }
 .qw-participant-list__meta {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 6px;
-  margin-top: 7px;
-  padding-left: 32px;
-  font-size: 11px;
-  color: var(--color-ink-muted);
+  font-size: 15px;
+  font-weight: 800;
 }
-.qw-participant-list__tag {
-  color: var(--color-ink-muted);
+.qw-participant-list__tag:first-child {
+  margin-left: -6px;
+}
+.qw-participant-list__tag::before {
+  content: '(';
+}
+.qw-participant-list__tag::after {
+  content: ')';
 }
 .qw-participant-list__turn {
-  color: var(--color-accent-text);
-  font-weight: 650;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  font-size: 11px;
 }
+/* Online state: a small dot; the word stays for assistive technology. */
 .qw-participant-list__status {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  color: var(--color-ink-muted);
-  font-size: 10px;
+  font-size: 0;
 }
 .qw-participant-list__status::before {
   content: '';
-  width: 4px;
-  height: 4px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
-  background: var(--color-ink-muted);
-  flex-shrink: 0;
+  background: var(--ink-muted);
+  opacity: 0.5;
 }
 .qw-participant-list__status[data-online='true']::before {
-  background: #398362;
+  background: var(--correct-edge);
+  opacity: 1;
+}
+.qw-participant-list__numbers {
+  display: flex;
+  flex-shrink: 0;
+  align-items: baseline;
+  gap: 8px;
 }
 .qw-participant-list__score {
   white-space: nowrap;
-  font: 650 38px/1.15 var(--font-score);
-  letter-spacing: -0.04em;
+  font-family: var(--font-display);
+  font-size: 16px;
+  line-height: 1.2;
   font-variant-numeric: tabular-nums;
   animation: qw-score-change 260ms ease-out;
 }
 .qw-participant-list__score > span {
-  font: 400 10px/1 var(--font-body);
-  color: var(--color-ink-muted);
-  margin-left: 4px;
+  margin-left: 2px;
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 800;
+}
+.qw-participant-list__counts {
+  font-family: var(--font-display);
+  font-size: 15px;
+  line-height: 1.2;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.qw-participant-list__counts > span:first-child {
+  color: var(--correct-ink);
+}
+.qw-participant-list__counts > span:last-child {
+  color: var(--wrong-ink);
+}
+.qw-participant-list[data-rule='points'] .qw-participant-list__counts {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.qw-participant-list__standing {
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-sunken);
+  font-size: 11px;
+  font-weight: 800;
 }
 .qw-scoreboard__host {
-  border-top: 1px solid var(--color-line);
-  margin-top: 24px;
-  padding-top: 20px;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
-  font-size: 12px;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: var(--surface-card);
+  font-size: 13px;
 }
 .qw-scoreboard__host-label {
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-panel);
   font-size: 11px;
-  color: var(--color-ink-muted);
+  font-weight: 800;
 }
 .qw-scoreboard__host strong {
-  font-weight: 500;
-  overflow-wrap: anywhere;
   min-width: 0;
+  font-weight: 800;
+  overflow-wrap: anywhere;
 }
 .qw-scoreboard__host .qw-participant-list__status {
   margin-left: auto;
 }
 @keyframes qw-score-change {
   from {
-    color: var(--color-accent);
+    color: var(--buzzer);
   }
   to {
-    color: var(--color-ink);
+    color: var(--ink);
   }
 }
 
-.qw-participant-list__numbers {
-  display: grid;
-  gap: 6px;
-  justify-items: end;
+/* Large size: beside the host's judge screen. */
+.qw-workspace:has(.qw-game--split) .qw-participant-list {
+  gap: var(--space-2);
 }
-.qw-participant-list__counts {
-  font: 600 20px/1.3 var(--font-score);
-  white-space: nowrap;
-  font-variant-numeric: tabular-nums;
+.qw-workspace:has(.qw-game--split) .qw-participant-list__row {
+  gap: 14px;
+  padding: 10px 16px 10px 10px;
+  border-radius: var(--radius-md);
 }
-.qw-participant-list__counts > span:first-child {
-  color: var(--color-correct);
+.qw-workspace:has(.qw-game--split) .qw-participant-list__rank {
+  width: 40px;
+  height: 40px;
+  font-size: 19px;
 }
-.qw-participant-list__counts > span:last-child {
-  color: var(--color-accent-text);
+.qw-workspace:has(.qw-game--split)
+  .qw-participant-list__row[data-first='true']
+  .qw-participant-list__rank::after {
+  top: -14px;
+  width: 20px;
+  height: 20px;
 }
-.qw-participant-list__standing {
-  font-size: 11px;
-  font-weight: 600;
+.qw-workspace:has(.qw-game--split) .qw-participant-list__name,
+.qw-workspace:has(.qw-game--split) .qw-participant-list__meta {
+  font-size: 19px;
+}
+.qw-workspace:has(.qw-game--split) .qw-participant-list__turn {
+  font-size: 13px;
+}
+.qw-workspace:has(.qw-game--split) .qw-participant-list__score {
+  font-size: 22px;
+}
+.qw-workspace:has(.qw-game--split) .qw-participant-list__score > span {
+  font-size: 13px;
 }

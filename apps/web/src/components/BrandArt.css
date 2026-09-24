@@ -1,0 +1,108 @@
+/** Logo mark and decorative buzzer, drawn with the buzzer colour tokens. */
+.qw-logo-mark {
+  display: block;
+  flex-shrink: 0;
+  width: 44px;
+  height: 40px;
+}
+.qw-logo-mark__shade {
+  fill: var(--shadow-ink-24);
+}
+.qw-logo-mark__side {
+  fill: var(--buzzer-side);
+}
+.qw-logo-mark__edge {
+  fill: var(--buzzer-highlight);
+}
+.qw-logo-mark__top {
+  fill: var(--buzzer);
+}
+
+/* Wordmark: the logo mark and the name in white display type on the page colour. */
+.qw-wordmark {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: 0;
+  color: var(--on-brand);
+  font-family: var(--font-display);
+  font-size: 30px;
+  font-weight: 400;
+  line-height: 36px;
+  letter-spacing: 0.02em;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+/* Decorative buzzer: large on PC entry pages, small on phones. */
+.qw-buzzer-art {
+  --w: 300px;
+  --h: 280px;
+  --eh: 246px;
+  --o: 6px;
+  position: relative;
+  display: flex;
+  justify-content: center;
+  flex-shrink: 0;
+  width: calc(var(--w) * 1.15);
+  height: calc(var(--h) + var(--w) * 0.067);
+}
+.qw-buzzer-art__plate {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: calc(var(--h) * 0.982);
+  border-radius: 50%;
+  background: var(--shadow-ink-24);
+}
+.qw-buzzer-art__body {
+  position: relative;
+  display: block;
+  width: var(--w);
+  height: var(--h);
+}
+.qw-buzzer-art__side,
+.qw-buzzer-art__edge,
+.qw-buzzer-art__top {
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+.qw-buzzer-art__side {
+  width: 100%;
+  height: 100%;
+  border-radius: calc(var(--w) / 2) / calc(var(--eh) / 2);
+  background: var(--buzzer-side);
+}
+.qw-buzzer-art__edge {
+  width: 100%;
+  height: var(--eh);
+  border-radius: 50%;
+  background: var(--buzzer-highlight);
+}
+.qw-buzzer-art__top {
+  left: var(--o);
+  top: var(--o);
+  width: calc(100% - var(--o));
+  height: calc(var(--eh) - var(--o));
+  border-radius: 50%;
+  background: var(--buzzer);
+}
+@media (max-width: 720px) {
+  .qw-buzzer-art {
+    --w: 150px;
+    --h: 140px;
+    --eh: 122px;
+    --o: 6px;
+  }
+  .qw-wordmark {
+    gap: 10px;
+    font-size: 24px;
+    line-height: 30px;
+  }
+  .qw-wordmark .qw-logo-mark {
+    width: 36px;
+    height: 32px;
+  }
+}

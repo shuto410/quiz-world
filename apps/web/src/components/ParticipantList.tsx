@@ -32,13 +32,14 @@ export function ParticipantList({
       {ranked.length === 0 ? (
         <p className="qw-participant-list__empty">まだ参加者はいません</p>
       ) : (
-        <ol className="qw-participant-list">
+        <ol className="qw-participant-list" data-rule={rules.type}>
           {ranked.map(({ participant, rank }) => (
             <li
               key={participant.id}
               className="qw-participant-list__row"
               data-self={participant.id === selfParticipantId}
               data-responding={participant.id === currentResponderId}
+              data-first={rank === 1}
             >
               <span className="qw-participant-list__rank" aria-label={`${rank}位`}>
                 {rank}

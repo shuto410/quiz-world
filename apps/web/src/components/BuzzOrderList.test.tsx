@@ -46,6 +46,21 @@ describe('BuzzOrderList', () => {
     expect(screen.getByText('回答権')).toBeTruthy();
   });
 
+  it('shows how far behind the first buzz each later buzz reached the server', () => {
+    render(
+      <BuzzOrderList
+        participants={participants}
+        buzzOrder={[
+          { participantId: 'p2', receivedAt: 1_000 },
+          { participantId: 'p3', receivedAt: 1_730 },
+        ]}
+      />,
+    );
+
+    expect(screen.getByText('太郎').closest('li')?.textContent).toContain('1着');
+    expect(screen.getByText('花子').closest('li')?.textContent).toContain('+0.73秒');
+  });
+
   it('shows an empty message when nobody has buzzed', () => {
     render(<BuzzOrderList participants={participants} buzzOrder={[]} />);
     expect(screen.getByText('まだ早押しはありません')).toBeTruthy();

@@ -14,6 +14,7 @@ import {
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { createTournament } from '../api/tournaments';
+import { BuzzerArt, LogoMark } from '../components/BrandArt';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { useToast } from '../components/Toast';
@@ -67,42 +68,66 @@ export function HomePage() {
   }
 
   return (
-    <main className="app-shell">
-      <h1>Quiz World</h1>
-      <p>出題者と参加者が分かれる、リアルタイム早押しクイズ。</p>
-
-      <form className="qw-form" onSubmit={(event) => void onSubmit(event)}>
-        <Input
-          id="tournament-name"
-          label="大会名"
-          value={name}
-          maxLength={INPUT_CONSTRAINTS.tournamentName.maxLength}
-          onChange={(event) => {
-            setName(event.target.value);
-          }}
-          error={nameError}
-          autoComplete="off"
-        />
-        <Input
-          id="max-participants"
-          label="最大参加人数"
-          type="number"
-          min={INPUT_CONSTRAINTS.maxParticipants.min}
-          max={INPUT_CONSTRAINTS.maxParticipants.max}
-          value={maxParticipants}
-          onChange={(event) => {
-            setMaxParticipants(event.target.value);
-          }}
-          error={maxError}
-        />
-        <Button type="submit" busy={busy}>
-          大会を作成
-        </Button>
-      </form>
-
-      <p className="qw-form-footer">
-        招待コードで参加する場合は <Link to={ROUTE_PATHS.join}>参加画面</Link> へ。
-      </p>
-    </main>
+    <div className="qw-entry">
+      <header className="qw-entry__header">
+        <h1 className="qw-wordmark">
+          <LogoMark />
+          Quiz World
+        </h1>
+        <span className="qw-entry__badge">ホスト用</span>
+      </header>
+      <main className="qw-entry__main">
+        <section className="qw-entry__hero">
+          <p className="qw-entry__headline">
+            VCでつなぐ、
+            <br />
+            早押しクイズ大会。
+          </p>
+          <p className="qw-entry__lead">
+            大会を作ると招待コードが発行されます。
+            <br />
+            コードを参加者に送れば、すぐに早押しバトルを始められます。
+          </p>
+          <BuzzerArt />
+        </section>
+        <section className="qw-entry__card" aria-labelledby="create-title">
+          <div className="qw-entry__intro">
+            <h2 id="create-title">大会をつくる</h2>
+            <p>大会名と最大参加人数を入力してください。</p>
+          </div>
+          <form className="qw-form" onSubmit={(event) => void onSubmit(event)}>
+            <Input
+              id="tournament-name"
+              label="大会名"
+              value={name}
+              maxLength={INPUT_CONSTRAINTS.tournamentName.maxLength}
+              onChange={(event) => {
+                setName(event.target.value);
+              }}
+              error={nameError}
+              autoComplete="off"
+            />
+            <Input
+              id="max-participants"
+              label="最大参加人数"
+              type="number"
+              min={INPUT_CONSTRAINTS.maxParticipants.min}
+              max={INPUT_CONSTRAINTS.maxParticipants.max}
+              value={maxParticipants}
+              onChange={(event) => {
+                setMaxParticipants(event.target.value);
+              }}
+              error={maxError}
+            />
+            <Button type="submit" busy={busy}>
+              大会を作成
+            </Button>
+          </form>
+          <p className="qw-form-footer">
+            招待コードで参加する場合は <Link to={ROUTE_PATHS.join}>参加画面</Link> へ。
+          </p>
+        </section>
+      </main>
+    </div>
   );
 }

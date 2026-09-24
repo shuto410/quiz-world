@@ -1,7 +1,8 @@
+/** Toasts float at the top as small dark cards; errors use the wrong-answer pink. */
 .qw-toast-region {
   position: fixed;
+  top: 18px;
   right: var(--space-4);
-  bottom: var(--space-4);
   z-index: 50;
   display: grid;
   gap: var(--space-2);
@@ -9,14 +10,18 @@
 }
 
 .qw-toast {
-  padding: var(--space-3) var(--space-4);
-  border-radius: var(--radius-control);
-  background: var(--color-ink);
-  color: var(--color-paper);
-  box-shadow: var(--shadow-toast);
-  line-height: 1.4;
+  padding: 14px 18px;
+  border-radius: var(--radius-md);
+  background: var(--ink);
+  color: var(--surface-card);
+  box-shadow: 0 6px 0 var(--shadow-ink-24);
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.5;
 }
 
 .qw-toast--error {
-  background: var(--color-danger);
+  background: var(--wrong);
+  color: var(--ink);
+  box-shadow: 0 6px 0 var(--wrong-edge);
 }

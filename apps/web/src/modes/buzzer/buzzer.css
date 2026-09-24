@@ -1,75 +1,185 @@
-/** A tactile buzzer and a quiet answer area give each role one clear current action. */
+/**
+ * The buzzer is a cylinder seen slightly from above: a red elliptical top with a thin highlight
+ * on its upper-left edge, a darker side for its thickness and a soft ellipse under its foot.
+ * Pressing sinks the top into the side. The answer area replaces it in the same place.
+ */
 .qw-buzzer-guide {
-  margin-top: 32px;
-  color: var(--color-ink-muted);
-  font-size: 12px;
+  margin-top: 0;
+  color: var(--ink-muted);
+  font-size: 15px;
+  font-weight: 700;
   line-height: 1.8;
 }
 .qw-buzzer-guide summary {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-panel);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 800;
   cursor: pointer;
 }
 .qw-buzzer-guide ol {
-  padding-left: 20px;
+  margin: var(--space-3) 0 0;
+  padding-left: 22px;
 }
 .qw-buzzer-controls {
   display: grid;
   place-items: center;
-  min-height: 296px;
+  width: 100%;
+  min-height: 320px;
 }
+
+/* Buzzer */
 .qw-buzzer-controls__buzz {
-  width: min(100%, 240px);
+  --w: 300px;
+  --eh: 246px;
+  --dp: 34px;
+  --o: 6px;
+  position: relative;
+  isolation: isolate;
+  width: min(100%, var(--w));
   text-align: center;
 }
-.qw-buzzer-controls__buzz > p {
-  font-size: 12px;
-  color: var(--color-ink-muted);
-  margin: 20px 0 0;
-}
-.qw-buzzer-button {
-  flex-direction: column;
-  gap: 14px;
-  width: 100%;
-  aspect-ratio: 1;
-  min-height: 0;
+.qw-buzzer-controls__buzz::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  left: calc(var(--w) * -0.08);
+  width: calc(var(--w) * 1.16);
+  top: calc(var(--dp) - var(--eh) * 0.06 + 6px);
+  height: calc(var(--eh) * 1.12);
   border-radius: 50%;
-  font-size: 30px;
-  letter-spacing: 0.04em;
-  border: 1px solid rgb(128 43 24 / 0.25);
-  box-shadow:
-    0 7px 0 #8d2b1c,
-    0 10px 0 8px var(--color-disabled);
+  background: var(--shadow-ink-24);
 }
-.qw-buzzer-symbol {
-  width: 44px;
-  height: 36px;
+.qw-buzzer-controls__buzz > p {
+  margin: var(--space-3) 0 0;
+  color: var(--ink-muted);
+  font-size: 13px;
+  font-weight: 800;
 }
-.qw-buzzer-button:active:not(:disabled):not(:focus-visible) {
-  transform: translateY(5px);
-  box-shadow:
-    0 2px 0 #8d2b1c,
-    0 5px 0 8px var(--color-disabled);
-}
+/*
+ * Layers, back to front: ::before is the side (the cylinder's thickness), ::after the thin
+ * highlight rim, and the face is the red top carrying the label. Pressing moves the rim and
+ * the top down and shortens the side from the top by the same amount, so the side never
+ * shows above the sunken top.
+ */
+.qw-buzzer-button,
+.qw-buzzer-button:active:not(:disabled),
 .qw-buzzer-button:disabled {
-  opacity: 1;
-  border-color: transparent;
-  box-shadow:
-    0 3px 0 var(--color-line-strong),
-    0 6px 0 8px var(--color-subtle);
-  background: var(--color-disabled);
-  color: var(--color-ink-muted);
+  --press: calc(var(--dp) * 0.6);
+  position: relative;
+  display: block;
+  width: var(--w);
+  height: calc(var(--eh) + var(--dp));
+  margin: 0 0 calc(var(--eh) * 0.06 + 6px);
+  padding: 0;
+  border-radius: calc(var(--w) / 2) / calc(var(--eh) / 2);
+  background: transparent;
+  box-shadow: none;
+  transform: none;
 }
+.qw-buzzer-button::before,
+.qw-buzzer-button::after,
+.qw-buzzer-button__face {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transition:
+    transform 60ms ease-out,
+    top 60ms ease-out,
+    height 60ms ease-out;
+}
+.qw-buzzer-button::before {
+  content: '';
+  width: 100%;
+  height: calc(var(--eh) + var(--dp));
+  border-radius: calc(var(--w) / 2) / calc(var(--eh) / 2);
+  background: var(--buzzer-side);
+}
+.qw-buzzer-button::after {
+  content: '';
+  width: 100%;
+  height: var(--eh);
+  border-radius: 50%;
+  background: var(--buzzer-highlight);
+}
+.qw-buzzer-button__face {
+  z-index: 1;
+  top: var(--o);
+  left: var(--o);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: calc(100% - var(--o));
+  height: calc(var(--eh) - var(--o));
+  border-radius: 50%;
+  background: var(--buzzer);
+  color: var(--on-brand);
+}
+.qw-buzzer-button__push {
+  font-family: var(--font-display);
+  font-size: 62px;
+  line-height: 1;
+  letter-spacing: 0.04em;
+}
+.qw-buzzer-button__label {
+  font-family: var(--font-sans);
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+.qw-buzzer-button:active:not(:disabled)::before {
+  top: var(--press);
+  height: calc(var(--eh) + var(--dp) - var(--press));
+}
+.qw-buzzer-button:active:not(:disabled)::after,
+.qw-buzzer-button:active:not(:disabled) .qw-buzzer-button__face {
+  transform: translateY(var(--press));
+}
+.qw-buzzer-button:disabled::before {
+  background: var(--disabled-edge);
+}
+.qw-buzzer-button:disabled::after,
+.qw-buzzer-button:disabled .qw-buzzer-button__face {
+  background: var(--disabled);
+}
+.qw-buzzer-button:disabled .qw-buzzer-button__face {
+  color: var(--ink);
+}
+.qw-buzzer-button:disabled .qw-buzzer-button__push {
+  color: var(--ink-muted);
+}
+@media (hover: hover) and (pointer: fine) {
+  .qw-buzzer-button:hover:not(:disabled) {
+    filter: none;
+  }
+  .qw-buzzer-button:hover:not(:disabled):not(:active) .qw-buzzer-button__face {
+    filter: brightness(1.06);
+  }
+}
+
+/* Text answer (replaces the buzzer in the same place) */
 .qw-buzzer-controls__answer {
-  width: min(100%, 520px);
+  width: min(100%, 560px);
+  padding: var(--space-6);
+  border-radius: var(--radius-xl);
+  background: var(--surface-card);
 }
 .qw-buzzer-controls__answer h3 {
-  font-size: 12px;
-  font-weight: 500;
-  margin: 0 0 12px;
+  margin: 0 0 var(--space-3);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  font-weight: 800;
 }
 .qw-buzzer-controls__answer p {
-  font-size: 12px;
-  margin: 14px 0 0;
-  color: var(--color-ink-muted);
+  margin: var(--space-3) 0 0;
+  color: var(--ink-muted);
+  font-size: 13px;
+  font-weight: 800;
   line-height: 1.6;
 }
 .qw-buzzer-controls__answer .qw-answer-form {
@@ -78,121 +188,73 @@
 .qw-buzzer-controls__answer .qw-input__control {
   min-height: 64px;
   font-size: 20px;
-  border-color: var(--color-line-strong);
 }
 .qw-buzzer-controls__answer .qw-button {
   min-height: 64px;
-  min-width: 72px;
-  font-size: 14px;
+  min-width: 88px;
+  font-size: 20px;
 }
+
+/* Stage content: responder's answer and the latest verdict */
 .qw-buzzer-answer {
-  margin-top: 28px;
+  display: grid;
+  gap: var(--space-4);
+  margin-top: 0;
   min-width: 0;
   overflow-wrap: anywhere;
 }
-.qw-buzzer-answer .qw-submitted-answer {
-  background: transparent;
-  border: 0;
-  border-top: 1px solid var(--color-line);
-  border-radius: 0;
-  padding: 28px 0 0;
-  margin: 20px 0 0;
+.qw-game[data-content-primary='true'] .qw-buzzer-answer {
+  margin-top: 0;
 }
 .qw-buzzer-answer .qw-submitted-answer__text {
-  font-size: clamp(24px, 2.6vw, 36px);
-  font-weight: 550;
-  letter-spacing: -0.035em;
-  line-height: 1.5;
-}
-.qw-buzzer-answer .qw-submitted-answer__sender {
-  font-size: 12px;
-  margin-top: 16px;
+  font-size: clamp(26px, 2.8vw, 38px);
 }
 .qw-buzzer-answer .qw-submitted-answer__empty {
-  font-size: 14px;
-  color: var(--color-ink-muted);
-  padding: 24px 0;
-  border-top: 1px solid var(--color-line);
-}
-.qw-game .qw-buzz-order {
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-}
-.qw-game .qw-buzz-order__row {
-  padding: 10px 0;
-}
-.qw-game .qw-buzz-order__name {
-  flex-wrap: wrap;
-  min-width: 0;
-  overflow-wrap: anywhere;
-  font-size: 13px;
-}
-.qw-game .qw-buzz-order__rank {
-  flex-shrink: 0;
-  border-radius: 3px;
-  width: 24px;
-  height: 24px;
-  font-size: 12px;
-}
-.qw-game .qw-buzz-order__row--responder {
-  background: transparent;
-}
-.qw-game .qw-buzz-order__row--responder .qw-buzz-order__rank {
-  background: var(--color-accent);
-}
-.qw-game .qw-buzz-order__tag {
-  background: var(--color-accent-soft);
-  color: var(--color-accent-text);
-  border-radius: 2px;
-  font-size: 10px;
-}
-.qw-game .qw-buzz-order__empty {
-  font-size: 12px;
+  padding: var(--space-5);
+  border-radius: var(--radius-lg);
+  background: var(--surface-row);
 }
 .qw-game .qw-last-result {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
-  background: transparent;
-  border: 0;
-  border-radius: 0;
-  padding: 0;
-  gap: 12px;
-  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3) var(--space-4);
+  padding: var(--space-5);
+}
+.qw-game .qw-last-result__name {
+  grid-column: 1 / -1;
 }
 .qw-game .qw-last-result__verdict {
-  font-size: 32px;
-  font-weight: 650;
+  font-size: 30px;
+  line-height: 38px;
+  padding: 8px 22px;
 }
 .qw-game .qw-last-result__delta {
-  margin-left: 4px;
-  font: 650 42px/1 var(--font-score);
+  font-size: 44px;
+  line-height: 1;
 }
 .qw-game .qw-last-result__counts {
   grid-column: 1 / -1;
   font-size: 20px;
 }
-.qw-game .qw-last-result__name {
-  grid-column: 1 / -1;
-  overflow-wrap: anywhere;
-  font-size: 18px;
-  color: var(--color-ink);
-}
-.qw-game[data-content-primary='true'] .qw-buzzer-answer {
-  margin-top: 0;
-}
-.qw-game .qw-last-result--correct .qw-last-result__verdict {
-  color: var(--color-correct);
-}
-.qw-game .qw-last-result--wrong .qw-last-result__verdict {
-  color: var(--color-accent-text);
-}
-@media (max-width: 620px) {
+@media (max-width: 720px) {
   .qw-buzzer-controls {
-    min-height: 264px;
+    min-height: 0;
   }
   .qw-buzzer-controls__buzz {
-    width: min(100%, 208px);
+    --w: 206px;
+    --eh: 170px;
+    --dp: 24px;
+    --o: 4px;
+  }
+  .qw-buzzer-button__push {
+    font-size: 44px;
+  }
+  .qw-buzzer-button__label {
+    font-size: 13px;
+  }
+  .qw-buzzer-controls__answer {
+    padding: var(--space-4);
   }
   .qw-buzzer-controls__answer .qw-input__control {
     min-height: 60px;
@@ -200,11 +262,27 @@
   }
   .qw-buzzer-controls__answer .qw-button {
     min-height: 60px;
-    min-width: 60px;
+    min-width: 64px;
+  }
+  .qw-game .qw-last-result__delta {
+    font-size: 36px;
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .qw-buzzer-button:active:not(:disabled):not(:focus-visible) {
+  .qw-buzzer-button::before,
+  .qw-buzzer-button::after,
+  .qw-buzzer-button__face {
+    transition: none;
+  }
+  .qw-buzzer-button:active:not(:disabled)::before {
+    top: 0;
+    height: calc(var(--eh) + var(--dp));
+  }
+  .qw-buzzer-button:active:not(:disabled)::after,
+  .qw-buzzer-button:active:not(:disabled) .qw-buzzer-button__face {
     transform: none;
+  }
+  .qw-buzzer-button:active:not(:disabled) .qw-buzzer-button__face {
+    filter: brightness(0.9);
   }
 }

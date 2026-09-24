@@ -18,6 +18,11 @@ export function BuzzerHost({ connection }: BuzzerHostProps) {
   const responder = roomState?.participants.find(
     (person) => person.id === roomState.currentResponderId,
   );
+  // Display only: the responder's place in the server's buzz order.
+  const responderPlace =
+    responder && roomState
+      ? roomState.buzzOrder.findIndex((entry) => entry.participantId === responder.id) + 1
+      : 0;
   return (
     <GamePanel
       modeName="早押しクイズ"
@@ -28,7 +33,10 @@ export function BuzzerHost({ connection }: BuzzerHostProps) {
       }
       {...getBuzzerPrompt(roomState, participantId, status === 'joined' && !roomClosed)}
       {...(status === 'joined' && roomState?.status === 'answering' && responder
-        ? { title: responder.name, description: '回答者' }
+        ? {
+            title: responder.name,
+            description: responderPlace > 0 ? `回答中(${responderPlace}着)` : '回答中',
+          }
         : {})}
       controls={
         roomState?.status === 'answering' && responder ? (
@@ -75,10 +83,11 @@ export function BuzzerHost({ connection }: BuzzerHostProps) {
         ) : undefined
       }
       supplement={
-        roomState !== undefined && roomState.buzzOrder.length > 0 ? (
+        roomState !== undefined ? (
           <section aria-label="早押し順">
-            <h3>早押し順</h3>
+            <h3>押した順</h3>
             <BuzzOrderList
+              rules={roomState.rules}
               buzzOrder={roomState?.buzzOrder ?? []}
               participants={roomState?.participants ?? []}
               currentResponderId={

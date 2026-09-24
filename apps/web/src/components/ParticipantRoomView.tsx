@@ -7,7 +7,7 @@ import { RoomSession } from './RoomSession';
 type ParticipantRoomViewProps = { connection: UseRoomSocketResult; displayName: string };
 export function ParticipantRoomView({ connection, displayName }: ParticipantRoomViewProps) {
   return (
-    <RoomSession connection={connection} displayName={displayName}>
+    <RoomSession connection={connection} displayName={displayName} modeName="早押しクイズ">
       <BuzzerParticipant connection={connection} />
     </RoomSession>
   );

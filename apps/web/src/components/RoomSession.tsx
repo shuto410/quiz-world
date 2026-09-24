@@ -1,5 +1,6 @@
 /** Owns shared room presentation and lifecycle controls independently of the selected game mode. */
 import type { ReactNode } from 'react';
+import { rankParticipants } from '../game/ranking';
 import type { UseRoomSocketResult } from '../hooks/useRoomSocket';
 import {
   loadInviteDetails,
@@ -20,6 +21,8 @@ type RoomSessionProps = {
   connection: UseRoomSocketResult;
   inviteDetails?: StoredInviteDetails | undefined;
   displayName?: string;
+  /** Name of the game mode rendered inside, shown in the room header. */
+  modeName?: string;
   children: ReactNode;
 };
 
@@ -27,6 +30,7 @@ export function RoomSession({
   connection,
   inviteDetails,
   displayName,
+  modeName,
   children,
 }: RoomSessionProps) {
   const { status, roomState, participantId, errorMessage, roomClosed } = connection;
@@ -38,6 +42,22 @@ export function RoomSession({
   const players = roomState?.participants.filter((person) => person.id !== roomState.hostId) ?? [];
   const isHost = participantId !== undefined && roomState?.hostId === participantId;
   const self = roomState?.participants.find((participant) => participant.id === participantId);
+  // Header summary only: the same display ranking the score board already shows.
+  const selfStanding =
+    roomState && !isHost
+      ? rankParticipants({
+          participants: roomState.participants,
+          hostId: roomState.hostId,
+          rules: roomState.rules,
+        }).find((entry) => entry.participant.id === participantId)
+      : undefined;
+  const identityDetail = selfStanding
+    ? `${selfStanding.rank}位 ・ ${
+        roomState?.rules.type === 'maruBatsu'
+          ? `${selfStanding.participant.correctCount}○ ${selfStanding.participant.wrongCount}×`
+          : `${selfStanding.participant.score}点`
+      }`
+    : undefined;
   const connectionLabel = roomClosed
     ? 'ルームを閉じました'
     : status === 'joined'
@@ -47,10 +67,14 @@ export function RoomSession({
   return (
     <RoomFrame
       title={tournamentName ?? 'クイズ大会'}
+      modeName={modeName}
       identity={self?.name ?? displayName ?? '接続しています…'}
+      identityDetail={identityDetail}
       roleLabel={isHost ? 'ホスト' : '参加者'}
       connectionLabel={connectionLabel}
       reconnecting={status === 'connecting' && roomState !== undefined && !roomClosed}
+      roomCode={isHost ? invitation?.inviteCode : undefined}
+      settings={<RuleSettings connection={connection} />}
       roomInfo={
         isHost && invitation ? (
           <section className="qw-invite-panel" aria-label="招待情報">
@@ -98,7 +122,6 @@ export function RoomSession({
         </div>
       }
     >
-      <RuleSettings connection={connection} />
       {roomState?.status === 'paused' &&
       roomState.pausedReason === 'hostDisconnected' &&
       !isHost ? (

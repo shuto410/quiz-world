@@ -1,4 +1,4 @@
-/** Verdicts wrap on small screens and announce the server result accessibly. */
+/** The latest verdict as a correct/wrong pill with the point change in large numerals. */
 .qw-last-result {
   display: flex;
   flex-wrap: wrap;
@@ -6,35 +6,41 @@
   gap: var(--space-3);
   margin: 0;
   padding: var(--space-4);
-  border: 1px solid var(--color-line);
-  border-radius: calc(var(--radius-control) + 0.25rem);
-  background: var(--color-paper-raised);
-}
-
-.qw-last-result--correct {
-  border-color: var(--color-accent);
-}
-
-.qw-last-result--wrong {
-  border-color: var(--color-danger);
+  border-radius: var(--radius-lg);
+  background: var(--surface-row);
 }
 
 .qw-last-result__name {
-  font-weight: 600;
+  font-size: 18px;
+  font-weight: 800;
+  overflow-wrap: anywhere;
 }
 
 .qw-last-result__verdict {
+  padding: 6px 16px;
+  border-radius: var(--radius-pill);
   font-family: var(--font-display);
-  font-size: 1.35rem;
+  font-size: 22px;
+  line-height: 28px;
+  color: var(--ink);
+}
+
+.qw-last-result--correct .qw-last-result__verdict {
+  background: var(--correct);
+}
+
+.qw-last-result--wrong .qw-last-result__verdict {
+  background: var(--wrong);
 }
 
 .qw-last-result__delta {
-  margin-left: auto;
+  font-family: var(--font-display);
+  font-size: 22px;
   font-variant-numeric: tabular-nums;
-  font-weight: 700;
 }
 
 .qw-last-result__counts {
+  font-family: var(--font-display);
+  font-size: 15px;
   font-variant-numeric: tabular-nums;
-  font-size: 14px;
 }

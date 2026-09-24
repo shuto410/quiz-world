@@ -1,90 +1,232 @@
-/** A compact rule summary expands into a responsive form without obscuring the game. */
-.qw-rules {
-  border: 1px solid var(--color-line);
-  border-radius: var(--radius-control);
-  margin-bottom: 20px;
-  background: var(--color-paper-raised);
-}
-.qw-rules summary {
+/**
+ * Rules live behind the gear button in the room header. Opening it shows the settings card
+ * from the score settings template: a title, the explanation band, the format tabs, one row
+ * per value (mark, label, large number) and a dark save button. Participants see the same
+ * card read-only.
+ */
+.qw-rules > summary {
+  display: block;
+  width: 52px;
+  height: 52px;
+  padding: 0;
+  border-radius: var(--radius-md);
+  background: rgb(46 32 16 / 0.12)
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232E2010' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='3'/%3E%3Cpath d='M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z'/%3E%3C/svg%3E")
+    center / 26px no-repeat;
+  font-size: 0;
   cursor: pointer;
-  padding: 16px 20px;
-  font-size: 12px;
-  line-height: 1.7;
+  list-style: none;
 }
-.qw-rules summary > span:first-child {
-  margin-right: 16px;
-  color: var(--color-ink-muted);
+.qw-rules > summary::-webkit-details-marker {
+  display: none;
 }
-.qw-rules summary strong {
-  font-weight: 550;
+.qw-rules[open] > summary {
+  background-color: var(--surface-card);
 }
-.qw-rules__action {
-  float: right;
-  color: var(--color-accent-text);
-  margin-left: 12px;
+.qw-rules > summary > * {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
+
 .qw-rules__body {
-  padding: 0 20px 20px;
-  font-size: 13px;
+  position: absolute;
+  z-index: 5;
+  top: calc(100% + var(--space-4));
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(720px, calc(100vw - 32px));
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 40px 48px;
+  border-radius: var(--radius-2xl);
+  background: var(--surface-card);
+  box-shadow:
+    inset 0 -8px 0 rgb(46 32 16 / 0.12),
+    var(--shadow-float);
+  font-size: 15px;
+  font-weight: 700;
   line-height: 1.7;
+  text-align: left;
+}
+.qw-rules__body::before {
+  content: '試合ルール';
+  font-family: var(--font-display);
+  font-size: 34px;
+  line-height: 44px;
 }
 .qw-rules__body > p {
-  margin: 0 0 16px;
+  margin: 0;
+  padding: 14px 18px;
+  border-radius: var(--radius-md);
+  background: var(--gold-soft);
+  color: var(--ink-muted);
+  font-weight: 800;
+}
+.qw-rules__body > p.qw-rules__note {
+  padding: 0;
+  background: transparent;
 }
 .qw-rules fieldset {
-  border: 0;
-  padding: 0;
-  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
   min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
 }
 .qw-rules legend {
-  font-weight: 600;
-  padding: 0 0 12px;
+  float: left;
+  width: 100%;
+  padding: 0;
+  font-size: 15px;
+  font-weight: 800;
 }
-.qw-rules__presets,
-.qw-rules__save {
-  display: flex;
+.qw-rules__presets {
+  align-self: flex-start;
+  display: inline-flex;
   flex-wrap: wrap;
-  gap: 10px;
-  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border-radius: var(--radius-lg);
+  background: var(--surface-panel);
 }
-.qw-rules__presets button {
-  background: var(--color-paper-raised);
-  color: var(--color-ink);
-  border-color: var(--color-line-strong);
+.qw-rules__presets .qw-button,
+.qw-rules__presets .qw-button:active:not(:disabled) {
+  min-height: 44px;
+  margin: 0;
+  padding: 0 18px;
+  border-radius: var(--radius-md);
+  background: transparent;
+  box-shadow: none;
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  font-weight: 800;
+  transform: none;
 }
-.qw-rules__presets button[aria-pressed='true'] {
-  color: var(--color-accent-text);
-  border-color: var(--color-accent);
-  background: var(--color-accent-soft);
+.qw-rules__presets .qw-button[aria-pressed='true'] {
+  background: var(--surface-card);
+  box-shadow: 0 2px 0 var(--shadow-ink-24);
 }
+.qw-rules__presets .qw-button:disabled {
+  color: var(--ink-muted);
+}
+
+/* Value rows: mark, label, large number. */
 .qw-rules__fields {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-  max-width: 520px;
-  margin: 20px 0;
+  gap: var(--space-2);
 }
-.qw-rules__fields input {
-  width: 100%;
+.qw-rules__fields .qw-input {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) 150px;
+  align-items: center;
+  column-gap: 14px;
+  row-gap: 4px;
+  padding: 20px 24px;
+  border-radius: 22px;
+  background: var(--surface-card);
+}
+.qw-rules__fields .qw-input::before {
+  content: '';
+  grid-column: 1;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: var(--correct)
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232E2010' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E")
+    center / 26px no-repeat;
+}
+.qw-rules__fields .qw-input:nth-child(2)::before {
+  background: var(--wrong)
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232E2010' stroke-width='3' stroke-linecap='round'%3E%3Cpath d='M6 6l12 12M18 6L6 18'/%3E%3C/svg%3E")
+    center / 22px no-repeat;
+}
+.qw-rules__fields .qw-input__label {
+  grid-column: 2;
+  font-size: 20px;
+  font-weight: 800;
+}
+.qw-rules__fields .qw-input__control {
+  grid-column: 3;
   min-width: 0;
+  height: 60px;
+  padding: 0 8px;
+  font-family: var(--font-display);
+  font-size: 34px;
+  font-weight: 400;
+  text-align: center;
   font-variant-numeric: tabular-nums;
+  color: var(--correct-ink);
+}
+.qw-rules__fields .qw-input:nth-child(2) .qw-input__control {
+  color: var(--wrong-ink);
+}
+.qw-rules__fields .qw-input__error {
+  grid-column: 2 / -1;
+}
+.qw-rules [role='alert'] {
+  margin: 0;
+  color: var(--wrong-ink);
+  font-weight: 800;
+}
+.qw-rules__save {
+  display: flex;
+  flex-direction: row-reverse;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.qw-rules__save .qw-button,
+.qw-rules__save .qw-button:active:not(:disabled) {
+  min-height: 56px;
+  margin: 0;
+  padding: 0 28px;
+  border-radius: 18px;
+  background: var(--ink);
+  box-shadow: none;
+  color: var(--surface-card);
+  font-size: 20px;
+  transform: none;
+}
+.qw-rules__save .qw-button:disabled {
+  background: var(--disabled);
+  color: var(--ink-muted);
 }
 .qw-rules__note {
-  color: var(--color-ink-muted);
-  font-size: 12px;
   margin: 0;
+  color: var(--ink-muted);
+  font-size: 13px;
+  font-weight: 800;
 }
-@media (max-width: 520px) {
-  .qw-rules summary strong {
-    display: block;
-    padding-top: 4px;
+@media (max-width: 720px) {
+  .qw-rules__body {
+    padding: var(--space-6) var(--space-5);
   }
-  .qw-rules__action {
-    float: none;
-    margin-left: 0;
+  .qw-rules__body::before {
+    font-size: 28px;
+    line-height: 36px;
   }
-  .qw-rules__fields {
-    gap: 10px;
+  .qw-rules__fields .qw-input {
+    grid-template-columns: 40px minmax(0, 1fr) 96px;
+    padding: 12px 0;
+  }
+  .qw-rules__fields .qw-input::before {
+    width: 40px;
+    height: 40px;
+  }
+  .qw-rules__fields .qw-input__label {
+    font-size: 15px;
+  }
+  .qw-rules__fields .qw-input__control {
+    font-size: 26px;
   }
 }

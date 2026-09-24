@@ -67,21 +67,12 @@ export function BuzzerParticipant({ connection }: BuzzerParticipantProps) {
             ) : (
               <div className="qw-buzzer-controls__buzz">
                 <Button className="qw-buzzer-button" disabled={!buzzEnabled} onClick={buzz}>
-                  <svg
-                    className="qw-buzzer-symbol"
-                    viewBox="0 0 48 40"
-                    fill="none"
-                    aria-hidden="true"
-                  >
-                    <path
-                      d="M7 32h34M12 27a12 12 0 0 1 24 0H12ZM24 4v6M7 10l4 4M41 10l-4 4"
-                      stroke="currentColor"
-                      strokeWidth="2.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                  早押し
+                  <span className="qw-buzzer-button__face">
+                    <span className="qw-buzzer-button__push" aria-hidden="true">
+                      PUSH
+                    </span>
+                    <span className="qw-buzzer-button__label">早押し</span>
+                  </span>
                 </Button>
                 <p>
                   {standing === 'won'
@@ -98,10 +89,11 @@ export function BuzzerParticipant({ connection }: BuzzerParticipantProps) {
         )
       }
       supplement={
-        roomState !== undefined && roomState.buzzOrder.length > 0 ? (
+        roomState !== undefined ? (
           <section aria-label="早押し順">
-            <h3>早押し順</h3>
+            <h3>押した順</h3>
             <BuzzOrderList
+              rules={roomState.rules}
               buzzOrder={roomState?.buzzOrder ?? []}
               participants={roomState?.participants ?? []}
               currentResponderId={

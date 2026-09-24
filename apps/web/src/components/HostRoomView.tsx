@@ -8,7 +8,7 @@ import { RoomSession } from './RoomSession';
 type HostRoomViewProps = { connection: UseRoomSocketResult; inviteDetails?: StoredInviteDetails };
 export function HostRoomView({ connection, inviteDetails }: HostRoomViewProps) {
   return (
-    <RoomSession connection={connection} inviteDetails={inviteDetails}>
+    <RoomSession connection={connection} inviteDetails={inviteDetails} modeName="早押しクイズ">
       <BuzzerHost connection={connection} />
     </RoomSession>
   );

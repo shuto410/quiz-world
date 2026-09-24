@@ -1,40 +1,85 @@
 /**
  * Global tokens and resets for the SPA.
  *
- * Warm paper, readable score numerals and vermilion actions keep live gameplay visually focused.
+ * Tokens follow the "Caramel & Honey" design system: a warm mid-tone page with lighter panels,
+ * cards and rows stacked on top of it. Anything pressable gets a solid "thickness" shadow below
+ * instead of inner shadows. Names mirror the design system so screens can be checked against it.
  */
 
 :root {
   color-scheme: light;
-  --font-display:
-    -apple-system, BlinkMacSystemFont, 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif;
-  --font-body:
-    -apple-system, BlinkMacSystemFont, 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif;
-  --color-ink: #302923;
-  --color-ink-muted: #76685c;
-  --color-paper: #f4eee3;
-  --color-paper-raised: #fffcf6;
-  --color-toolbar: #e8dbc8;
-  --color-line: #ddcdbb;
-  --color-subtle: #eee2d0;
-  --color-accent: #c94d30;
-  --color-accent-text: #a43b24;
-  --color-accent-ink: #ffffff;
-  --color-accent-soft: #f7e0d3;
-  --color-line-strong: #b69f88;
-  --color-disabled: #e6dac9;
-  --color-correct: #356a54;
-  --color-correct-soft: #e5ede3;
-  --font-score: 'Avenir Next', 'Helvetica Neue', sans-serif;
-  --color-danger: #b02a35;
-  --shadow-toast: 0 6px 24px rgb(64 39 21 / 0.14);
-  --radius-control: 0.3rem;
-  --space-1: 0.25rem;
-  --space-2: 0.5rem;
-  --space-3: 0.75rem;
-  --space-4: 1rem;
-  --space-6: 1.5rem;
-  --space-8: 2rem;
+
+  /* Surfaces, darkest to lightest (text excluded). */
+  --surface-page: #d0954b;
+  --surface-panel: #efd8b5;
+  --surface-card: #fcf1dc;
+  --surface-row: #fdf7ea;
+  --surface-sunken: #e0c295;
+  --surface-avatar: #ecd3ac;
+
+  /* Text. White (`--on-brand`) is only for the buzzer red and 24px+ logos and headings. */
+  --ink: #2e2010;
+  --ink-muted: #5c4020;
+  --ink-on-gold: #453018;
+  --on-brand: #ffffff;
+
+  /* Meaning. */
+  --gold: #f8d56a;
+  --gold-highlight: #fcebb0;
+  --gold-edge: #c9a13a;
+  --gold-soft: #fae3a3;
+  --accent: #f3a869;
+  --accent-chip: #f0936b;
+  --buzzer: #d2452f;
+  --buzzer-highlight: #ee8a68;
+  --buzzer-side: #93331f;
+  --correct: #b3d48c;
+  --correct-edge: #7fa35a;
+  --correct-ink: #636842;
+  --wrong: #e8929e;
+  --wrong-edge: #b8616e;
+  --wrong-ink: #945f5e;
+  --overlay-ink-10: rgb(46 32 16 / 0.1);
+  --shadow-ink-24: rgb(46 32 16 / 0.24);
+  --border-ink-32: rgb(46 32 16 / 0.32);
+  --overlay-ink-72: rgb(46 32 16 / 0.72);
+  --disabled: #c9a77a;
+  --disabled-edge: #a8865a;
+
+  /* Type. */
+  --font-display: 'Dela Gothic One', 'Hiragino Sans', sans-serif;
+  --font-sans: 'M PLUS Rounded 1c', 'Hiragino Maru Gothic ProN', sans-serif;
+  --font-body: var(--font-sans);
+  --font-score: var(--font-display);
+
+  /* Depth. */
+  --press-primary: 0 6px 0 var(--buzzer-side);
+  --press-correct: 0 6px 0 var(--correct-edge);
+  --press-wrong: 0 6px 0 var(--wrong-edge);
+  --press-disabled: 0 6px 0 var(--disabled-edge);
+  --press-quiet: 0 4px 0 var(--border-ink-32);
+  --badge-gold: inset 2px 2px 0 var(--gold-highlight), 0 2px 0 var(--gold-edge);
+  --ring-answering: inset 0 0 0 3px var(--accent);
+  --shadow-float: 0 10px 0 var(--shadow-ink-24);
+
+  /* Radius. */
+  --radius-sm: 12px;
+  --radius-md: 16px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+  --radius-2xl: 32px;
+  --radius-pill: 999px;
+  --radius-control: var(--radius-lg);
+
+  /* Spacing. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
 }
 
 *,
@@ -51,10 +96,11 @@ body,
 
 body {
   margin: 0;
-  font-family: var(--font-body);
+  font-family: var(--font-sans);
+  font-weight: 700;
   -webkit-font-smoothing: antialiased;
-  color: var(--color-ink);
-  background: var(--color-paper);
+  color: var(--ink);
+  background: var(--surface-page);
 }
 
 button,
@@ -62,59 +108,204 @@ input {
   font: inherit;
 }
 
-a {
-  color: var(--color-accent-text);
+h1,
+h2,
+h3 {
+  font-weight: 400;
 }
 
+a {
+  color: var(--ink);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+
+:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 3px;
+}
+
+/* Visually hidden but still read by assistive technology. */
+.qw-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Simple message pages (missing token, join errors). */
 .app-shell {
-  width: min(40rem, calc(100% - 2rem));
+  width: min(34rem, calc(100% - 2 * var(--space-4)));
   margin: 0 auto;
-  padding: var(--space-8) 0;
+  padding: 64px 0 var(--space-8);
 }
 
 .app-shell h1 {
-  margin: 0 0 var(--space-2);
+  margin: 0 0 var(--space-3);
   font-family: var(--font-display);
-  font-size: clamp(2rem, 4vw, 2.75rem);
-  font-weight: 700;
-  letter-spacing: -0.02em;
+  font-size: clamp(36px, 7vw, 56px);
+  line-height: 1.25;
+  font-weight: 400;
+  color: var(--on-brand);
 }
 
 .app-shell p {
   margin: 0 0 var(--space-6);
-  color: var(--color-ink-muted);
-  line-height: 1.5;
+  font-size: 15px;
+  line-height: 1.7;
 }
 
 .qw-form {
   display: grid;
-  gap: var(--space-4);
-  padding: var(--space-6);
-  border: 1px solid var(--color-line);
-  border-radius: calc(var(--radius-control) + 0.25rem);
-  background: var(--color-paper-raised);
+  gap: 22px;
 }
 
 .qw-form-footer {
-  margin-top: var(--space-6);
+  margin: 0;
+  color: var(--ink-muted);
+  font-size: 13px;
+  font-weight: 700;
 }
 
-/* Shared defaults stay independent of any game mode or room layout. */
-.app-shell {
-  padding-top: 64px;
+/*
+ * Entry pages (create / join): logo header, then two columns — a white headline, lead and a
+ * large buzzer illustration on the left, the form card on the right. Phones stack the logo,
+ * a small buzzer and the card.
+ */
+.qw-entry {
+  width: min(1440px, 100%);
+  min-height: 100dvh;
+  margin: 0 auto;
+  padding: var(--space-8) var(--space-12);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
 }
-.qw-input__control {
+.qw-entry__header {
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.qw-entry__badge {
+  padding: 10px 20px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-panel);
+  font-size: 16px;
+  font-weight: 800;
+}
+.qw-entry__main {
+  flex-grow: 1;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-12);
+  align-items: center;
+}
+.qw-entry__hero {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-8);
+  padding-left: var(--space-6);
+}
+.qw-entry__headline {
+  margin: 0;
+  color: var(--on-brand);
+  font-family: var(--font-display);
+  font-size: 56px;
+  font-weight: 400;
+  line-height: 1.3;
+}
+.qw-entry__lead {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.8;
+}
+.qw-entry__card {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  padding: 40px 44px;
+  border-radius: var(--radius-2xl);
+  background: var(--surface-card);
+}
+.qw-entry__intro {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.qw-entry__intro h1,
+.qw-entry__intro h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 34px;
+  font-weight: 400;
+  line-height: 44px;
+}
+.qw-entry--join .qw-entry__intro h1 {
+  font-size: 30px;
+  line-height: 40px;
+}
+.qw-entry__intro p {
+  margin: 0;
+  color: var(--ink-muted);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.6;
+}
+.qw-entry .qw-form > .qw-button[type='submit'] {
   width: 100%;
-  background: var(--color-paper-raised);
+  min-height: 68px;
+  font-size: 22px;
 }
-:focus-visible {
-  outline: 2px solid var(--color-accent-text);
-  outline-offset: 4px;
-}
-.qw-toast-region {
-  top: 18px;
-  bottom: auto;
-}
-.qw-toast--error {
-  color: #fff;
+@media (max-width: 720px) {
+  .qw-entry {
+    padding: var(--space-6) var(--space-5);
+    gap: var(--space-5);
+  }
+  .qw-entry__header {
+    height: auto;
+    justify-content: center;
+    gap: var(--space-3);
+    padding-top: var(--space-2);
+  }
+  .qw-entry__badge {
+    padding: 6px 12px;
+    font-size: 13px;
+  }
+  .qw-entry__main {
+    flex-grow: 0;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-5);
+    align-items: start;
+  }
+  .qw-entry__hero {
+    gap: 0;
+  }
+  .qw-entry__hero {
+    align-items: center;
+    padding-left: 0;
+  }
+  .qw-entry__headline,
+  .qw-entry__lead {
+    display: none;
+  }
+  .qw-entry__card {
+    gap: 18px;
+    padding: var(--space-6) var(--space-5);
+    border-radius: var(--radius-xl);
+  }
+  .qw-entry__intro h1,
+  .qw-entry__intro h2 {
+    font-size: 30px;
+    line-height: 40px;
+  }
+  .qw-entry__intro p {
+    font-size: 14px;
+  }
 }

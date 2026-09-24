@@ -7,13 +7,14 @@
  */
 
 import { INPUT_CONSTRAINTS, validateDisplayName, validateInviteCode } from '@quiz-world/shared';
-import { useEffect, useState, type FormEvent } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { resolveInviteCode } from '../api/tournaments';
+import { BuzzerArt, LogoMark } from '../components/BrandArt';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { useToast } from '../components/Toast';
-import { playPath } from '../routes';
+import { playPath, ROUTE_PATHS } from '../routes';
 import { loadParticipantId, saveTournamentName } from '../storage/sessionKeys';
 
 export type PlayNavigationState = {
@@ -116,12 +117,14 @@ export function JoinPage() {
 
   if (resolved !== undefined) {
     return (
-      <main className="app-shell">
-        <h1>大会に参加</h1>
-        <p>
-          「{resolved.name}」に参加します。表示名を入力してください。
-          {!resolved.canJoin ? '（この大会は終了しています）' : null}
-        </p>
+      <JoinLayout>
+        <div className="qw-entry__intro">
+          <h1>大会に参加</h1>
+          <p>
+            「{resolved.name}」に参加します。表示名を入力してください。
+            {!resolved.canJoin ? '（この大会は終了しています）' : null}
+          </p>
+        </div>
 
         <form className="qw-form" onSubmit={onSubmitName}>
           <Input
@@ -145,18 +148,21 @@ export function JoinPage() {
             このブラウザには以前の参加記録があります。同じ席に復帰します。
           </p>
         ) : null}
-      </main>
+      </JoinLayout>
     );
   }
 
   return (
-    <main className="app-shell">
-      <h1>大会に参加</h1>
-      <p>招待コードを入力してください。</p>
+    <JoinLayout>
+      <div className="qw-entry__intro">
+        <h1>大会に参加</h1>
+        <p>招待コードを入力してください。</p>
+      </div>
 
       <form className="qw-form" onSubmit={onSubmitCode}>
         <Input
           id="invite-code"
+          className="qw-input--code"
           label="招待コード"
           value={codeInput}
           onChange={(event) => {
@@ -170,6 +176,36 @@ export function JoinPage() {
           次へ
         </Button>
       </form>
-    </main>
+    </JoinLayout>
+  );
+}
+
+/** Entry layout for joining: headline and buzzer art beside the form card. */
+function JoinLayout({ children }: { children: ReactNode }) {
+  return (
+    <div className="qw-entry qw-entry--join">
+      <header className="qw-entry__header">
+        <Link className="qw-wordmark" to={ROUTE_PATHS.home}>
+          <LogoMark />
+          Quiz World
+        </Link>
+      </header>
+      <main className="qw-entry__main">
+        <section className="qw-entry__hero">
+          <p className="qw-entry__headline">
+            コードを入れて、
+            <br />
+            早押しに参加。
+          </p>
+          <p className="qw-entry__lead">
+            ホストから届いた招待コードと、
+            <br />
+            みんなに表示される名前を入力してください。
+          </p>
+          <BuzzerArt />
+        </section>
+        <section className="qw-entry__card">{children}</section>
+      </main>
+    </div>
   );
 }

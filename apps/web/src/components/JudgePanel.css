@@ -1,55 +1,129 @@
-/** Immediate verdicts remain visually distinct and large enough for repeated touch use. */
+/**
+ * Verdict buttons as in the judge bar template: side by side, green "correct" and pink
+ * "wrong" with their own thickness, the mark on the left and the label with the point change
+ * stacked beside it. The target line and hint stay for assistive technology only; the bar
+ * already shows who is answering.
+ */
 .qw-judge {
-  display: grid;
-  gap: 16px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
 }
-.qw-judge__target {
-  margin: 0;
-  font-size: 12px;
-  color: var(--color-ink-muted);
-  overflow-wrap: anywhere;
-}
-.qw-judge__target-name {
-  font-weight: 600;
-  color: var(--color-ink);
+.qw-judge__target,
+.qw-judge__hint {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 .qw-judge__verdicts {
   display: flex;
-  gap: 12px;
+  gap: var(--space-5);
 }
 .qw-judge__verdict {
-  flex: 1;
-  min-height: 142px;
-  flex-direction: column;
-  gap: 10px;
-  font-size: 16px;
-  border-color: currentColor;
+  display: grid;
+  grid-template-columns: auto auto;
+  grid-template-rows: auto auto;
+  align-items: center;
+  justify-content: start;
+  column-gap: var(--space-3);
+  row-gap: 0;
+  min-height: 80px;
+  padding: 0 32px;
+  color: var(--ink);
+  white-space: nowrap;
 }
 .qw-judge__verdict > span {
-  font:
-    500 42px/1 Arial,
-    sans-serif;
+  grid-row: 1 / span 2;
+  font-family: var(--font-display);
+  font-size: 30px;
+  line-height: 1;
+}
+.qw-judge__verdict strong {
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 400;
+  line-height: 1.15;
+  text-align: left;
 }
 .qw-judge__verdict small {
-  font-size: 12px;
-  font-weight: 400;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 800;
+  text-align: left;
 }
 .qw-judge__verdict--correct {
-  color: var(--color-correct);
-  background: var(--color-correct-soft);
+  background: var(--correct);
+  box-shadow: var(--press-correct);
+}
+.qw-judge__verdict--correct:active:not(:disabled) {
+  box-shadow: 0 2px 0 var(--correct-edge);
 }
 .qw-judge__verdict--wrong {
-  color: var(--color-accent-text);
-  background: var(--color-accent-soft);
+  background: var(--wrong);
+  box-shadow: var(--press-wrong);
 }
-.qw-judge__hint {
-  margin: 0;
-  font-size: 12px;
-  line-height: 1.6;
-  color: var(--color-ink-muted);
+.qw-judge__verdict--wrong:active:not(:disabled) {
+  box-shadow: 0 2px 0 var(--wrong-edge);
 }
+.qw-judge__verdict:disabled {
+  background: var(--disabled);
+  box-shadow: var(--press-disabled);
+  color: var(--ink-muted);
+}
+
+/* After a verdict: outlined "next" actions in the same bar. */
 .qw-buzzer-progress {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: var(--space-4);
+}
+.qw-buzzer-progress .qw-button,
+.qw-buzzer-progress .qw-button:active:not(:disabled) {
+  min-height: 80px;
+  margin: 0;
+  padding: 0 24px;
+  background: transparent;
+  box-shadow: inset 0 0 0 2px rgb(46 32 16 / 0.3);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 17px;
+  font-weight: 800;
+  transform: none;
+}
+.qw-buzzer-progress .qw-button:first-child::before {
+  content: '';
+  width: 22px;
+  height: 22px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232E2010' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 12a9 9 0 1 0 3-6.7L3 8'/%3E%3Cpath d='M3 3v5h5'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+}
+.qw-buzzer-progress .qw-button:disabled {
+  box-shadow: inset 0 0 0 2px rgb(46 32 16 / 0.15);
+  color: var(--ink-muted);
+}
+@media (max-width: 1100px) {
+  .qw-judge__verdict {
+    padding: 0 20px;
+  }
+}
+@media (max-width: 720px) {
+  .qw-judge,
+  .qw-judge__verdicts {
+    width: 100%;
+  }
+  .qw-judge__verdict {
+    flex: 1;
+    padding: 0 16px;
+  }
+  .qw-judge__verdict strong {
+    font-size: 22px;
+  }
+  .qw-buzzer-progress .qw-button {
+    min-height: 64px;
+  }
 }
