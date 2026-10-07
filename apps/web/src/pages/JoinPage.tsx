@@ -1,9 +1,13 @@
 /**
- * Participant entry: type an invite code, or land here from `/join?code=...`.
+ * Participant entry: one form with the invite code and a display name, and one submit.
  *
- * Flow: resolve the code against the HTTP API → show the tournament name → collect a display
- * name → navigate to the play screen with the name in history state so the socket join can
- * fire with a single mount.
+ * Arriving from `/join?code=...` fills the code in and looks it up straight away, so the page
+ * can say which tournament this is before the name is typed. A code typed by hand is looked up
+ * when the form is submitted instead; there is no separate step for it.
+ *
+ * On success the invitation is remembered for this tournament, so the participant's room can
+ * show the same code and join URL the host has, and the play screen is opened with the name in
+ * history state so the socket join can fire with a single mount.
  */
 
 import { INPUT_CONSTRAINTS, validateDisplayName, validateInviteCode } from '@quiz-world/shared';
@@ -14,33 +18,31 @@ import { BuzzerArt, LogoMark } from '../components/BrandArt';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { useToast } from '../components/Toast';
-import { playPath, ROUTE_PATHS } from '../routes';
-import { loadParticipantId, saveTournamentName } from '../storage/sessionKeys';
+import { joinPath, playPath, ROUTE_PATHS } from '../routes';
+import { loadParticipantId, saveInviteDetails } from '../storage/sessionKeys';
 
 export type PlayNavigationState = {
   displayName: string;
 };
 
+/** What the server said about one invite code. Kept with the code it was asked about. */
+type ResolvedInvite = { tournamentId: string; name: string; canJoin: boolean; inviteCode: string };
+
 export function JoinPage() {
-  const [params, setParams] = useSearchParams();
+  const [params] = useSearchParams();
   const codeFromUrl = params.get('code') ?? '';
   const navigate = useNavigate();
   const toast = useToast();
 
   const [codeInput, setCodeInput] = useState(codeFromUrl);
   const [codeError, setCodeError] = useState<string | undefined>();
-  const [resolving, setResolving] = useState(false);
-  const [resolved, setResolved] = useState<
-    { tournamentId: string; name: string; canJoin: boolean; inviteCode: string } | undefined
-  >();
-
+  const [resolved, setResolved] = useState<ResolvedInvite | undefined>();
   const [displayName, setDisplayName] = useState('');
   const [nameError, setNameError] = useState<string | undefined>();
   const [joining, setJoining] = useState(false);
 
   useEffect(() => {
     if (codeFromUrl === '') {
-      setResolved(undefined);
       return;
     }
 
@@ -48,21 +50,17 @@ export function JoinPage() {
     if (!validated.ok) {
       setCodeError(validated.message);
       toast.show(validated.message, 'error');
-      setResolved(undefined);
       return;
     }
 
     let cancelled = false;
-    setResolving(true);
     void resolveInviteCode(validated.value).then((result) => {
       if (cancelled) {
         return;
       }
-      setResolving(false);
       if (!result.ok) {
         setCodeError(result.message);
         toast.show(result.message, 'error');
-        setResolved(undefined);
         return;
       }
       setResolved({
@@ -79,87 +77,80 @@ export function JoinPage() {
     };
   }, [codeFromUrl, toast.show]);
 
-  function onSubmitCode(event: FormEvent<HTMLFormElement>) {
+  // A lookup only describes the code it was made for; editing the field leaves it behind.
+  const typed = validateInviteCode(codeInput);
+  const known = typed.ok && resolved?.inviteCode === typed.value ? resolved : undefined;
+
+  async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const validated = validateInviteCode(codeInput);
-    if (!validated.ok) {
-      setCodeError(validated.message);
-      toast.show(validated.message, 'error');
+    const code = validateInviteCode(codeInput);
+    const name = validateDisplayName(displayName);
+    setCodeError(code.ok ? undefined : code.message);
+    setNameError(name.ok ? undefined : name.message);
+    if (!code.ok) {
+      toast.show(code.message, 'error');
       return;
     }
-    setParams({ code: validated.value });
-  }
-
-  function onSubmitName(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (resolved === undefined) {
-      return;
-    }
-
-    const validated = validateDisplayName(displayName);
-    if (!validated.ok) {
-      setNameError(validated.message);
-      toast.show(validated.message, 'error');
+    if (!name.ok) {
+      toast.show(name.message, 'error');
       return;
     }
 
-    if (!resolved.canJoin) {
+    setJoining(true);
+    let target = resolved?.inviteCode === code.value ? resolved : undefined;
+    if (target === undefined) {
+      const result = await resolveInviteCode(code.value);
+      if (!result.ok) {
+        setJoining(false);
+        setCodeError(result.message);
+        toast.show(result.message, 'error');
+        return;
+      }
+      target = {
+        tournamentId: result.value.tournamentId,
+        name: result.value.name,
+        canJoin: result.value.canJoin,
+        inviteCode: code.value,
+      };
+      setResolved(target);
+    }
+
+    if (!target.canJoin) {
+      setJoining(false);
+      setCodeError('この大会は終了しています');
       toast.show('この大会には参加できません', 'error');
       return;
     }
 
-    saveTournamentName(resolved.tournamentId, resolved.name);
-    setJoining(true);
-    void navigate(playPath(resolved.tournamentId), {
-      state: { displayName: validated.value } satisfies PlayNavigationState,
+    saveInviteDetails(target.tournamentId, {
+      inviteCode: target.inviteCode,
+      // The address this app is being served from, which is where invite URLs point.
+      inviteUrl: new URL(joinPath(target.inviteCode), window.location.origin).toString(),
+      name: target.name,
     });
-  }
-
-  if (resolved !== undefined) {
-    return (
-      <JoinLayout>
-        <div className="qw-entry__intro">
-          <h1>大会に参加</h1>
-          <p>
-            「{resolved.name}」に参加します。表示名を入力してください。
-            {!resolved.canJoin ? '（この大会は終了しています）' : null}
-          </p>
-        </div>
-
-        <form className="qw-form" onSubmit={onSubmitName}>
-          <Input
-            id="display-name"
-            label="表示名"
-            value={displayName}
-            maxLength={INPUT_CONSTRAINTS.displayName.maxLength}
-            onChange={(event) => {
-              setDisplayName(event.target.value);
-            }}
-            error={nameError}
-            autoComplete="nickname"
-          />
-          <Button type="submit" busy={joining} disabled={!resolved.canJoin}>
-            参加する
-          </Button>
-        </form>
-
-        {loadParticipantId(resolved.tournamentId) !== undefined ? (
-          <p className="qw-form-footer">
-            このブラウザには以前の参加記録があります。同じ席に復帰します。
-          </p>
-        ) : null}
-      </JoinLayout>
-    );
+    void navigate(playPath(target.tournamentId), {
+      state: { displayName: name.value } satisfies PlayNavigationState,
+    });
   }
 
   return (
     <JoinLayout>
       <div className="qw-entry__intro">
         <h1>大会に参加</h1>
-        <p>招待コードを入力してください。</p>
+        <p>
+          {known
+            ? `「${known.name}」に参加します。表示名を入力してください。`
+            : '招待コードと表示名を入力してください。'}
+          {known && !known.canJoin ? '（この大会は終了しています）' : null}
+        </p>
       </div>
 
-      <form className="qw-form" onSubmit={onSubmitCode}>
+      <form
+        className="qw-form"
+        onSubmit={(event) => {
+          void onSubmit(event);
+        }}
+      >
         <Input
           id="invite-code"
           className="qw-input--code"
@@ -167,15 +158,33 @@ export function JoinPage() {
           value={codeInput}
           onChange={(event) => {
             setCodeInput(event.target.value.toUpperCase());
+            setCodeError(undefined);
           }}
           error={codeError}
           autoComplete="off"
           spellCheck={false}
         />
-        <Button type="submit" busy={resolving}>
-          次へ
+        <Input
+          id="display-name"
+          label="表示名"
+          value={displayName}
+          maxLength={INPUT_CONSTRAINTS.displayName.maxLength}
+          onChange={(event) => {
+            setDisplayName(event.target.value);
+          }}
+          error={nameError}
+          autoComplete="nickname"
+        />
+        <Button type="submit" busy={joining} disabled={known !== undefined && !known.canJoin}>
+          参加する
         </Button>
       </form>
+
+      {known !== undefined && loadParticipantId(known.tournamentId) !== undefined ? (
+        <p className="qw-form-footer">
+          このブラウザには以前の参加記録があります。同じ席に復帰します。
+        </p>
+      ) : null}
     </JoinLayout>
   );
 }

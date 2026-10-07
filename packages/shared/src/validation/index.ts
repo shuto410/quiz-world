@@ -7,3 +7,4 @@ export * from './inviteCode';
 export * from './roomState';
 
 export * from './gameRules';
+export * from './scoreAdjustment';

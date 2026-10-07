@@ -1,4 +1,10 @@
-/** Buzzer-specific host stage and judgement controls plug into the shared game panel. */
+/**
+ * Buzzer-specific host stage and judgement controls plug into the shared game panel.
+ *
+ * The verdict buttons never leave the bar, so the host's hand does not have to follow them.
+ * What a press does depends on the server's state: it judges the responder while one waits,
+ * and otherwise only plays the correct/wrong cue for the room.
+ */
 import type { UseRoomSocketResult } from '../../hooks/useRoomSocket';
 import { Button } from '../../components/Button';
 import { BuzzOrderList } from '../../components/BuzzOrderList';
@@ -13,11 +19,21 @@ import './buzzer.css';
 /** Only the active connection supplies authoritative state and mode commands. */
 type BuzzerHostProps = { connection: UseRoomSocketResult };
 export function BuzzerHost({ connection }: BuzzerHostProps) {
-  const { roomState, participantId, status, roomClosed, judge, resetGame, nextResponder } =
-    connection;
+  const {
+    roomState,
+    participantId,
+    status,
+    roomClosed,
+    judge,
+    playEffect,
+    resetGame,
+    nextResponder,
+  } = connection;
   const responder = roomState?.participants.find(
     (person) => person.id === roomState.currentResponderId,
   );
+  // A press judges only while this seat waits for a verdict; otherwise it plays the cue.
+  const judging = roomState?.status === 'answering' && responder !== undefined;
   // Display only: the responder's place in the server's buzz order.
   const responderPlace =
     responder && roomState
@@ -39,18 +55,23 @@ export function BuzzerHost({ connection }: BuzzerHostProps) {
           }
         : {})}
       controls={
-        roomState?.status === 'answering' && responder ? (
+        roomState !== undefined && roomState.status !== 'finished' ? (
           <fieldset
             disabled={status !== 'joined' || roomClosed}
-            className="qw-room-controls"
+            className="qw-room-controls qw-buzzer-host-controls"
             aria-label="進行"
           >
+            {/* Always present. With a responder a press judges; otherwise it only cues. */}
             <JudgePanel
-              key={responder.id}
-              responderName={responder.name}
+              key={judging ? responder.id : 'effect'}
+              responderName={judging ? responder.name : undefined}
               rules={roomState.rules}
+              disabled={
+                roomState.status === 'paused' || (roomState.status === 'answering' && !judging)
+              }
               onJudge={(judgement) => {
-                if (roomState.currentBuzzSession)
+                if (!judging) playEffect(judgement.isCorrect);
+                else if (roomState.currentBuzzSession)
                   judge({
                     participantId: responder.id,
                     buzzSessionId: roomState.currentBuzzSession.id,
@@ -58,28 +79,25 @@ export function BuzzerHost({ connection }: BuzzerHostProps) {
                   });
               }}
             />
-          </fieldset>
-        ) : roomState?.status === 'result' ? (
-          <div className="qw-buzzer-progress">
-            <Button disabled={status !== 'joined' || roomClosed} onClick={resetGame}>
-              次の問題へ
-            </Button>
-            {roomState.lastResult?.isCorrect === false ? (
-              <Button
-                disabled={
-                  status !== 'joined' ||
-                  roomClosed ||
-                  !hasNextResponder({
-                    buzzOrder: roomState.buzzOrder,
-                    currentResponderId: roomState.currentResponderId,
-                  })
-                }
-                onClick={nextResponder}
-              >
-                次の回答者へ
-              </Button>
+            {roomState.status === 'result' ? (
+              <div className="qw-buzzer-progress">
+                <Button onClick={resetGame}>次の問題へ</Button>
+                {roomState.lastResult?.isCorrect === false ? (
+                  <Button
+                    disabled={
+                      !hasNextResponder({
+                        buzzOrder: roomState.buzzOrder,
+                        currentResponderId: roomState.currentResponderId,
+                      })
+                    }
+                    onClick={nextResponder}
+                  >
+                    次の回答者へ
+                  </Button>
+                ) : null}
+              </div>
             ) : null}
-          </div>
+          </fieldset>
         ) : undefined
       }
       supplement={

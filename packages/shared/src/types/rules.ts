@@ -25,6 +25,17 @@ export function getParticipantStanding(
   return 'playing';
 }
 
+/**
+ * A host correction of one seat, expressed in the unit the current rules decide by.
+ *
+ * Values are the new totals, not differences, so a repeated request changes nothing. Under
+ * points only the score is corrected. Under n-maru m-batsu the counts are, because winning
+ * and elimination are derived from them; the score follows the correct count there.
+ */
+export type ScoreAdjustment =
+  | { type: 'points'; score: number }
+  | { type: 'maruBatsu'; correctCount: number; wrongCount: number };
+
 /** A score change is resolved from persisted rules, never supplied by the judging client. */
 export function getJudgeScoreDelta(rules: GameRules, isCorrect: boolean): number {
   return rules.type === 'points'

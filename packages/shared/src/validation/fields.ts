@@ -34,6 +34,8 @@ export const INPUT_CONSTRAINTS = {
   maxParticipants: { min: 2, max: 50 },
   scoreDelta: { min: -999, max: 999 },
   maruBatsuCount: { min: 1, max: 99 },
+  adjustedScore: { min: -999, max: 999 },
+  adjustedCount: { min: 0, max: 99 },
 } as const;
 
 /** C0 and C1 control characters, which includes newlines and tabs. */

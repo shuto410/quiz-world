@@ -17,7 +17,14 @@
 import type { GameRules } from './rules';
 
 /** Every progress state a room can be in. Listed so that tests can enumerate them. */
-export const GAME_STATUSES = ['idle', 'answering', 'result', 'paused', 'finished'] as const;
+export const GAME_STATUSES = [
+  'idle',
+  'answering',
+  'result',
+  'matchResult',
+  'paused',
+  'finished',
+] as const;
 
 /**
  * Progress state of a tournament room, owned by the socket server and broadcast to all
@@ -26,6 +33,8 @@ export const GAME_STATUSES = ['idle', 'answering', 'result', 'paused', 'finished
  * - `idle`: nobody holds the answer right, participants may buzz.
  * - `answering`: a responder holds the answer right. Others may still buzz to queue up.
  * - `result`: the judgement of the last answer is being shown.
+ * - `matchResult`: the host ended the current match and its standings are being shown. The
+ *   scores still stand; they are cleared when the host starts the next match.
  * - `paused`: suspended, in practice because the host disconnected.
  * - `finished`: the tournament ended and only the final result is shown.
  */
@@ -55,11 +64,11 @@ export type ParticipantState = {
   online: boolean;
   /** When the participant first joined. Latecomers start from a score of 0. */
   joinedAt: number;
-  /** Running total. Can go negative, because a wrong answer may cost points. */
+  /** Running total of the current match. Can go negative, as a wrong answer may cost points. */
   score: number;
-  /** Accepted correct judgements, counted independently of points. */
+  /** Accepted correct judgements in the current match, counted independently of points. */
   correctCount: number;
-  /** Accepted wrong judgements, counted independently of points. */
+  /** Accepted wrong judgements in the current match, counted independently of points. */
   wrongCount: number;
 };
 
@@ -127,7 +136,7 @@ export type InternalRoomState = {
   /** Original host seat authenticated by the creation token; preserved across takeovers. */
   initialHostId?: string;
   hostOnline: boolean;
-  /** Match rules fixed before the first judgement. */
+  /** Rules of the current match, fixed from its first judgement until the next match. */
   rules: GameRules;
   participants: ParticipantState[];
   /** Current round, retained on the result screen for optional next-responder progression. */

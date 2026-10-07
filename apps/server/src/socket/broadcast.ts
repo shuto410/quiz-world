@@ -1,5 +1,5 @@
 /**
- * The single path by which room state reaches clients.
+ * The single path by which room state, and the one cue that is not state, reach clients.
  *
  * Two things have to be true every time state is sent, and both are easy to forget at an
  * individual call site: participants must receive the converted view rather than the
@@ -12,6 +12,9 @@
  * The host/participant split is carried by two Socket.io rooms rather than by looking up who
  * the host is at send time. A connection joins the channel matching its role once, and
  * broadcasting is then a property of the channel it sits in.
+ *
+ * The judgement cue goes through here for the second of those reasons only: it has nothing to
+ * hide from anyone, but it has to reach both channels or half the room sits in silence.
  */
 
 import type { ClientToServerEvents, ServerToClientEvents } from '@quiz-world/shared';
@@ -38,4 +41,14 @@ export function broadcastRoomState(io: SocketServer, handle: RoomHandle): void {
 
   io.to(hostChannel(handle.tournamentId)).emit('room:state', state);
   io.to(participantChannel(handle.tournamentId)).emit('room:state', toParticipantRoomState(state));
+}
+
+/** Tells everyone in a room to play the correct or wrong cue once. Carries no state. */
+export function broadcastJudgementEffect(
+  io: SocketServer,
+  tournamentId: string,
+  isCorrect: boolean,
+): void {
+  io.to(hostChannel(tournamentId)).emit('effect:judgement', { isCorrect });
+  io.to(participantChannel(tournamentId)).emit('effect:judgement', { isCorrect });
 }

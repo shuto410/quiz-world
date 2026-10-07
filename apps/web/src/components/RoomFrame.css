@@ -24,7 +24,12 @@
   position: relative;
   z-index: 3;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  /*
+   * The sides never shrink below their content, so the right-hand controls cannot spill over
+   * the title. While both sides fit in equal shares the title sits dead centre; once they do
+   * not, it is the title that gives way and truncates.
+   */
+  grid-template-columns: minmax(max-content, 1fr) minmax(0, auto) minmax(max-content, 1fr);
   align-items: center;
   gap: var(--space-6);
   min-height: 64px;
@@ -34,8 +39,11 @@
   align-items: center;
   gap: var(--space-2);
   min-width: 0;
-  max-width: 560px;
+  /* Never wider than its own column, however it is aligned inside it. */
+  max-width: min(560px, 100%);
   margin: 0;
+  /* Whatever does not fit is cut at the pill's edge, never drawn outside it. */
+  overflow: hidden;
   padding: 10px 20px;
   border-radius: var(--radius-pill);
   background: var(--accent-chip);
@@ -76,29 +84,6 @@
 }
 .qw-room-toolbar summary::-webkit-details-marker {
   display: none;
-}
-
-/* Invite code (host) */
-.qw-room-info > summary {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 2px;
-  padding: 4px 8px;
-  border-radius: var(--radius-md);
-}
-.qw-room-info[open] > summary {
-  background: var(--overlay-ink-10);
-}
-.qw-room-info__label {
-  font-size: 13px;
-  font-weight: 700;
-}
-.qw-room-info__code {
-  font-family: var(--font-display);
-  font-size: 26px;
-  line-height: 1.2;
-  letter-spacing: 0.08em;
 }
 
 /* Viewer's seat */
@@ -145,8 +130,7 @@
 }
 
 /* Header popovers */
-.qw-room-account,
-.qw-invite-panel {
+.qw-room-account {
   position: absolute;
   right: 0;
   top: calc(100% + var(--space-2));
@@ -178,6 +162,20 @@
   align-items: flex-start;
   gap: var(--space-3);
 }
+.qw-sound-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 42px;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.qw-sound-toggle > input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--buzzer);
+}
 .qw-room-actions > .qw-button {
   white-space: nowrap;
 }
@@ -185,36 +183,6 @@
 .qw-tournament-actions .qw-button {
   min-height: 42px;
   font-size: 14px;
-}
-.qw-invite-panel {
-  display: grid;
-  gap: var(--space-3);
-}
-.qw-invite-panel p {
-  margin: 0;
-  color: var(--ink-muted);
-  font-size: 15px;
-  font-weight: 800;
-}
-.qw-invite-panel code {
-  display: block;
-  margin-top: var(--space-2);
-  color: var(--ink);
-  font-family: var(--font-display);
-  font-size: 34px;
-  line-height: 44px;
-  letter-spacing: 0.12em;
-}
-.qw-invite-panel__url {
-  padding: 10px 14px;
-  border-radius: var(--radius-md);
-  background: var(--surface-row);
-  overflow-wrap: anywhere;
-  font-size: 13px;
-  line-height: 18px;
-}
-.qw-invite-panel .qw-button {
-  justify-self: start;
 }
 
 /* Game area */
@@ -410,6 +378,52 @@
 }
 
 /*
+ * As the header narrows, width is given back to the tournament name in steps: first the chip
+ * drops the mode name (the game panel already shows it) and the wordmark stacks into two
+ * lines, and on small tablets the wordmark gets smaller and the seat shrinks to its avatar.
+ */
+@media (min-width: 721px) and (max-width: 1280px) {
+  .qw-room-toolbar .qw-wordmark {
+    gap: 10px;
+    font-size: 22px;
+    line-height: 1.05;
+  }
+  /* As narrow as its longest word, which breaks the name at the space. */
+  .qw-room-toolbar .qw-wordmark__name {
+    width: min-content;
+    white-space: normal;
+  }
+}
+@media (min-width: 721px) and (max-width: 900px) {
+  .qw-room-toolbar .qw-wordmark {
+    gap: 8px;
+    font-size: 18px;
+  }
+  .qw-room-title {
+    padding: 10px 14px;
+  }
+  .qw-room-toolbar__actions > summary {
+    padding: 8px;
+  }
+  .qw-room-toolbar__actions .qw-account-summary {
+    display: none;
+  }
+}
+@media (min-width: 721px) and (max-width: 1280px) {
+  .qw-room-title__mode {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .qw-room-title__mode + .qw-room-title__name::before {
+    content: none;
+  }
+}
+
+/*
  * Phones: one column. The stage wrappers dissolve so the header, the game panel, the tab
  * strip and the tabbed slot (buzz order or ranking) can be ordered as siblings.
  */
@@ -477,18 +491,9 @@
     height: 40px;
     background-size: 22px;
   }
-  .qw-room-info {
+  .qw-invite {
     grid-column: 1 / -1;
     grid-row: 2;
-  }
-  .qw-room-info > summary {
-    justify-content: flex-start;
-  }
-  .qw-room-info > summary {
-    flex-direction: row;
-    align-items: baseline;
-    gap: var(--space-2);
-    padding: 0;
   }
   .qw-room-toolbar__actions > summary {
     padding: 0;
@@ -512,7 +517,7 @@
   .qw-account-summary__detail {
     font-size: 12px;
   }
-  .qw-room-info__code {
+  .qw-invite__value {
     font-size: 20px;
   }
   .qw-room-tabs {

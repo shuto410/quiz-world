@@ -22,9 +22,8 @@ type RoomFrameProps = {
   roleLabel: string;
   connectionLabel: string;
   reconnecting?: boolean;
-  /** Invite code shown on the invite disclosure when the viewer can invite. */
-  roomCode?: string | undefined;
-  roomInfo?: ReactNode;
+  /** Invite code and its copy controls, shown inline in the header. */
+  invite?: ReactNode;
   /** Rule settings control placed in the header. */
   settings?: ReactNode;
   roster: ReactNode;
@@ -43,8 +42,7 @@ export function RoomFrame({
   roleLabel,
   connectionLabel,
   reconnecting = false,
-  roomCode,
-  roomInfo,
+  invite,
   settings,
   roster,
   rosterCount,
@@ -58,7 +56,7 @@ export function RoomFrame({
       <header className="qw-room-toolbar">
         <Link className="qw-wordmark qw-brand" to="/">
           <LogoMark />
-          Quiz World
+          <span className="qw-wordmark__name">Quiz World</span>
         </Link>
         <h1 className="qw-room-title">
           <svg className="qw-room-title__icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -68,19 +66,7 @@ export function RoomFrame({
           <span className="qw-room-title__name">{title}</span>
         </h1>
         <div className="qw-room-toolbar__end">
-          {roomInfo ? (
-            <RoomDisclosure
-              className="qw-room-info"
-              label={
-                <>
-                  <span className="qw-room-info__label">ルームコード</span>
-                  {roomCode ? <span className="qw-room-info__code">{roomCode}</span> : null}
-                </>
-              }
-            >
-              {roomInfo}
-            </RoomDisclosure>
-          ) : null}
+          {invite}
           {settings}
           <RoomDisclosure
             className="qw-room-toolbar__actions"

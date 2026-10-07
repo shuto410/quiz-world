@@ -16,6 +16,8 @@ import type {
   GameRules,
   JoinResponse,
   JudgeSubmitPayload,
+  JudgementEffectEvent,
+  ScoreAdjustPayload,
   RoomStateEvent,
   SocketErrorEvent,
 } from '@quiz-world/shared';
@@ -39,6 +41,14 @@ export type RoomJoinRequest =
 
 export type RoomSocketStatus = 'connecting' | 'joined' | 'error';
 
+/**
+ * One correct/wrong cue received from the server.
+ *
+ * `id` distinguishes two identical cues in a row. `receivedAt` lets a view that mounts later
+ * tell a cue that just arrived from one that is merely still held here.
+ */
+export type ReceivedJudgeEffect = { id: number; isCorrect: boolean; receivedAt: number };
+
 export type UseRoomSocketResult = {
   status: RoomSocketStatus;
   roomState: RoomStateEvent | undefined;
@@ -59,6 +69,16 @@ export type UseRoomSocketResult = {
   nextResponder: () => void;
   /** Host publishes validated rules before play. */
   updateRules: (rules: GameRules) => void;
+  /** Latest cue to play for everyone. Not part of the room state and never replayed. */
+  judgeEffect: ReceivedJudgeEffect | undefined;
+  /** Host only. Sounds the cue for everyone without judging anybody. */
+  playEffect: (isCorrect: boolean) => void;
+  /** Host only. Sets one seat's score or counts; the participant id names that seat. */
+  adjustScore: (payload: ScoreAdjustPayload) => void;
+  /** Host only. Ends the current match and shows its result to everyone. */
+  finishMatch: () => void;
+  /** Host only. Clears every score and starts the next match in the same room. */
+  nextMatch: () => void;
   /** Host only. Ends the tournament and moves everyone to the final result. */
   finishTournament: () => void;
   /** Host only. Closes the room, which disconnects everyone including the caller. */
@@ -89,6 +109,8 @@ export function useRoomSocket(request: RoomJoinRequest | undefined): UseRoomSock
   const [errorMessage, setErrorMessage] = useState<string | undefined>(undefined);
   const [socketError, setSocketError] = useState<SocketErrorEvent | undefined>(undefined);
   const [roomClosed, setRoomClosed] = useState(false);
+  const [judgeEffect, setJudgeEffect] = useState<ReceivedJudgeEffect | undefined>(undefined);
+  const effectCountRef = useRef(0);
   const [renaming, setRenaming] = useState(false);
   const renameRef = useRef<((name: string) => Promise<boolean>) | undefined>(undefined);
   const readyRef = useRef(false);
@@ -154,6 +176,16 @@ export function useRoomSocket(request: RoomJoinRequest | undefined): UseRoomSock
       }
     };
 
+    const onEffect = (event: JudgementEffectEvent) => {
+      if (cancelled || terminal) return;
+      effectCountRef.current += 1;
+      setJudgeEffect({
+        id: effectCountRef.current,
+        isCorrect: event.isCorrect,
+        receivedAt: Date.now(),
+      });
+    };
+
     const onError = (event: SocketErrorEvent) => {
       if (!cancelled) {
         setSocketError(event);
@@ -195,6 +227,7 @@ export function useRoomSocket(request: RoomJoinRequest | undefined): UseRoomSock
     socket.on('connect_error', onConnectError);
     socket.on('session:invalidated', onInvalidated);
     socket.on('room:state', onState);
+    socket.on('effect:judgement', onEffect);
     socket.on('error', onError);
     socket.on('room:closed', onClosed);
 
@@ -306,6 +339,7 @@ export function useRoomSocket(request: RoomJoinRequest | undefined): UseRoomSock
       socket.off('connect_error', onConnectError);
       socket.off('session:invalidated', onInvalidated);
       socket.off('room:state', onState);
+      socket.off('effect:judgement', onEffect);
       socket.off('error', onError);
       socket.off('room:closed', onClosed);
       socket.disconnect();
@@ -355,6 +389,26 @@ export function useRoomSocket(request: RoomJoinRequest | undefined): UseRoomSock
     socketRef.current.emit('game:rules-update', { rules });
   }, []);
 
+  const playEffect = useCallback((isCorrect: boolean) => {
+    if (!readyRef.current || !socketRef.current?.connected) return;
+    socketRef.current.emit('effect:play', { isCorrect });
+  }, []);
+
+  const adjustScore = useCallback((payload: ScoreAdjustPayload) => {
+    if (!readyRef.current || !socketRef.current?.connected) return;
+    socketRef.current.emit('score:adjust', payload);
+  }, []);
+
+  const finishMatch = useCallback(() => {
+    if (!readyRef.current || !socketRef.current?.connected) return;
+    socketRef.current.emit('match:finish', {});
+  }, []);
+
+  const nextMatch = useCallback(() => {
+    if (!readyRef.current || !socketRef.current?.connected) return;
+    socketRef.current.emit('match:next', {});
+  }, []);
+
   const finishTournament = useCallback(() => {
     if (!readyRef.current || !socketRef.current?.connected) return;
     socketRef.current.emit('tournament:finish', {});
@@ -395,6 +449,11 @@ export function useRoomSocket(request: RoomJoinRequest | undefined): UseRoomSock
     resetGame,
     nextResponder,
     updateRules,
+    judgeEffect,
+    playEffect,
+    adjustScore,
+    finishMatch,
+    nextMatch,
     finishTournament,
     closeRoom,
     roomClosed,

@@ -76,6 +76,13 @@
   color: var(--ink-muted);
 }
 
+.qw-buzzer-host-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-5);
+}
+
 /* After a verdict: outlined "next" actions in the same bar. */
 .qw-buzzer-progress {
   display: flex;

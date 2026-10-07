@@ -17,6 +17,10 @@ export const SOCKET_RATE_LIMITS: Readonly<Record<ClientToServerEventName, RateLi
   'game:reset': { limit: 1000, windowMs: 1000 },
   'game:next-responder': { limit: 1000, windowMs: 1000 },
   'game:rules-update': { limit: 1000, windowMs: 1000 },
+  'effect:play': { limit: 1000, windowMs: 1000 },
+  'score:adjust': { limit: 1000, windowMs: 1000 },
+  'match:finish': { limit: 1000, windowMs: 1000 },
+  'match:next': { limit: 1000, windowMs: 1000 },
   'tournament:finish': { limit: 1000, windowMs: 1000 },
   'room:close': { limit: 1000, windowMs: 1000 },
 };

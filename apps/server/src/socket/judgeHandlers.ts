@@ -1,21 +1,27 @@
 /**
- * Host judgement, rule settings and progression all commit through the room registry.
+ * Host judgement, rule settings, score corrections, progression and match boundaries all
+ * commit through the room registry.
  * The actor is resolved from the session; accepted and refused transitions share the
- * sole broadcast path, which also removes private answers for participants.
+ * sole broadcast path, which also removes private answers for participants. An accepted
+ * verdict additionally cues the correct/wrong flourish for the whole room, and the host can
+ * send the same cue alone while nobody is waiting to be judged.
  */
 import type {
   ClientToServerEvents,
   ServerToClientEvents,
   InternalRoomState,
 } from '@quiz-world/shared';
-import { validateGameRules } from '@quiz-world/shared';
+import { validateGameRules, validateScoreAdjustment } from '@quiz-world/shared';
 import type { Socket } from 'socket.io';
+import { applyScoreAdjust } from '../domain/adjust';
+import { checkEffectPlay } from '../domain/effect';
 import { applyGameReset, applyJudge, applyNextResponder } from '../domain/judge';
+import { applyMatchFinish, applyMatchNext } from '../domain/match';
 import { applyRulesUpdate } from '../domain/rules';
 import type { TransitionResult } from '../domain/transition';
 import { isRecord } from '../guards';
 import type { RoomRegistry } from '../rooms/roomRegistry';
-import { broadcastRoomState, type SocketServer } from './broadcast';
+import { broadcastJudgementEffect, broadcastRoomState, type SocketServer } from './broadcast';
 import { socketErrorMessage } from './errorMessages';
 import { readSession } from './session';
 
@@ -32,24 +38,26 @@ export function registerJudgeHandlers(
   socket: AppSocket,
   dependencies: JudgeHandlerDependencies,
 ): void {
+  /** Returns the tournament whose state changed, so a caller can follow up on acceptance. */
   const update = (
     transition: (state: InternalRoomState, actorId: string, now: number) => TransitionResult,
-  ) => {
+  ): string | undefined => {
     const session = readSession(socket.data);
     if (!session) {
       emitError(socket, 'INVALID_STATE');
-      return;
+      return undefined;
     }
     const handle = dependencies.registry.find(session.tournamentId);
     if (!handle) {
       emitError(socket, 'TOURNAMENT_NOT_FOUND');
-      return;
+      return undefined;
     }
     const result = handle.update((current) =>
       transition(current, session.participantId, dependencies.now()),
     );
     if (!result.ok) emitError(socket, result.code);
     broadcastRoomState(dependencies.io, handle);
+    return result.ok ? session.tournamentId : undefined;
   };
 
   socket.on('judge:submit', (payload) => {
@@ -66,7 +74,7 @@ export function registerJudgeHandlers(
       emitError(socket, 'VALIDATION_ERROR');
       return;
     }
-    update((state, actorId, now) =>
+    const judged = update((state, actorId, now) =>
       applyJudge(state, {
         actorId,
         now,
@@ -75,12 +83,58 @@ export function registerJudgeHandlers(
         isCorrect: payload.isCorrect,
       }),
     );
+    // After the state, so the cue lands on a screen already showing the verdict.
+    if (judged !== undefined) broadcastJudgementEffect(dependencies.io, judged, payload.isCorrect);
+  });
+  socket.on('effect:play', (payload) => {
+    if (!isRecord(payload) || typeof payload['isCorrect'] !== 'boolean') {
+      emitError(socket, 'VALIDATION_ERROR');
+      return;
+    }
+    const session = readSession(socket.data);
+    if (!session) {
+      emitError(socket, 'INVALID_STATE');
+      return;
+    }
+    const handle = dependencies.registry.find(session.tournamentId);
+    if (!handle) {
+      emitError(socket, 'TOURNAMENT_NOT_FOUND');
+      return;
+    }
+    const allowed = checkEffectPlay(handle.read(), session.participantId);
+    if (!allowed.ok) {
+      emitError(socket, allowed.code);
+      broadcastRoomState(dependencies.io, handle);
+      return;
+    }
+    broadcastJudgementEffect(dependencies.io, session.tournamentId, payload['isCorrect']);
   });
   socket.on('game:reset', () =>
     update((state, actorId, now) => applyGameReset(state, { actorId, now })),
   );
   socket.on('game:next-responder', () =>
     update((state, actorId, now) => applyNextResponder(state, { actorId, now })),
+  );
+  socket.on('score:adjust', (payload) => {
+    const targetParticipantId = isRecord(payload) ? payload['participantId'] : undefined;
+    if (typeof targetParticipantId !== 'string' || !targetParticipantId) {
+      emitError(socket, 'VALIDATION_ERROR');
+      return;
+    }
+    const parsed = validateScoreAdjustment(isRecord(payload) ? payload['adjustment'] : undefined);
+    if (!parsed.ok) {
+      socket.emit('error', { code: 'VALIDATION_ERROR', message: parsed.message });
+      return;
+    }
+    update((state, actorId, now) =>
+      applyScoreAdjust(state, { actorId, now, targetParticipantId, adjustment: parsed.value }),
+    );
+  });
+  socket.on('match:finish', () =>
+    update((state, actorId, now) => applyMatchFinish(state, { actorId, now })),
+  );
+  socket.on('match:next', () =>
+    update((state, actorId, now) => applyMatchNext(state, { actorId, now })),
   );
   socket.on('game:rules-update', (payload) => {
     const parsed = validateGameRules(isRecord(payload) ? payload['rules'] : undefined);

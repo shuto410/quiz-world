@@ -26,12 +26,17 @@ const everyClientToServerEvent: Record<keyof ClientToServerEvents, true> = {
   'game:reset': true,
   'game:next-responder': true,
   'game:rules-update': true,
+  'effect:play': true,
+  'score:adjust': true,
+  'match:finish': true,
+  'match:next': true,
   'tournament:finish': true,
   'room:close': true,
 };
 
 const everyServerToClientEvent: Record<keyof ServerToClientEvents, true> = {
   'room:state': true,
+  'effect:judgement': true,
   'room:closed': true,
   'session:invalidated': true,
   error: true,

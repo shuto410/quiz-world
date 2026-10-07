@@ -34,6 +34,14 @@ export function getBuzzerPrompt(
         title: '大会が終了しました',
         description: '最終結果をご確認ください。',
       };
+    case 'matchResult':
+      return {
+        phase: '試合終了',
+        title: '試合が終了しました',
+        description: isHost
+          ? '「次の試合へ」で得点をリセットして、次の試合を始めます。'
+          : 'ホストが次の試合を始めるまでお待ちください。',
+      };
     case 'paused':
       return {
         phase: '一時停止',

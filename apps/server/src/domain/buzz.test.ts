@@ -94,6 +94,8 @@ function roomInStatus(status: GameStatus): InternalRoomState {
         pausedReason: 'hostDisconnected',
         hostOnline: false,
       });
+    case 'matchResult':
+      return createRoomStateFixture({ participants: PARTICIPANTS, status: 'matchResult' });
     case 'finished':
       return createRoomStateFixture({ participants: PARTICIPANTS, status: 'finished' });
   }
@@ -104,6 +106,7 @@ const ACCEPTS_BUZZ: Record<GameStatus, boolean> = {
   idle: true,
   answering: true,
   result: false,
+  matchResult: false,
   paused: false,
   finished: false,
 };

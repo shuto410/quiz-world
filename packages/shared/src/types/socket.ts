@@ -6,6 +6,10 @@
  * events, because reconciling patches on the client is exactly the kind of duplicated game
  * logic this design avoids.
  *
+ * `effect:judgement` is the one server event that is not state. It is a cue to play the
+ * correct/wrong flourish once, now; it carries nothing a client could render later, and a
+ * client that misses it has missed nothing it needs.
+ *
  * Two rules shape the payloads below:
  *
  * - No payload carries a `participantId` identifying the sender. The server resolves the
@@ -20,7 +24,7 @@
  */
 
 import type { HostRoomState, ParticipantRoomState } from './game';
-import type { GameRules } from './rules';
+import type { GameRules, ScoreAdjustment } from './rules';
 
 /** Which side of the room a connection is on. */
 export type ParticipantRole = 'host' | 'participant';
@@ -128,6 +132,45 @@ export type GameNextResponderPayload = Record<string, never>;
  */
 export type GameResetPayload = Record<string, never>;
 
+/**
+ * Host sounds the correct/wrong cue for everyone without judging anybody.
+ *
+ * For the moments nobody holds the answer right: an answer given aloud without buzzing, or a
+ * flourish after the verdict. It never touches a score. A real verdict plays the same cue on
+ * its own, so this is not sent alongside `judge:submit`.
+ */
+export type EffectPlayPayload = {
+  isCorrect: boolean;
+};
+
+/**
+ * Host corrects one seat's score or counts by hand.
+ *
+ * `participantId` names the seat being corrected, not the sender, exactly as in
+ * `JudgeSubmitPayload`. This is the one way to undo a mistaken verdict, since judging has no
+ * confirmation step, and it also covers bonuses and handicaps.
+ */
+export type ScoreAdjustPayload = {
+  participantId: string;
+  adjustment: ScoreAdjustment;
+};
+
+/**
+ * Host ends the current match and shows its standings to everyone.
+ *
+ * The tournament and the room stay open. Nothing is scored or cleared except the round in
+ * progress, so the standings on screen are exactly the ones the last judgement produced.
+ */
+export type MatchFinishPayload = Record<string, never>;
+
+/**
+ * Host leaves the match result and starts the next match in the same room.
+ *
+ * Every seat goes back to zero points and zero counts. The previous match is not kept
+ * anywhere; clearing the counts is also what makes the rules editable again.
+ */
+export type MatchNextPayload = Record<string, never>;
+
 /** Host ends the tournament and moves everyone to the final result screen. */
 export type TournamentFinishPayload = Record<string, never>;
 
@@ -142,6 +185,16 @@ export type RoomClosePayload = Record<string, never>;
  * server-side conversion function and its tests, not on this union.
  */
 export type RoomStateEvent = HostRoomState | ParticipantRoomState;
+
+/**
+ * Play the correct or wrong cue once, right now.
+ *
+ * Sent to everyone in the room after an accepted verdict and after `effect:play`. Deliberately
+ * outside the room state, so a reconnect or a late join cannot replay a cue from the past.
+ */
+export type JudgementEffectEvent = {
+  isCorrect: boolean;
+};
 
 /** The host closed the room. Clients should stop reconnecting after this. */
 export type RoomClosedEvent = {
@@ -236,6 +289,10 @@ export type ClientToServerEvents = {
   'game:reset': (payload: GameResetPayload) => void;
   'game:next-responder': (payload: GameNextResponderPayload) => void;
   'game:rules-update': (payload: GameRulesUpdatePayload) => void;
+  'effect:play': (payload: EffectPlayPayload) => void;
+  'score:adjust': (payload: ScoreAdjustPayload) => void;
+  'match:finish': (payload: MatchFinishPayload) => void;
+  'match:next': (payload: MatchNextPayload) => void;
   'tournament:finish': (payload: TournamentFinishPayload) => void;
   'room:close': (payload: RoomClosePayload) => void;
 };
@@ -243,6 +300,7 @@ export type ClientToServerEvents = {
 /** Events the server sends. */
 export type ServerToClientEvents = {
   'room:state': (state: RoomStateEvent) => void;
+  'effect:judgement': (event: JudgementEffectEvent) => void;
   'room:closed': (event: RoomClosedEvent) => void;
   'session:invalidated': (event: SessionInvalidatedEvent) => void;
   error: (event: SocketErrorEvent) => void;
@@ -266,6 +324,10 @@ export const CLIENT_TO_SERVER_EVENT_NAMES = [
   'game:reset',
   'game:next-responder',
   'game:rules-update',
+  'effect:play',
+  'score:adjust',
+  'match:finish',
+  'match:next',
   'tournament:finish',
   'room:close',
 ] as const satisfies readonly (keyof ClientToServerEvents)[];
@@ -273,6 +335,7 @@ export const CLIENT_TO_SERVER_EVENT_NAMES = [
 /** Every server-to-client event name. */
 export const SERVER_TO_CLIENT_EVENT_NAMES = [
   'room:state',
+  'effect:judgement',
   'room:closed',
   'session:invalidated',
   'error',

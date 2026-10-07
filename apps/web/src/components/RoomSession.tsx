@@ -1,15 +1,20 @@
 /** Owns shared room presentation and lifecycle controls independently of the selected game mode. */
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { rankParticipants } from '../game/ranking';
 import type { UseRoomSocketResult } from '../hooks/useRoomSocket';
 import {
   loadInviteDetails,
+  loadSoundMuted,
   loadTournamentName,
+  saveSoundMuted,
   type StoredInviteDetails,
 } from '../storage/sessionKeys';
 import { Button } from './Button';
 import { ConfirmButton } from './ConfirmButton';
 import { FinalResult } from './FinalResult';
+import { InviteControl } from './InviteControl';
+import { JudgeEffect } from './JudgeEffect';
+import { MatchResultDialog } from './MatchResultDialog';
 import { ParticipantList } from './ParticipantList';
 import { RenameForm } from './RenameForm';
 import { RuleSettings } from './RuleSettings';
@@ -35,6 +40,7 @@ export function RoomSession({
 }: RoomSessionProps) {
   const { status, roomState, participantId, errorMessage, roomClosed } = connection;
   const toast = useToast();
+  const [soundMuted, setSoundMuted] = useState(loadSoundMuted);
   const tournamentId = roomState?.tournamentId;
   const invitation = inviteDetails ?? (tournamentId ? loadInviteDetails(tournamentId) : undefined);
   const tournamentName =
@@ -73,26 +79,10 @@ export function RoomSession({
       roleLabel={isHost ? 'ホスト' : '参加者'}
       connectionLabel={connectionLabel}
       reconnecting={status === 'connecting' && roomState !== undefined && !roomClosed}
-      roomCode={isHost ? invitation?.inviteCode : undefined}
       settings={<RuleSettings connection={connection} />}
-      roomInfo={
-        isHost && invitation ? (
-          <section className="qw-invite-panel" aria-label="招待情報">
-            <p>
-              招待コード <code>{invitation.inviteCode}</code>
-            </p>
-            <p className="qw-invite-panel__url">{invitation.inviteUrl}</p>
-            <Button
-              onClick={() => {
-                void navigator.clipboard.writeText(invitation.inviteUrl).then(
-                  () => toast.show('招待URLをコピーしました'),
-                  () => toast.show('コピーに失敗しました', 'error'),
-                );
-              }}
-            >
-              招待URLをコピー
-            </Button>
-          </section>
+      invite={
+        invitation ? (
+          <InviteControl inviteCode={invitation.inviteCode} inviteUrl={invitation.inviteUrl} />
         ) : undefined
       }
       rosterCount={players.length}
@@ -105,10 +95,31 @@ export function RoomSession({
           currentResponderId={
             roomState?.status === 'answering' ? roomState.currentResponderId : undefined
           }
+          // Offered where the server accepts it: never while somebody holds the answer right.
+          onAdjust={
+            isHost &&
+            (roomState?.status === 'idle' ||
+              roomState?.status === 'result' ||
+              roomState?.status === 'matchResult')
+              ? connection.adjustScore
+              : undefined
+          }
+          adjustDisabled={status !== 'joined' || roomClosed}
         />
       }
       actions={
         <div className="qw-room-actions">
+          <label className="qw-sound-toggle">
+            <input
+              type="checkbox"
+              checked={!soundMuted}
+              onChange={(event) => {
+                setSoundMuted(!event.target.checked);
+                saveSoundMuted(!event.target.checked);
+              }}
+            />
+            効果音を鳴らす
+          </label>
           <RenameForm connection={connection} />
           <Button
             disabled={status !== 'joined' || roomClosed}
@@ -160,12 +171,36 @@ export function RoomSession({
       ) : (
         children
       )}
-      {isHost && (roomState?.status === 'idle' || roomState?.status === 'result') ? (
+      <JudgeEffect effect={connection.judgeEffect} muted={soundMuted} />
+      {roomState?.status === 'matchResult' ? (
+        <MatchResultDialog
+          rules={roomState.rules}
+          participants={roomState.participants}
+          hostId={roomState.hostId}
+          isHost={isHost}
+          disabled={status !== 'joined' || roomClosed}
+          onNextMatch={connection.nextMatch}
+        />
+      ) : null}
+      {isHost &&
+      (roomState?.status === 'idle' ||
+        roomState?.status === 'result' ||
+        roomState?.status === 'matchResult') ? (
         <fieldset
           className="qw-room-controls qw-tournament-actions"
           disabled={status !== 'joined' || roomClosed}
           aria-label="大会の管理"
         >
+          {roomState.status === 'matchResult' ? (
+            <Button onClick={connection.nextMatch}>次の試合へ</Button>
+          ) : (
+            <ConfirmButton
+              label="試合終了"
+              question="この試合を終了して結果を表示しますか？ 得点は次の試合を始めるとリセットされます。"
+              confirmLabel="試合を終了する"
+              onConfirm={connection.finishMatch}
+            />
+          )}
           <ConfirmButton
             label="大会終了"
             question="大会を終了して最終結果を表示しますか？ 終了後は早押しできません。"

@@ -1,9 +1,10 @@
 /**
  * Pure transitions for ending a tournament and for closing the room afterwards.
  *
- * Ending is only accepted from `idle` and `result`, the two points where nobody holds the
- * answer right. A tournament that ended mid-answer would leave a participant waiting for a
- * judgement that can no longer come, and the host is one click away from either state.
+ * Ending is only accepted from `idle`, `result` and `matchResult`, the points where nobody
+ * holds the answer right. A tournament that ended mid-answer would leave a participant waiting
+ * for a judgement that can no longer come, and the host is one click away from those states.
+ * From `matchResult` the final screen simply repeats the standings of the last match.
  *
  * Closing the room is not a state transition at all: the room stops existing on this server.
  * It is still decided here, because the two questions it turns on — is this the host, and has
@@ -39,7 +40,11 @@ export function applyTournamentFinish(
     return reject('NOT_HOST');
   }
 
-  if (current.status !== 'idle' && current.status !== 'result') {
+  if (
+    current.status !== 'idle' &&
+    current.status !== 'result' &&
+    current.status !== 'matchResult'
+  ) {
     return reject('INVALID_STATE');
   }
 
