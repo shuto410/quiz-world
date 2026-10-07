@@ -48,7 +48,8 @@ describe('App', () => {
   it('renders the bare join screen when no code is supplied', () => {
     window.history.pushState({}, '', '/join');
     render(<App />);
-    expect(screen.getByText('招待コードを入力してください。')).toBeTruthy();
+    expect(screen.getByText('招待コードと表示名を入力してください。')).toBeTruthy();
+    expect(screen.getByLabelText('表示名')).toBeTruthy();
   });
 
   it('renders host and play screens keyed by tournament id', () => {

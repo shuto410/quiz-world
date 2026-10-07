@@ -103,6 +103,8 @@ function roomInStatus(status: GameStatus): InternalRoomState {
         buzzOrder: [{ participantId: RESPONDER_ID, receivedAt: EARLIER }],
         currentResponderId: RESPONDER_ID,
       });
+    case 'matchResult':
+      return createRoomStateFixture({ participants: PARTICIPANTS, status: 'matchResult' });
     case 'finished':
       return createRoomStateFixture({ participants: PARTICIPANTS, status: 'finished' });
   }
@@ -113,6 +115,7 @@ const SUBMIT_OUTCOME: Record<GameStatus, true | SocketErrorCode> = {
   idle: 'INVALID_STATE',
   answering: true,
   result: 'INVALID_STATE',
+  matchResult: 'INVALID_STATE',
   paused: 'INVALID_STATE',
   finished: 'INVALID_STATE',
 };

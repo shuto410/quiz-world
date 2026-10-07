@@ -1,12 +1,21 @@
-/** Presents server scores as standings, keeping the host outside the competition. */
+/**
+ * Presents server scores as standings, keeping the host outside the competition.
+ *
+ * When the parent passes `onAdjust`, each row also offers the host a way to correct that seat.
+ * Whether that is allowed right now is the parent's reading of the room state; this component
+ * only draws the control and forwards what the form produced.
+ */
+import { useState } from 'react';
 import {
   DEFAULT_GAME_RULES,
   getParticipantStanding,
   type GameRules,
   type ParticipantState,
+  type ScoreAdjustPayload,
 } from '@quiz-world/shared';
 import { rankParticipants } from '../game/ranking';
 import { ParticipantToken } from './ParticipantToken';
+import { ScoreEditor } from './ScoreEditor';
 import './ParticipantList.css';
 
 /** The broadcast roster and optional viewer identity, without stored ranking fields. */
@@ -16,6 +25,10 @@ export type ParticipantListProps = {
   selfParticipantId?: string | undefined;
   hostId?: string | undefined;
   currentResponderId?: string | undefined;
+  /** Present only for a host while corrections are accepted; shows the per-row edit control. */
+  onAdjust?: ((payload: ScoreAdjustPayload) => void) | undefined;
+  /** True while the connection is down. The control stays visible but cannot be used. */
+  adjustDisabled?: boolean | undefined;
 };
 
 export function ParticipantList({
@@ -24,7 +37,10 @@ export function ParticipantList({
   selfParticipantId,
   hostId,
   currentResponderId,
+  onAdjust,
+  adjustDisabled = false,
 }: ParticipantListProps) {
+  const [editingId, setEditingId] = useState<string>();
   const host = participants.find((person) => person.id === hostId);
   const ranked = rankParticipants({ participants, hostId, rules });
   return (
@@ -40,6 +56,7 @@ export function ParticipantList({
               data-self={participant.id === selfParticipantId}
               data-responding={participant.id === currentResponderId}
               data-first={rank === 1}
+              data-editing={onAdjust !== undefined && editingId === participant.id}
             >
               <span className="qw-participant-list__rank" aria-label={`${rank}位`}>
                 {rank}
@@ -86,7 +103,36 @@ export function ParticipantList({
                     <span>点</span>
                   </span>
                 ) : null}
+                {onAdjust ? (
+                  <button
+                    type="button"
+                    className="qw-participant-list__edit"
+                    aria-label={`${participant.name}さんの得点を修正`}
+                    aria-expanded={editingId === participant.id}
+                    disabled={adjustDisabled}
+                    onClick={() => {
+                      setEditingId(editingId === participant.id ? undefined : participant.id);
+                    }}
+                  >
+                    修正
+                  </button>
+                ) : null}
               </div>
+              {onAdjust && editingId === participant.id ? (
+                <ScoreEditor
+                  key={rules.type}
+                  participant={participant}
+                  rules={rules}
+                  disabled={adjustDisabled}
+                  onSave={(adjustment) => {
+                    onAdjust({ participantId: participant.id, adjustment });
+                    setEditingId(undefined);
+                  }}
+                  onCancel={() => {
+                    setEditingId(undefined);
+                  }}
+                />
+              ) : null}
             </li>
           ))}
         </ol>

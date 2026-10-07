@@ -57,7 +57,15 @@ describe('getBuzzerPrompt', () => {
       title: '太郎さんが回答中',
     });
   });
-  it.each(['result', 'paused', 'finished'] as const)(
+  it('tells both roles what follows the end of a match', () => {
+    const ended = { ...room, status: 'matchResult' as const };
+    expect(getBuzzerPrompt(ended, 'h', true)).toMatchObject({ phase: '試合終了' });
+    expect(getBuzzerPrompt(ended, 'a', true).description).toBe(
+      'ホストが次の試合を始めるまでお待ちください。',
+    );
+    expect(getBuzzerPrompt(ended, 'h', true).description).toContain('次の試合へ');
+  });
+  it.each(['result', 'matchResult', 'paused', 'finished'] as const)(
     'does not promise an answer turn during %s',
     (status) => {
       expect(getBuzzerPrompt({ ...room, status }, 'a', true).title).not.toBe('あなたの回答番です');

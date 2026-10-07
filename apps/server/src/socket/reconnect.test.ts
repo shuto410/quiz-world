@@ -34,6 +34,8 @@ it('invalidates every operation on the old socket and ignores its late disconnec
     'answer:submit',
     'judge:submit',
     'game:reset',
+    'match:finish',
+    'match:next',
     'tournament:finish',
     'room:close',
     'tournament:leave',

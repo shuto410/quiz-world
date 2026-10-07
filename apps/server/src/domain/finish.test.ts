@@ -90,6 +90,8 @@ function roomInStatus(status: GameStatus): InternalRoomState {
         pausedReason: 'hostDisconnected',
         hostOnline: false,
       });
+    case 'matchResult':
+      return createRoomStateFixture({ participants: PARTICIPANTS, status: 'matchResult' });
     case 'finished':
       return createRoomStateFixture({ participants: PARTICIPANTS, status: 'finished' });
   }
@@ -101,6 +103,8 @@ const FINISH_ACCEPTED: Record<GameStatus, boolean> = {
   // Somebody holds the answer right; the host judges or resets first.
   answering: false,
   result: true,
+  // The standings are already on screen; ending here just makes them final.
+  matchResult: true,
   paused: false,
   finished: false,
 };
@@ -151,6 +155,7 @@ const CLOSE_ACCEPTED: Record<GameStatus, boolean> = {
   idle: false,
   answering: false,
   result: false,
+  matchResult: false,
   paused: false,
   finished: true,
 };

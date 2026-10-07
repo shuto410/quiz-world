@@ -1,0 +1,132 @@
+/**
+ * A brief full-screen flourish: a tinted flash behind a large mark that pops in and fades.
+ * Purely decorative and transparent to the pointer. With reduced motion it only fades.
+ */
+.qw-judge-effect {
+  position: fixed;
+  inset: 0;
+  z-index: 45;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  animation: qw-judge-effect-flash 1400ms ease-out both;
+}
+.qw-judge-effect[data-verdict='correct'] {
+  --effect-fill: var(--correct);
+  --effect-edge: var(--correct-edge);
+}
+.qw-judge-effect[data-verdict='wrong'] {
+  --effect-fill: var(--wrong);
+  --effect-edge: var(--wrong-edge);
+}
+.qw-judge-effect__mark {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-2);
+  min-width: 260px;
+  padding: 28px 48px 32px;
+  border-radius: var(--radius-xl);
+  background: var(--effect-fill);
+  box-shadow: 0 10px 0 var(--effect-edge);
+  color: var(--ink);
+  animation: qw-judge-effect-pop 1400ms cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+.qw-judge-effect__mark > span {
+  font-family: var(--font-display);
+  font-size: 120px;
+  line-height: 1;
+}
+.qw-judge-effect__mark > strong {
+  font-family: var(--font-display);
+  font-size: 40px;
+  font-weight: 400;
+  line-height: 1.2;
+}
+.qw-judge-effect[data-verdict='wrong'] .qw-judge-effect__mark {
+  animation-name: qw-judge-effect-shake;
+  animation-timing-function: ease-out;
+}
+@keyframes qw-judge-effect-flash {
+  0% {
+    background: color-mix(in srgb, var(--effect-fill) 55%, transparent);
+  }
+  35%,
+  100% {
+    background: transparent;
+  }
+}
+@keyframes qw-judge-effect-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  18% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  75% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.06);
+  }
+}
+@keyframes qw-judge-effect-shake {
+  0% {
+    opacity: 0;
+    transform: translateX(0);
+  }
+  8% {
+    opacity: 1;
+    transform: translateX(-14px);
+  }
+  16% {
+    transform: translateX(12px);
+  }
+  24% {
+    transform: translateX(-8px);
+  }
+  32% {
+    transform: translateX(0);
+  }
+  75% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes qw-judge-effect-fade {
+  0% {
+    opacity: 0;
+  }
+  15%,
+  75% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@media (max-width: 720px) {
+  .qw-judge-effect__mark {
+    min-width: 200px;
+    padding: 20px 32px 24px;
+  }
+  .qw-judge-effect__mark > span {
+    font-size: 88px;
+  }
+  .qw-judge-effect__mark > strong {
+    font-size: 30px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .qw-judge-effect {
+    animation: none;
+  }
+  .qw-judge-effect .qw-judge-effect__mark {
+    animation: qw-judge-effect-fade 1400ms linear both;
+  }
+}

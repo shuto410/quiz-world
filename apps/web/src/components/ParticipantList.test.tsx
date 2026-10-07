@@ -4,8 +4,9 @@
  * Smoke tests for the shared participant roster.
  */
 
-import { cleanup, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { SEVEN_MARU_THREE_BATSU, type ParticipantState } from '@quiz-world/shared';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ParticipantList } from './ParticipantList';
 
 afterEach(() => {
@@ -122,6 +123,82 @@ describe('ParticipantList', () => {
     expect(screen.getByText('あなた')).toBeTruthy();
     expect(screen.getByText('進行役')).toBeTruthy();
     expect(screen.queryByText('0点')).toBeNull();
+  });
+
+  describe('host corrections', () => {
+    const seat: ParticipantState = {
+      id: 'a',
+      name: 'あおい',
+      online: true,
+      joinedAt: 1,
+      score: 4,
+      correctCount: 4,
+      wrongCount: 2,
+    };
+    const open = () =>
+      fireEvent.click(screen.getByRole('button', { name: 'あおいさんの得点を修正' }));
+
+    it('offers no edit control unless the parent allows corrections', () => {
+      render(<ParticipantList participants={[seat]} />);
+      expect(screen.queryByRole('button', { name: 'あおいさんの得点を修正' })).toBeNull();
+    });
+
+    it('sends the new score for the named seat under points, then closes', () => {
+      const onAdjust = vi.fn();
+      render(<ParticipantList participants={[seat]} onAdjust={onAdjust} />);
+      open();
+      expect(screen.getByLabelText<HTMLInputElement>('得点').value).toBe('4');
+      fireEvent.change(screen.getByLabelText('得点'), { target: { value: '-2' } });
+      fireEvent.click(screen.getByRole('button', { name: '保存' }));
+      expect(onAdjust).toHaveBeenCalledExactlyOnceWith({
+        participantId: 'a',
+        adjustment: { type: 'points', score: -2 },
+      });
+      expect(screen.queryByLabelText('得点')).toBeNull();
+    });
+
+    it('edits the counts under n○m× and explains a value it will not send', () => {
+      const onAdjust = vi.fn();
+      render(
+        <ParticipantList
+          participants={[seat]}
+          rules={SEVEN_MARU_THREE_BATSU}
+          onAdjust={onAdjust}
+        />,
+      );
+      open();
+      expect(screen.queryByLabelText('得点')).toBeNull();
+      fireEvent.change(screen.getByLabelText('×の数'), { target: { value: '' } });
+      // Submitted directly: the browser's own field validation is not the last line of defence.
+      fireEvent.submit(screen.getByRole('form', { name: 'あおいさんの得点を修正' }));
+      expect(screen.getByRole('alert').textContent).toContain('○数・×数は0〜99の整数');
+      expect(onAdjust).not.toHaveBeenCalled();
+      fireEvent.change(screen.getByLabelText('×の数'), { target: { value: '1' } });
+      fireEvent.click(screen.getByRole('button', { name: '保存' }));
+      expect(onAdjust).toHaveBeenCalledExactlyOnceWith({
+        participantId: 'a',
+        adjustment: { type: 'maruBatsu', correctCount: 4, wrongCount: 1 },
+      });
+    });
+
+    it('abandons a draft on cancel and when corrections stop being allowed', () => {
+      const onAdjust = vi.fn();
+      const view = render(<ParticipantList participants={[seat]} onAdjust={onAdjust} />);
+      open();
+      fireEvent.click(screen.getByRole('button', { name: 'やめる' }));
+      expect(screen.queryByLabelText('得点')).toBeNull();
+      open();
+      view.rerender(<ParticipantList participants={[seat]} />);
+      expect(screen.queryByLabelText('得点')).toBeNull();
+      expect(onAdjust).not.toHaveBeenCalled();
+    });
+
+    it('cannot be used while the connection is down', () => {
+      render(<ParticipantList participants={[seat]} onAdjust={vi.fn()} adjustDisabled />);
+      expect(
+        screen.getByRole('button', { name: 'あおいさんの得点を修正' }).matches(':disabled'),
+      ).toBe(true);
+    });
   });
 
   it('shows an empty message when nobody has joined', () => {

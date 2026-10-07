@@ -32,6 +32,18 @@ export function loadParticipantId(tournamentId: string): string | undefined {
   return window.localStorage.getItem(participantIdKey(tournamentId)) ?? undefined;
 }
 
+/** A per-browser preference, not tied to a tournament: silence follows the person. */
+const SOUND_MUTED_KEY = 'qw:soundMuted';
+
+export function saveSoundMuted(muted: boolean): void {
+  if (muted) window.localStorage.setItem(SOUND_MUTED_KEY, '1');
+  else window.localStorage.removeItem(SOUND_MUTED_KEY);
+}
+
+export function loadSoundMuted(): boolean {
+  return window.localStorage.getItem(SOUND_MUTED_KEY) === '1';
+}
+
 /** Key for public invitation details, also used to read older sessionStorage entries. */
 export function inviteDetailsKey(tournamentId: string): string {
   return `qw:inviteDetails:${tournamentId}`;

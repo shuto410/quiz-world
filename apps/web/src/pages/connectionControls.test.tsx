@@ -6,7 +6,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, expect, it, vi } from 'vitest';
 import { ToastProvider } from '../components/Toast';
 import { useRoomSocket, type UseRoomSocketResult } from '../hooks/useRoomSocket';
-import { saveHostToken, saveParticipantName } from '../storage/sessionKeys';
+import { saveHostToken, saveInviteDetails, saveParticipantName } from '../storage/sessionKeys';
 import { HostPage } from './HostPage';
 import { PlayPage } from './PlayPage';
 vi.mock('../hooks/useRoomSocket');
@@ -18,7 +18,7 @@ afterEach(() => {
 
 function setup(
   role: 'host' | 'participant',
-  roomStatus: 'idle' | 'answering' | 'result' | 'finished' | 'paused',
+  roomStatus: 'idle' | 'answering' | 'result' | 'matchResult' | 'finished' | 'paused',
 ) {
   saveHostToken('t1', 'test-token');
   const connection: UseRoomSocketResult = {
@@ -69,6 +69,11 @@ function setup(
     resetGame: vi.fn(),
     nextResponder: vi.fn(),
     updateRules: vi.fn(),
+    judgeEffect: undefined,
+    playEffect: vi.fn(),
+    adjustScore: vi.fn(),
+    finishMatch: vi.fn(),
+    nextMatch: vi.fn(),
     finishTournament: vi.fn(),
     closeRoom: vi.fn(),
   };
@@ -156,6 +161,104 @@ it.each(['idle', 'answering'] as const)(
     }
   },
 );
+
+it.each(['idle', 'result', 'matchResult', 'answering', 'paused', 'finished'] as const)(
+  'offers the host score corrections only while the server accepts them, tested in %s',
+  (status) => {
+    const { connection } = setup('host', status);
+    const edit = screen.queryByRole('button', { name: '太郎さんの得点を修正' });
+    const offered = status === 'idle' || status === 'result' || status === 'matchResult';
+    expect(edit !== null).toBe(offered);
+    if (edit === null) return;
+    fireEvent.click(edit);
+    fireEvent.change(screen.getByLabelText('得点'), { target: { value: '7' } });
+    fireEvent.click(screen.getByRole('button', { name: '保存' }));
+    expect(connection.adjustScore).toHaveBeenCalledExactlyOnceWith({
+      participantId: 'p',
+      adjustment: { type: 'points', score: 7 },
+    });
+  },
+);
+
+it.each(['idle', 'result', 'matchResult'] as const)(
+  'keeps the verdict buttons up as a cue that scores nobody, tested in %s',
+  (status) => {
+    const { connection } = setup('host', status);
+    if (status === 'matchResult') fireEvent.click(screen.getByRole('button', { name: '閉じる' }));
+    fireEvent.click(screen.getByRole('button', { name: '不正解' }));
+    expect(connection.playEffect).toHaveBeenCalledExactlyOnceWith(false);
+    expect(connection.judge).not.toHaveBeenCalled();
+  },
+);
+
+it('judges, and does not merely cue, while a responder waits', () => {
+  const { connection } = setup('host', 'answering');
+  fireEvent.click(screen.getByRole('button', { name: '不正解' }));
+  expect(connection.judge).toHaveBeenCalledExactlyOnceWith({
+    participantId: 'p',
+    buzzSessionId: 'round',
+    isCorrect: false,
+  });
+  expect(connection.playEffect).not.toHaveBeenCalled();
+});
+
+it('shows the cue to participants and lets each of them silence it', () => {
+  const { connection, refresh } = setup('participant', 'idle');
+  expect(screen.queryByRole('button', { name: '正解' })).toBeNull();
+  connection.judgeEffect = { id: 1, isCorrect: true, receivedAt: Date.now() };
+  refresh();
+  expect(screen.getByText('正解！')).toBeTruthy();
+  fireEvent.click(screen.getByText('参加情報'));
+  const toggle = screen.getByLabelText<HTMLInputElement>('効果音を鳴らす');
+  expect(toggle.checked).toBe(true);
+  fireEvent.click(toggle);
+  expect(localStorage.getItem('qw:soundMuted')).toBe('1');
+});
+
+it.each(['host', 'participant'] as const)(
+  'shows the invitation once in the header to a %s',
+  (role) => {
+    saveInviteDetails('t1', {
+      inviteCode: 'AB23CD45',
+      inviteUrl: 'https://quiz.example/join?code=AB23CD45',
+      name: '春の大会',
+    });
+    setup(role, 'idle');
+    expect(screen.getAllByText('AB23CD45')).toHaveLength(1);
+    expect(screen.getByRole('button', { name: '招待コード AB23CD45 をコピー' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'URLをコピー' })).toBeTruthy();
+    expect(screen.queryByText('ルームコード')).toBeNull();
+  },
+);
+
+it('never offers score corrections to a participant', () => {
+  setup('participant', 'idle');
+  expect(screen.queryByRole('button', { name: /得点を修正/ })).toBeNull();
+});
+
+it('lets the host end a match and start the next one, and participants only watch', () => {
+  const host = setup('host', 'idle');
+  fireEvent.click(screen.getByRole('button', { name: '試合終了' }));
+  fireEvent.click(screen.getByRole('button', { name: '試合を終了する' }));
+  expect(host.connection.finishMatch).toHaveBeenCalledOnce();
+  expect(host.connection.finishTournament).not.toHaveBeenCalled();
+  if (host.connection.roomState === undefined) throw new Error('missing room');
+  host.connection.roomState = { ...host.connection.roomState, status: 'matchResult' };
+  host.refresh();
+  const dialog = screen.getByRole('dialog', { name: '試合結果' });
+  expect(dialog.textContent).toContain('太郎');
+  expect(screen.queryByRole('button', { name: '試合終了' })).toBeNull();
+  // The popup can be put away; the same action stays reachable from the room controls.
+  fireEvent.click(screen.getByRole('button', { name: '閉じる' }));
+  fireEvent.click(screen.getByRole('button', { name: '次の試合へ' }));
+  expect(host.connection.nextMatch).toHaveBeenCalledOnce();
+  cleanup();
+
+  setup('participant', 'matchResult');
+  expect(screen.getByRole('dialog', { name: '試合結果' })).toBeTruthy();
+  expect(screen.queryByRole('button', { name: '次の試合へ' })).toBeNull();
+  expect(screen.getByRole('button', { name: '早押し' }).matches(':disabled')).toBe(true);
+});
 
 it('retains final standings after room close and offers no active close action', () => {
   const { connection, refresh } = setup('host', 'finished');

@@ -190,6 +190,34 @@
   font-size: 11px;
   font-weight: 800;
 }
+.qw-participant-list__row[data-editing='true'] {
+  flex-wrap: wrap;
+  row-gap: 8px;
+}
+.qw-participant-list__edit {
+  align-self: center;
+  padding: 3px 10px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--surface-card);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.qw-participant-list__edit[aria-expanded='true'] {
+  background: var(--ink);
+  color: var(--gold);
+}
+.qw-participant-list__edit:focus-visible {
+  outline: 2px solid var(--buzzer);
+  outline-offset: 2px;
+}
+.qw-participant-list__edit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 .qw-scoreboard__host {
   display: flex;
   flex-wrap: wrap;
