@@ -5,12 +5,16 @@
  * origin (the Vite server), and `/api` plus `/socket.io` are forwarded to the socket server.
  * That is the same path split CloudFront will perform later, so the client never needs a
  * different base URL between environments.
+ *
+ * `DEV_PROXY_TARGET` moves the proxy to another socket server. The end-to-end tests use it to
+ * run their own server beside a development one that is already listening on 3001.
  */
 
+import { env } from 'node:process';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
-const SOCKET_SERVER = 'http://localhost:3001';
+const SOCKET_SERVER = env['DEV_PROXY_TARGET'] ?? 'http://localhost:3001';
 
 export default defineConfig({
   plugins: [react()],

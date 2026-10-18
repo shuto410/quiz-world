@@ -58,6 +58,7 @@ MVP では以下を実装しない。「あると便利だから」で追加し�
 | DynamoDB から読んだ項目の検証（キャスト禁止）                                       | `parseTournamentRecord()`                                |
 | エラーコードとHTTPステータスの1対1対応                                              | `api/errors.ts` と `api/errors.test.ts`                  |
 | リポジトリのテストが本物の DynamoDB 実装に当たること                                | `testing/testDynamoDb.ts`（dynalite をインプロセス起動） |
+| 複数ブラウザでの通し進行と、判定前の回答が参加者へ送られないこと                    | `e2e/`（Playwright。`npm run test:e2e`）                 |
 
 ## リポジトリ構成
 
@@ -66,6 +67,7 @@ apps/web        # Vite + React + TypeScript (SPA)
 apps/server     # Express + Socket.io
 packages/shared # ドメイン型、Socketイベント型、バリデーション
 infra           # AWS CDK (TypeScript)
+e2e             # Playwright のブラウザE2Eテスト
 docs/design.md  # 設計の唯一の正
 ```
 
@@ -80,6 +82,7 @@ docs/design.md  # 設計の唯一の正
 - **型には英語の jsdoc コメントで用途を書く。** ドメインモデルは `packages/shared/src/types` に集約する。
 - **TDD で進める。** 純粋ロジックは先にテストを書く。UI は動作確認を優先し、ロジックを含む部分だけテストする。
 - テストは実装ファイルの隣に `*.test.ts` として置く。
+- ブラウザE2Eは `e2e/*.spec.ts` に置く。複数の画面をまたいで初めて確かめられる筋書きだけを書き、境界や権限の網羅は単体・実Socketのテストで行う。要素はロールとアクセシブルネームで特定する。
 - カバレッジは 90% 以上を維持し、100% を目標にする。ドメイン層は 100% を目指す。
 - ユーザーとのやり取りは日本語で行う。
 
@@ -98,6 +101,7 @@ docs/design.md  # 設計の唯一の正
 | `npm run test`          | Vitest（watch）                                                         |
 | `npm run test:run`      | Vitest（1回実行）                                                       |
 | `npm run test:coverage` | カバレッジ付きで実行                                                    |
+| `npm run test:e2e`      | Playwright のブラウザE2E。`check` には含まれない（Docker不要）          |
 
 ## 進め方
 

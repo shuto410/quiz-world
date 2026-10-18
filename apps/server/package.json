@@ -6,6 +6,7 @@
   "description": "Express and Socket.io server that owns the authoritative game state",
   "scripts": {
     "dev": "node --watch --env-file-if-exists=../../.env.local --import tsx src/index.ts",
+    "e2e": "node --import tsx src/testing/e2eServer.ts",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {

@@ -59,7 +59,15 @@ const impureSyntax = [
 
 export default tseslint.config(
   {
-    ignores: ['**/node_modules/**', '**/dist/**', '**/build/**', '**/coverage/**', '**/cdk.out/**'],
+    ignores: [
+      '**/node_modules/**',
+      '**/dist/**',
+      '**/build/**',
+      '**/coverage/**',
+      '**/cdk.out/**',
+      'test-results/**',
+      'playwright-report/**',
+    ],
   },
 
   js.configs.recommended,

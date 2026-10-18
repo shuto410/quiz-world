@@ -26,6 +26,7 @@ apps/web        # Vite + React + TypeScript (SPA)
 apps/server     # Express + Socket.io
 packages/shared # ドメイン型、Socketイベント型、バリデーション
 infra           # AWS CDK (TypeScript)
+e2e             # Playwright のブラウザE2Eテスト
 docs/design.md  # 設計の唯一の正
 AGENTS.md       # 開発規約と不変条件
 ```
@@ -137,6 +138,29 @@ npm run debug:windows -- 'http://localhost:5173/join?code=ECUQEFWQ'
 DEBUG_BASE_URL=http://localhost:5174 npm run debug:windows
 ```
 
+## ブラウザE2Eテスト
+
+ホスト1人と参加者2人を別々のブラウザとして開き、大会作成から判定・得点反映までを通しで確認する。
+
+初回だけ、Playwright 用のブラウザを取得する。
+
+```bash
+npx playwright install chromium
+```
+
+```bash
+npm run test:e2e
+```
+
+サーバーと Vite は Playwright が起動し、終わると止める。DynamoDB はインプロセスの実装を使うので Docker は要らない。
+ポートは開発用と別（Web 5183、サーバー 3011）なので、`npm run dev` を動かしたままでも実行できる。
+変更したいときは `E2E_WEB_PORT` / `E2E_SERVER_PORT` を指定する。
+
+画面を見ながら1手ずつ追うには `npm run test:e2e:ui`、失敗時の記録は `npx playwright show-trace test-results/<テスト名>/trace.zip` で開ける。
+起動したサーバーの出力を見たいときは `DEBUG=pw:webserver npm run test:e2e` とする。
+
+`npm run check` には含まれない。画面やSocketの配線に触れた変更のあとに実行する。
+
 ## コマンド
 
 | コマンド                | 内容                                                     |
@@ -158,6 +182,7 @@ DEBUG_BASE_URL=http://localhost:5174 npm run debug:windows
 | `npm run test`          | Vitest（watch モード）                                   |
 | `npm run test:run`      | Vitest（1 回実行）                                       |
 | `npm run test:coverage` | カバレッジ付きで実行                                     |
+| `npm run test:e2e`      | ブラウザE2E（Playwright。`test:e2e:ui` で画面つき）      |
 
 ## ドキュメント
 
